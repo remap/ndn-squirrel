@@ -210,7 +210,8 @@ class TlvEncoder {
    */
   function writeArrayEnabled(array, arrayOffset, arrayLength)
   {
-    output_.copy(array, arrayOffset, arrayLength, offset_);
+    if (array != null)
+      output_.copy(array, arrayOffset, arrayLength, offset_);
     offset_ += arrayLength;
   }
 
@@ -263,7 +264,7 @@ class TlvEncoder {
   {
     if (arrayLength == null)
       // Fix the default value.
-      arrayLength = array.len() - arrayOffset;
+      arrayLength = (array == null ? 0 : array.len()) - arrayOffset;
 
     if (enableOutput_)
       writeBlobTlvEnabled_(type, array, arrayOffset, arrayLength);
@@ -287,7 +288,7 @@ class TlvEncoder {
   {
     if (arrayLength == null)
       // Fix the default value.
-      arrayLength = array.len() - arrayOffset;
+      arrayLength = (array == null ? 0 : array.len()) - arrayOffset;
 
     if (array != null && arrayLength > 0)
       writeBlobTlv(type, array, arrayOffset, arrayLength);
@@ -350,25 +351,28 @@ class TlvEncoder {
    * writing to the output.
    * @param {integer} type the type of the TLV.
    * @param {function} writeValue A function that writes the TLVs in the body of
-   * the value. This calls writeValue(this).
+   * the value. This calls writeValue(context, this) and returns its result.
+   * @param {instance} context An object which is passed to writeValue.
    * @param {bool} omitZeroLength (optional) If true and the TLV length is zero,
    * then don't write anything. If omitted or false, and the TLV length is zero,
    * write the type and length.
+   * @return The result of calling  writeValue(context, this), or null if
+   * enableOutput_ is already false when this is called.
    */
-  function writeNestedTlv(type, writeValue, omitZeroLength = false)
+  function writeNestedTlv(type, writeValue, context, omitZeroLength = false)
   {
     local originalEnableOutput = enableOutput_;
 
     // Make a first pass to get the value length by setting enableOutput_ false.
     local saveOffset = offset_;
     enableOutput_ = false;
-    writeValue(this);
+    writeValue(context, this);
     local valueLength = offset_ - saveOffset;
 
     if (omitZeroLength && valueLength == 0) {
       // Omit the optional TLV.
       enableOutput_ = originalEnableOutput;
-      return;
+      return null;
     }
 
     if (originalEnableOutput) {
@@ -378,12 +382,14 @@ class TlvEncoder {
 
       // Now, write the output.
       writeTypeAndLength(type, valueLength);
-      writeValue(this);
+      return writeValue(context, this);
     }
-    else
+    else {
       // The output was originally disabled. Just advance offset further by the
       // type and length.
       writeTypeAndLength(type, valueLength);
+      return null;
+    }
   }
 
   /**
