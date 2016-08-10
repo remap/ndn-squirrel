@@ -153,6 +153,7 @@ class NameComponent {
  */
 class Name {
   components_ = null;
+  changeCount_ = 0;
 
   constructor(components = null)
   {
@@ -204,6 +205,7 @@ class Name {
       // Just use the NameComponent constructor.
       components_.append(NameComponent(component));
 
+    ++changeCount_;
     return this;
   }
 
@@ -213,6 +215,7 @@ class Name {
   function clear()
   {
     components_ = [];
+    ++changeCount_;
   }
 
 
@@ -340,6 +343,12 @@ class Name {
     else
       return 0;
   }
+
+  /**
+   * Get the change count, which is incremented each time this object is changed.
+   * @return {integer} The change count.
+   */
+  function getChangeCount() { return changeCount_; }
 
   function _typeof() {
     return "Name";
