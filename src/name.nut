@@ -35,10 +35,10 @@ class NameComponent {
   /**
    * Create a new GENERIC NameComponent using the given value.
    * (To create an ImplicitSha256Digest component, use fromImplicitSha256Digest.)
-   * @param {NameComponent|Blob|blob|Array<number>|string} value If the value is
-   * a NameComponent or Blob, use its value directly, otherwise use the value
-   * according to the Blob constructor. If the value is null, create a
-   * zero-length component.
+   * @param {NameComponent|Blob|blob|Array<number>|string} value (optional) If
+   * the value is a NameComponent or Blob, use its value directly, otherwise use
+   * the value according to the Blob constructor. If the value is null or
+   * omitted, create a zero-length component.
    * @throws string if value is a Blob and it isNull.
    */
   constructor(value = null)
