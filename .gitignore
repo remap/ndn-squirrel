@@ -1,0 +1,13 @@
+# Build files
+/make-ndn-squirrel.sh
+/ndn-squirrel.nut
+/test.nut
+
+# JSDoc output
+/doc
+
+# Mac OSX
+.DS_Store
+
+# Emacs temp files
+*~
