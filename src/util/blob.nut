@@ -184,6 +184,7 @@ class Blob {
    */
   static function isBlob(obj)
   {
-    return typeof obj == "Blob" || typeof obj == "SignedBlob";
+    local objType = typeof obj;
+    return objType == "Blob" || objType == "SignedBlob";
   }
 }
