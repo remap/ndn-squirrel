@@ -43,9 +43,7 @@ class NameComponent {
    */
   constructor(value = null)
   {
-    local valueType = typeof value;
-
-    if (valueType == "NameComponent") {
+    if (value instanceof NameComponent) {
       // The copy constructor.
       value_ = value.value_;
       type_ = value.type_;
@@ -142,10 +140,6 @@ class NameComponent {
 
     return 0;
   }
-
-  function _typeof() {
-    return "NameComponent";
-  }
 }
 
 /**
@@ -163,7 +157,7 @@ class Name {
       components_ = [];
       set(components);
     }
-    else if (componentsType == "Name")
+    else if (components instanceof Name)
       // Don't need to deep-copy Component elements because they are read-only.
       components_ = components.components_.slice(0);
     else if (componentsType == "array")
@@ -187,7 +181,7 @@ class Name {
    */
   function append(component)
   {
-    if (typeof component == "Name") {
+    if (component instanceof Name) {
       local components;
       if (component == this)
         // Special case: We need to create a copy.
@@ -198,7 +192,7 @@ class Name {
       for (local i = 0; i < components.len(); ++i)
         components_.append(components[i]);
     }
-    else if (typeof component == "NameComponent")
+    else if (component instanceof NameComponent)
       // The Component is immutable, so use it as is.
       components_.append(component);
     else
@@ -300,7 +294,7 @@ class Name {
     (iStartComponent, nComponents = null, other = null,
      iOtherStartComponent = null, nOtherComponents = null)
   {
-    if (typeof iStartComponent == "Name") {
+    if (iStartComponent instanceof Name) {
       // compare(other)
       other = iStartComponent;
       iStartComponent = 0;
@@ -349,8 +343,4 @@ class Name {
    * @return {integer} The change count.
    */
   function getChangeCount() { return changeCount_; }
-
-  function _typeof() {
-    return "Name";
-  }
 }
