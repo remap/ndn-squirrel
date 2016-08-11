@@ -55,25 +55,25 @@ class Data {
    * Get the data packet's name.
    * @return {Name} The name. If not specified, the name size() is 0.
    */
-  function getName() { return this.name_.get(); }
+  function getName() { return name_.get(); }
 
   /**
    * Get the data packet's meta info.
    * @return {MetaInfo} The meta info.
    */
-  function getMetaInfo() { return this.metaInfo_.get(); }
+  function getMetaInfo() { return metaInfo_.get(); }
 
   /**
    * Get the data packet's signature object.
    * @return {Signature} The signature object.
    */
-  function getSignature() { return this.signature_.get(); }
+  function getSignature() { return signature_.get(); }
 
   /**
    * Get the data packet's content.
    * @return {Blob} The content as a Blob, which isNull() if unspecified.
    */
-  function getContent() { return this.content_; }
+  function getContent() { return content_; }
 
   /**
    * Set name to a copy of the given Name.
