@@ -19,6 +19,8 @@
 
 function dump(message) { print(message); print("\n"); }
 
+function getNowSeconds() { return clock(); }
+
 /**
  * Loop to encode a data packet nIterations times.
  * @param {integer} nIterations The number of iterations.
@@ -28,7 +30,7 @@ function dump(message) { print(message); print("\n"); }
  * signature.
  * @return {table} A table with the fields (duration, encoding) where duration
  * is the number of seconds for all iterations and encoding is the wire encoding
- * Buffer.
+ * Blob.
  */
 function benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto)
 {
@@ -36,31 +38,44 @@ function benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto)
   local content;
   if (useComplex) {
     // Use a large name and content.
+/* debug
     name = Name
       ("/ndn/ucla.edu/apps/lwndn-test/numbers.txt/%FD%05%05%E8%0C%CE%1D/%00");
+*/
+    name = Name().append("ndn").append("ucla.edu").append("apps")
+      .append("lwndn-test").append("numbers.txt")
+      .append(Blob([0xFD, 0x05, 0x05, 0xE8, 0x0C, 0xCE, 0x1D]))
+      .append(NameComponent("\0"));
 
     local contentString = "";
     local count = 1;
     contentString += "" + (count++);
-    while (contentString.length < 1115)
+    while (contentString.len() < 1115)
       contentString += " " + (count++);
     content = Blob(contentString);
   }
   else {
     // Use a small name and content.
+/* debug
     name = Name("/test");
+*/
+    name = Name().append("test");
     content = Blob("abc");
   }
   local finalBlockId = NameComponent("\0");
 
   // Initialize the KeyChain storage in case useCrypto is true.
 
+/* debug
   local keyName = Name("/testname/DSK-123");
+*/
+  local keyName = Name().append("testname").append("DSK-123");
   local certificateName = keyName.getSubName(0, keyName.size() - 1)
     .append("KEY").append(keyName.get(keyName.size() - 1)).append("ID-CERT")
     .append("0");
 
-  //generate KeyChain
+/* debug
+  // Generate the KeyChain.
   local identityStorage = MemoryIdentityStorage();
   local privateKeyStorage = MemoryPrivateKeyStorage();
   local keyChain = KeyChain
@@ -69,6 +84,7 @@ function benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto)
   identityStorage.addKey(keyName, KeyType.RSA, Blob(DEFAULT_RSA_PUBLIC_KEY_DER, false));
   privateKeyStorage.setKeyPairForKeyName
     (keyName, KeyType.RSA, DEFAULT_RSA_PUBLIC_KEY_DER, DEFAULT_RSA_PRIVATE_KEY_DER);
+*/
 
   local signatureBits = blob(256);
   for (local i = 0; i < signatureBits.len(); ++i)
@@ -106,15 +122,73 @@ function benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto)
   return { duration = finish - start, encoding = encoding };
 }
 
-function nameToUri(name) {
-  if (name.size() == 0)
-    return "/";
+/**
+ * Loop to decode a data packet nIterations times.
+ * @param {integer} nIterations The number of iterations.
+ * @param {bool} useCrypto If true, verify the signature.  If false, don't
+ * verify.
+ * @param {Blob} encoding The wire encoding to decode.
+ * @return {float} The number of seconds for all iterations.
+ */
+function benchmarkDecodeDataSeconds(nIterations, useCrypto, encoding)
+{
+/* debug
+  // Initialize the KeyChain storage in case useCrypto is true.
+  local identityStorage = MemoryIdentityStorage();
+  local privateKeyStorage = MemoryPrivateKeyStorage();
+  local keyChain = KeyChain
+    (IdentityManager(identityStorage, privateKeyStorage),
+     SelfVerifyPolicyManager(identityStorage));
+  identityStorage.addKey(keyName, KeyType.RSA, Blob(DEFAULT_RSA_PUBLIC_KEY_DER, false));
+  privateKeyStorage.setKeyPairForKeyName
+    (keyName, KeyType.RSA, DEFAULT_RSA_PUBLIC_KEY_DER, DEFAULT_RSA_PRIVATE_KEY_DER);
+*/
 
-  local result = "";
-  for (local i = 0; i < name.size(); ++i)
-    result += "/" + name.get(i).getValue().toRawStr();
+  local start = getNowSeconds();
+  for (local i = 0; i < nIterations; ++i) {
+    local data = Data();
+// debug    data.wireDecode(encoding);
+    Tlv0_2WireFormat.decodeData(data, encoding.buf());
 
-  return result;
+    if (useCrypto)
+      keyChain.verifyData(data, onVerified, onVerifyFailed);
+  }
+  local finish = getNowSeconds();
+
+  return finish - start;
 }
 
-local result = benchmarkEncodeDataSeconds(1, false, false);
+/**
+ * Call benchmarkEncodeDataSeconds and benchmarkDecodeDataSeconds with 
+ * appropriate nInterations. Print out the results.
+ * @param {bool} useComplex See benchmarkEncodeDataSeconds.
+ * @param {bool} useCrypto See benchmarkEncodeDataSeconds and
+ * benchmarkDecodeDataSeconds.
+ */
+function benchmarkEncodeDecodeData(useComplex, useCrypto)
+{
+  local format = "TLV";
+  local nIterations = useCrypto ? 1 : 20000;
+  local result = benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto);
+  dump("Encode " + (useComplex ? "complex " : "simple  ") +
+    format + " data: Crypto " + (useCrypto ? "RSA" : "-  ") +
+    ", Duration sec, Hz: " + result.duration + ", " + 
+    (nIterations / result.duration));
+
+  nIterations = useCrypto ? 1 : 30000;
+  local duration = benchmarkDecodeDataSeconds
+    (nIterations, useCrypto, result.encoding);
+  dump("Decode " + (useComplex ? "complex " : "simple  ") +
+    format + " data: Crypto " + (useCrypto ? "RSA" : "-  ") +
+    ", Duration sec, Hz: " + duration + ", " + (nIterations / duration));
+}
+
+function main()
+{
+  benchmarkEncodeDecodeData(false, false);
+  benchmarkEncodeDecodeData(true, false);
+}
+
+// If running on the Imp, uncomment to redefine dump().
+// function dump(message) { server.log(message); }
+main();
