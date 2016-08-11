@@ -54,7 +54,7 @@ class NameComponent {
 
     if (value == null)
       value_ = Blob([]);
-    else if (Blob.isBlob(value)) {
+    else if (value instanceof Blob) {
       if (value.isNull())
         throw "NameComponent: The Blob value may not be null";
       value_ = value;
@@ -89,7 +89,7 @@ class NameComponent {
    */
   static function fromImplicitSha256Digest(digest)
   {
-    local digestBlob = Blob.isBlob(digest) ? digest : Blob(digest, true);
+    local digestBlob = digest instanceof Blob ? digest : Blob(digest, true);
     if (digestBlob.size() != 32)
       throw 
         "Name.Component.fromImplicitSha256Digest: The digest length must be 32 bytes";

@@ -49,7 +49,7 @@ class Blob {
 
     if (value == null)
       buffer_ = null;
-    else if (Blob.isBlob(value))
+    else if (value instanceof Blob)
       // Use the existing buffer.  Don't need to check for copy.
       buffer_ = value.buffer_;
     else if (valueType == "string") {
@@ -170,21 +170,5 @@ class Blob {
 
       return true;
     }
-  }
-
-  function _typeof() {
-    return "Blob";
-  }
-
-  /**
-   * Check if the object is an instance of Blob or a subclass of Blob.
-   * TODO: Can Squirrel check instanceof Blob, including subclasses?
-   * @param {instance} obj The object to check.
-   * @return {bool} True if the object is an instance of Blob.
-   */
-  static function isBlob(obj)
-  {
-    local objType = typeof obj;
-    return objType == "Blob" || objType == "SignedBlob";
   }
 }
