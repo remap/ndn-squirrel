@@ -61,7 +61,7 @@ class Tlv0_2WireFormat {
    */
   function encodeData(data)
   {
-    local encoder = TlvEncoder(1500);
+    local encoder = TlvEncoder(500);
 
     local result = encoder.writeNestedTlv
       (Tlv.Data, encodeDataValue_, data, false);
@@ -98,6 +98,39 @@ class Tlv0_2WireFormat {
       (Tlv.SignatureValue, data.getSignature().getSignature().buf());
 
     return result;
+  }
+
+  /**
+   * Decode input as an NDN-TLV data packet, set the fields in the data object,
+   * and return the signed offsets.
+   * @param {Data} data The Data object whose fields are updated.
+   * @param {blob} input The Squirrel blob with the bytes to decode.  This
+   * decodes starting from input[0], ignoring the location of the blob pointer
+   * given by input.tell(). This does not update the blob pointer.
+   * @return {table} A table with fields (signedPortionBeginOffset,
+   * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
+   * encoding of the beginning of the signed portion, and signedPortionEndOffset
+   * is the offset in the encoding of the end of the signed portion.
+   */
+  function decodeData(data, input)
+  {
+    local decoder = TlvDecoder(input);
+
+    local endOffset = decoder.readNestedTlvsStart(Tlv.Data);
+    local signedPortionBeginOffset = decoder.getOffset();
+
+    decodeName_(data.getName(), decoder);
+    decodeMetaInfo_(data.getMetaInfo(), decoder);
+    data.setContent(Blob(decoder.readBlobTlv(Tlv.Content), true));
+    decodeSignatureInfo_(data, decoder);
+
+    local signedPortionEndOffset = decoder.getOffset();
+    data.getSignature().setSignature
+      (Blob(decoder.readBlobTlv(Tlv.SignatureValue), true));
+
+    decoder.finishNestedTlvs(endOffset);
+    return { signedPortionBeginOffset = signedPortionBeginOffset,
+             signedPortionEndOffset = signedPortionEndOffset };
   }
 
   /**
@@ -250,6 +283,40 @@ class Tlv0_2WireFormat {
   }
 
   /**
+   * Clear the name, decode a KeyLocator from the decoder and set the fields of
+   * the keyLocator object.
+   * @param {integer} expectedType The expected type of the TLV.
+   * @param {KeyLocator} keyLocator The KeyLocator object whose fields are
+   * updated.
+   * @param {TlvDecoder} decoder The decoder with the input.
+   */
+  static function decodeKeyLocator_(expectedType, keyLocator, decoder)
+  {
+    local endOffset = decoder.readNestedTlvsStart(expectedType);
+
+    keyLocator.clear();
+
+    if (decoder.getOffset() == endOffset)
+      // The KeyLocator is omitted, so leave the fields as none.
+      return;
+
+    if (decoder.peekType(Tlv.Name, endOffset)) {
+      // KeyLocator is a Name.
+      keyLocator.setType(KeyLocatorType.KEYNAME);
+      decodeName_(keyLocator.getKeyName(), decoder);
+    }
+    else if (decoder.peekType(Tlv.KeyLocatorDigest, endOffset)) {
+      // KeyLocator is a KeyLocatorDigest.
+      keyLocator.setType(KeyLocatorType.KEY_LOCATOR_DIGEST);
+      keyLocator.setKeyData(decoder.readBlobTlv(Tlv.KeyLocatorDigest));
+    }
+    else
+      throw "decodeKeyLocator: Unrecognized key locator type";
+
+    decoder.finishNestedTlvs(endOffset);
+  }
+  
+  /**
    * An internal method to encode signature as the appropriate form of
    * SignatureInfo in NDN-TLV.
    * @param {Signature} signature An object of a subclass of Signature.
@@ -257,7 +324,25 @@ class Tlv0_2WireFormat {
    */
   static function encodeSignatureInfo_(signature, encoder)
   {
-    // TODO: GenericSignature.
+    if (signature instanceof GenericSignature) {
+      // Handle GenericSignature separately since it has the entire encoding.
+      local encoding = signature.getSignatureInfoEncoding();
+
+      // Do a test decoding to sanity check that it is valid TLV.
+      try {
+        local decoder = TlvDecoder(encoding.buf());
+        local endOffset = decoder.readNestedTlvsStart(Tlv.SignatureInfo);
+        decoder.readNonNegativeIntegerTlv(Tlv.SignatureType);
+        decoder.finishNestedTlvs(endOffset);
+      } catch (ex) {
+        throw
+          "The GenericSignature encoding is not a valid NDN-TLV SignatureInfo: " +
+           ex;
+      }
+
+      encoder.writeArray(encoding.buf(), 0, encoding.size());
+      return;
+    }
 
     if (signature instanceof Sha256WithRsaSignature)
       encoder.writeNestedTlv
@@ -268,6 +353,44 @@ class Tlv0_2WireFormat {
     // TODO: DigestSha256Signature.
     else
       throw "encodeSignatureInfo: Unrecognized Signature object type";
+  }
+
+  /**
+   * Decode an NDN-TLV SignatureInfo from the decoder and set the Data object
+   * with a new Signature object.
+   * @param {Data} data This calls data.setSignature with a new Signature object.
+   * @param {TlvDecoder} decoder The decoder with the input.
+   */
+  static function decodeSignatureInfo_(data, decoder)
+  {
+    local beginOffset = decoder.getOffset();
+    local endOffset = decoder.readNestedTlvsStart(Tlv.SignatureInfo);
+
+    local signatureType = decoder.readNonNegativeIntegerTlv(Tlv.SignatureType);
+    if (signatureType == Tlv.SignatureType_SignatureSha256WithRsa) {
+      data.setSignature(Sha256WithRsaSignature());
+      // Modify data's signature object because if we create an object
+      //   and set it, then data will have to copy all the fields.
+      local signatureInfo = data.getSignature();
+      decodeKeyLocator_(Tlv.KeyLocator, signatureInfo.getKeyLocator(), decoder);
+    }
+    else if (signatureType == Tlv.SignatureType_SignatureHmacWithSha256) {
+      data.setSignature(HmacWithSha256Signature());
+      local signatureInfo = data.getSignature();
+      decodeKeyLocator_(Tlv.KeyLocator, signatureInfo.getKeyLocator(), decoder);
+    }
+    else if (signatureType == Tlv.SignatureType_DigestSha256)
+      data.setSignature(DigestSha256Signature());
+    else {
+      data.setSignature(GenericSignature());
+      local signatureInfo = data.getSignature();
+
+      // Get the bytes of the SignatureInfo TLV.
+      signatureInfo.setSignatureInfoEncoding
+        (Blob(decoder.getSlice(beginOffset, endOffset), true), signatureType);
+    }
+
+    decoder.finishNestedTlvs(endOffset);
   }
 
   /**
@@ -302,9 +425,47 @@ class Tlv0_2WireFormat {
       // The FinalBlockId has an inner NameComponent.
       encoder.writeTypeAndLength
         (Tlv.FinalBlockId, TlvEncoder.sizeOfBlobTlv
-         (metaInfo.getFinalBlockId().type_, finalBlockIdBuf.len()))
-        return error;
-      encodeTlvNameComponent_(metaInfo.getFinalBlockId(), encoder);
+         (metaInfo.getFinalBlockId().type_, finalBlockIdBuf.len()));
+      Tlv0_2WireFormat.encodeNameComponent_(metaInfo.getFinalBlockId(), encoder);
     }
+  }
+
+  /**
+   * Clear the name, decode a MetaInfo from the decoder and set the fields of
+   * the metaInfo object.
+   * @param {MetaInfo} metaInfo The MetaInfo object whose fields are updated.
+   * @param {TlvDecoder} decoder The decoder with the input.
+   */
+  static function decodeMetaInfo_(metaInfo, decoder)
+  {
+    local endOffset = decoder.readNestedTlvsStart(Tlv.MetaInfo);
+
+    local type = decoder.readOptionalNonNegativeIntegerTlv
+      (Tlv.ContentType, endOffset);
+    if (type == null || type < 0 || type == ContentType.BLOB)
+      metaInfo.setType(ContentType.BLOB);
+    else if (type == ContentType.LINK ||
+             type == ContentType.KEY ||
+             type == ContentType.NACK)
+      // The ContentType enum is set up with the correct integer for each
+      // NDN-TLV ContentType.
+      metaInfo.setType(type);
+    else {
+      // Unrecognized content type.
+      metaInfo.setType(ContentType.OTHER_CODE);
+      metaInfo.setOtherTypeCode(type);
+    }
+
+    metaInfo.setFreshnessPeriod
+      (decoder.readOptionalNonNegativeIntegerTlv(Tlv.FreshnessPeriod, endOffset));
+    if (decoder.peekType(Tlv.FinalBlockId, endOffset)) {
+      local finalBlockIdEndOffset = decoder.readNestedTlvsStart(Tlv.FinalBlockId);
+      metaInfo.setFinalBlockId(decodeNameComponent_(decoder));
+      decoder.finishNestedTlvs(finalBlockIdEndOffset);
+    }
+    else
+      metaInfo.setFinalBlockId(null);
+
+    decoder.finishNestedTlvs(endOffset);
   }
 }
