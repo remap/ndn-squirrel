@@ -81,8 +81,4 @@ class ChangeCounter {
     else
       return false;
   }
-
-  function _typeof() {
-    return "ChangeCounter";
-  }
 }
