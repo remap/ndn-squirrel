@@ -139,7 +139,7 @@ class MetaInfo {
       freshnessPeriod_ = (typeof freshnessPeriod == "float") ?
         freshnessPeriod : freshnessPeriod.tofloat();
     
-    ++this.changeCount_;
+    ++changeCount_;
   }
 
   /**
