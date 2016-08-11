@@ -66,7 +66,7 @@ class NameComponent {
    * Get the component value.
    * @return {Blob} The component value.
    */
-  function getValue() { return this.value_; }
+  function getValue() { return value_; }
 
 
   /**
