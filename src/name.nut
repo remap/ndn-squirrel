@@ -212,6 +212,32 @@ class Name {
     ++changeCount_;
   }
 
+  /**
+   * Get a new name, constructed as a subset of components.
+   * @param {integer} iStartComponent The index if the first component to get.
+   * If iStartComponent is -N then return return components starting from
+   * name.size() - N.
+   * @param {integer} (optional) nComponents The number of components starting 
+   * at iStartComponent. If omitted or greater than the size of this name, get
+   * until the end of the name.
+   * @return {Name} A new name.
+   */
+  function getSubName(iStartComponent, nComponents = null)
+  {
+    if (iStartComponent < 0)
+      iStartComponent = components_.len() - (-iStartComponent);
+
+    if (nComponents == null)
+      nComponents = components_.len() - iStartComponent;
+
+    local result = Name();
+
+    local iEnd = iStartComponent + nComponents;
+    for (local i = iStartComponent; i < iEnd && i < components_.len(); ++i)
+      result.components_.append(components_[i]);
+
+    return result;
+  }
 
   /**
    * Return the number of name components.
