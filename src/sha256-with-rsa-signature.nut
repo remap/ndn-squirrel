@@ -47,9 +47,9 @@ class Sha256WithRsaSignature {
   }
 
   /**
-   * Implement the clone operator update this cloned object with values from the
-   * original Sha256WithRsaSignature which was cloned.
-   * param {Sha256WithRsaSignature} value The original Sha256WithRsaSignature
+   * Implement the clone operator to update this cloned object with values from
+   * the original Sha256WithRsaSignature which was cloned.
+   * param {Sha256WithRsaSignature} value The original Sha256WithRsaSignature.
    */
   function _cloned(value)
   {
