@@ -143,19 +143,16 @@ function dumpData(data)
 function main()
 {
   local data = Data();
-//  data.wireDecode(new Blob(TlvData, false));
-  TlvWireFormat.decodeData(data, TlvData.buf());
+  data.wireDecode(TlvData);
   dump("Decoded Data:");
   dumpData(data);
 
   // Set the content again to clear the cached encoding so we encode again.
   data.setContent(data.getContent());
-//  local encoding = data.wireEncode();
-  local encoding = TlvWireFormat.encodeData(data).encoding;
+  local encoding = data.wireEncode();
 
   local reDecodedData = Data();
-//  reDecodedData.wireDecode(encoding);
-   TlvWireFormat.decodeData(reDecodedData, encoding.buf());
+  reDecodedData.wireDecode(encoding);
   dump("");
   dump("Re-decoded Data:");
   dumpData(reDecodedData);

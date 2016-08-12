@@ -114,8 +114,7 @@ function benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto)
       sha256Signature.setSignature(signatureBits);
     }
 
-// debug    encoding = data.wireEncode();
-    encoding = TlvWireFormat.encodeData(data).encoding;
+    encoding = data.wireEncode();
   }
   local finish = getNowSeconds();
 
@@ -147,8 +146,7 @@ function benchmarkDecodeDataSeconds(nIterations, useCrypto, encoding)
   local start = getNowSeconds();
   for (local i = 0; i < nIterations; ++i) {
     local data = Data();
-// debug    data.wireDecode(encoding);
-    TlvWireFormat.decodeData(data, encoding.buf());
+    data.wireDecode(encoding);
 
     if (useCrypto)
       keyChain.verifyData(data, onVerified, onVerifyFailed);
