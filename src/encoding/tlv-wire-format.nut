@@ -22,4 +22,18 @@
  * implement encoding and decoding using the preferred implementation of NDN-TLV.
  */
 class TlvWireFormat extends Tlv0_2WireFormat {
+  /**
+   * Get a singleton instance of a TlvWireFormat.  Assuming that the default
+   * wire format was set with WireFormat.setDefaultWireFormat(TlvWireFormat.get()),
+   * you can check if this is the default wire encoding with
+   * if WireFormat.getDefaultWireFormat() == TlvWireFormat.get().
+   * @return {TlvWireFormat} The singleton instance.
+   */
+  static function get() { return TlvWireFormat_instance; }
 }
+
+// We use a global variable because static member variables are immutable.
+TlvWireFormat_instance <- TlvWireFormat();
+
+// On loading this code, make this the default wire format.
+WireFormat.setDefaultWireFormat(TlvWireFormat.get());
