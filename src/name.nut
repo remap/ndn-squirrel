@@ -68,6 +68,21 @@ class NameComponent {
    */
   function getValue() { return value_; }
 
+  // TODO toEscapedString.
+  // TODO isSegment.
+  // TODO isSegmentOffset.
+  // TODO isVersion.
+  // TODO isTimestamp.
+  // TODO isSequenceNumber.
+
+  /**
+   * Check if this component is a generic component.
+   * @return {bool} True if this is an generic component.
+   */
+  function isGeneric()
+  {
+    return type_ == NameComponentType.GENERIC;
+  }
 
   /**
    * Check if this component is an ImplicitSha256Digest component.
@@ -77,6 +92,21 @@ class NameComponent {
   {
     return type_ == NameComponentType.IMPLICIT_SHA256_DIGEST;
   }
+
+  // TODO toNumber.
+  // TODO toNumberWithMarker.
+  // TODO toSegment.
+  // TODO toSegmentOffset.
+  // TODO toVersion.
+  // TODO toTimestamp.
+  // TODO toSequenceNumber.
+  // TODO fromNumber.
+  // TODO fromNumberWithMarker.
+  // TODO fromSegment.
+  // TODO fromSegmentOffset.
+  // TODO fromVersion.
+  // TODO fromTimestamp.
+  // TODO fromSequenceNumber.
 
   /**
    * Create a component of type ImplicitSha256DigestComponent, so that
@@ -96,6 +126,8 @@ class NameComponent {
     result.type_ = NameComponentType.IMPLICIT_SHA256_DIGEST;
     return result;
   };
+
+  // TODO getSuccessor.
 
   /**
    * Check if this is the same component as other.
@@ -169,6 +201,7 @@ class Name {
       throw "Name constructor: Unrecognized components type";
   }
 
+  // TODO: set(uri).
 
   /**
    * Append a GENERIC component to this Name.
@@ -212,6 +245,26 @@ class Name {
     ++changeCount_;
   }
 
+  // TODO: toUri.
+  // TODO: _string.
+  // TODO: appendSegment.
+  // TODO: appendSegmentOffset.
+  // TODO: appendVersion.
+  // TODO: appendTimestamp.
+  // TODO: appendSequenceNumber.
+
+  /**
+   * Append a component of type ImplicitSha256DigestComponent, so that
+   * isImplicitSha256Digest() is true.
+   * @param {Blob|blob|Array<number>} digest The SHA-256 digest value.
+   * @return This name so that you can chain calls to append.
+   * @throws string If the digest length is not 32 bytes.
+   */
+  function appendImplicitSha256Digest(digest)
+  {
+    return this.append(NameComponent.fromImplicitSha256Digest(digest));
+  }
+
   /**
    * Get a new name, constructed as a subset of components.
    * @param {integer} iStartComponent The index if the first component to get.
@@ -239,6 +292,8 @@ class Name {
     return result;
   }
 
+  // TODO: getPrefix.
+
   /**
    * Return the number of name components.
    * @return {integer}
@@ -258,6 +313,40 @@ class Name {
     else
       // Negative index.
       return components_[components_.len() - (-i)];
+  }
+
+  /**
+   * Encode this Name for a particular wire format.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * encode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
+   * @return {Blob} The encoded buffer in a Blob object.
+   */
+  function wireEncode(wireFormat = null)
+  {
+    if (wireFormat == null)
+        // Don't use a default argument since getDefaultWireFormat can change.
+        wireFormat = WireFormat.getDefaultWireFormat();
+
+    return wireFormat.encodeName(this);
+  }
+
+  /**
+   * Decode the input using a particular wire format and update this Name.
+   * @param {Blob|blob} input The buffer with the bytes to decode. If input is a
+   * Squirrel blob, this decodes starting from input[0], ignoring the location
+   * of the blob pointer given by input.tell(), and this does not update the
+   * blob pointer.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * decode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
+   */
+  function wireDecode(input, wireFormat = null)
+  {
+    if (wireFormat == null)
+        // Don't use a default argument since getDefaultWireFormat can change.
+        wireFormat = WireFormat.getDefaultWireFormat();
+
+    local decodeBuffer = input instanceof Blob ? input.buf() : input;
+    wireFormat.decodeName(this, decodeBuffer);
   }
 
   /**
@@ -363,6 +452,12 @@ class Name {
     else
       return 0;
   }
+
+  // TODO: toEscapedString
+  // TODO: fromEscapedString
+  // TODO: getSuccessor
+  // TODO: match
+  // TODO: isPrefixOf
 
   /**
    * Get the change count, which is incremented each time this object is changed.
