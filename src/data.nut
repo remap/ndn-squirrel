@@ -75,6 +75,9 @@ class Data {
    */
   function getContent() { return content_; }
 
+  // TODO getIncomingFaceId.
+  // TODO getFullName.
+
   /**
    * Set name to a copy of the given Name.
    * @param {Name} name The Name which is copied.
@@ -125,6 +128,48 @@ class Data {
     ++changeCount_;
     return this;
   }
+
+  /**
+   * Encode this Data for a particular wire format.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * encode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
+   * @return {SignedBlob} The encoded buffer in a SignedBlob object.
+   */
+  function wireEncode(wireFormat = null)
+  {
+    if (wireFormat == null)
+        // Don't use a default argument since getDefaultWireFormat can change.
+        wireFormat = WireFormat.getDefaultWireFormat();
+
+    local result = wireFormat.encodeData(this);
+    // To save memory, don't cache the encoding.
+    // Debug: Make a SignedBlob.
+    return result.encoding;
+  }
+
+  /**
+   * Decode the input using a particular wire format and update this Data. If
+   * wireFormat is the default wire format, also set the defaultWireEncoding to
+   * another pointer to the input.
+   * @param {Blob|blob} input The buffer with the bytes to decode. If input is a
+   * Squirrel blob, this decodes starting from input[0], ignoring the location
+   * of the blob pointer given by input.tell(), and this does not update the
+   * blob pointer.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * decode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
+   */
+  function wireDecode(input, wireFormat = null)
+  {
+    if (wireFormat == null)
+        // Don't use a default argument since getDefaultWireFormat can change.
+        wireFormat = WireFormat.getDefaultWireFormat();
+
+    local decodeBuffer = input instanceof Blob ? input.buf() : input;
+    wireFormat.decodeData(this, decodeBuffer);
+    // To save memory, don't cache the encoding.
+  }
+
+  // TODO: setLpPacket.
 
   /**
    * Get the change count, which is incremented each time this object (or a
