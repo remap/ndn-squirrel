@@ -117,7 +117,7 @@ class Data {
 
   /**
    * Set the content to the given value.
-   * @param {Blob|blob|Array<number>} content The content bytes. If content is
+   * @param {Blob|blob|Array<integer>} content The content bytes. If content is
    * not a Blob, then create a new Blob to copy the bytes (otherwise take
    * another pointer to the same Blob).
    * @return {Data} This Data so that you can chain calls to update values.
@@ -172,7 +172,7 @@ class Data {
   /**
    * Get the change count, which is incremented each time this object (or a
    * child object) is changed.
-   * @return {number} The change count.
+   * @return {integer} The change count.
    */
   function getChangeCount()
   {

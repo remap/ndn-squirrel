@@ -85,7 +85,7 @@ class Blob {
 
   /**
    * Return the length of the immutable byte array.
-   * @return {number} The length of the array.  If buf() is null, return 0.
+   * @return {integer} The length of the array.  If buf() is null, return 0.
    */
   function size()
   {
