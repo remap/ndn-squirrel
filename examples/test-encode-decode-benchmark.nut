@@ -115,7 +115,7 @@ function benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto)
     }
 
 // debug    encoding = data.wireEncode();
-    encoding = Tlv0_2WireFormat.encodeData(data).encoding;
+    encoding = TlvWireFormat.encodeData(data).encoding;
   }
   local finish = getNowSeconds();
 
@@ -148,7 +148,7 @@ function benchmarkDecodeDataSeconds(nIterations, useCrypto, encoding)
   for (local i = 0; i < nIterations; ++i) {
     local data = Data();
 // debug    data.wireDecode(encoding);
-    Tlv0_2WireFormat.decodeData(data, encoding.buf());
+    TlvWireFormat.decodeData(data, encoding.buf());
 
     if (useCrypto)
       keyChain.verifyData(data, onVerified, onVerifyFailed);
