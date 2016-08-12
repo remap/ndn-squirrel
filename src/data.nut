@@ -38,10 +38,10 @@ class Data {
   {
     if (value instanceof Data) {
       // The copy constructor.
-      name_ = ChangeCounter(Name(data.getName()));
-      metaInfo_ = ChangeCounter(MetaInfo(data.getMetaInfo()));
-      signature_ = ChangeCounter(clone(data.getSignature()));
-      content_ = data.content_;
+      name_ = ChangeCounter(Name(value.getName()));
+      metaInfo_ = ChangeCounter(MetaInfo(value.getMetaInfo()));
+      signature_ = ChangeCounter(clone(value.getSignature()));
+      content_ = value.content_;
     }
     else {
       name_ = ChangeCounter(value instanceof Name ? Name(value) : Name());
