@@ -148,9 +148,7 @@ class Data {
   }
 
   /**
-   * Decode the input using a particular wire format and update this Data. If
-   * wireFormat is the default wire format, also set the defaultWireEncoding to
-   * another pointer to the input.
+   * Decode the input using a particular wire format and update this Data.
    * @param {Blob|blob} input The buffer with the bytes to decode. If input is a
    * Squirrel blob, this decodes starting from input[0], ignoring the location
    * of the blob pointer given by input.tell(), and this does not update the
