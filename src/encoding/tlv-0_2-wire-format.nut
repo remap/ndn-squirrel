@@ -18,10 +18,10 @@
  */
 
 /**
- * A Tlv0_2WireFormat has methods for encoding and decoding with the NDN-TLV
- * wire format, version 0.2.
+ * A Tlv0_2WireFormat extends WireFormat and has methods for encoding and
+ * decoding with the NDN-TLV wire format, version 0.2.
  */
-class Tlv0_2WireFormat {
+class Tlv0_2WireFormat extends WireFormat {
   /**
    * Encode interest as NDN-TLV and return the encoding.
    * @param {Name} name The Name to encode.
@@ -132,6 +132,13 @@ class Tlv0_2WireFormat {
     return { signedPortionBeginOffset = signedPortionBeginOffset,
              signedPortionEndOffset = signedPortionEndOffset };
   }
+
+  /**
+   * Get a singleton instance of a Tlv0_2WireFormat.  To always use the
+   * preferred version NDN-TLV, you should use TlvWireFormat.get().
+   * @return {Tlv0_2WireFormat} The singleton instance.
+   */
+  static function get() { return Tlv0_2WireFormat_instance; }
 
   /**
    * Encode the name component to the encoder as NDN-TLV. This handles different
@@ -469,3 +476,6 @@ class Tlv0_2WireFormat {
     decoder.finishNestedTlvs(endOffset);
   }
 }
+
+// We use a global variable because static member variables are immutable.
+Tlv0_2WireFormat_instance <- Tlv0_2WireFormat();
