@@ -24,58 +24,6 @@
  */
 class WireFormat {
   /**
-   * Encode interest as NDN-TLV and return the encoding.
-   * @param {Name} name The Name to encode.
-   * @return {Blobl} A Blob containing the encoding.
-   * @throws Error This always throws an "unimplemented" error. The derived
-   * class should override.
-   */
-  function encodeName(name) { throw "unimplemented"; }
-
-  /**
-   * Decode input as an NDN-TLV name and set the fields of the Name object.
-   * @param {Name} name The Name object whose fields are updated.
-   * @param {blob} input The Squirrel blob with the bytes to decode.  This
-   * decodes starting from input[0], ignoring the location of the blob pointer
-   * given by input.tell(). This does not update the blob pointer.
-   * @throws Error This always throws an "unimplemented" error. The derived
-   * class should override.
-   */
-  function decodeName(name, input) { throw "unimplemented"; }
-
-  // TODO encodeInterest
-  // TODO decodeInterest
-
-  /**
-   * Encode data as NDN-TLV and return the encoding and signed offsets.
-   * @param {Data} data The Data object to encode.
-   * @return {table} A table with fields (encoding, signedPortionBeginOffset,
-   * signedPortionEndOffset) where encoding is a Blob containing the encoding,
-   * signedPortionBeginOffset is the offset in the encoding of the beginning of
-   * the signed portion, and signedPortionEndOffset is the offset in the
-   * encoding of the end of the signed portion.
-   * @throws Error This always throws an "unimplemented" error. The derived
-   * class should override.
-   */
-  function encodeData(data) { throw "unimplemented"; }
-
-  /**
-   * Decode input as an NDN-TLV data packet, set the fields in the data object,
-   * and return the signed offsets.
-   * @param {Data} data The Data object whose fields are updated.
-   * @param {blob} input The Squirrel blob with the bytes to decode.  This
-   * decodes starting from input[0], ignoring the location of the blob pointer
-   * given by input.tell(). This does not update the blob pointer.
-   * @return {table} A table with fields (signedPortionBeginOffset,
-   * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
-   * encoding of the beginning of the signed portion, and signedPortionEndOffset
-   * is the offset in the encoding of the end of the signed portion.
-   * @throws Error This always throws an "unimplemented" error. The derived
-   * class should override.
-   */
-  function decodeData(data, input) { throw "unimplemented"; }
-
-  /**
    * Set the static default WireFormat used by default encoding and decoding
    * methods.
    * @param {WireFormat} wireFormat An object of a subclass of WireFormat.
