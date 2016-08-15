@@ -58,7 +58,7 @@ class ChangeCounter {
   {
     target_ = target;
      changeCount_ = (target == null ? 0 : target.getChangeCount());
-  };
+  }
 
   /**
    * If the target's change count is different than the local change count, then

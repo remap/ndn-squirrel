@@ -80,7 +80,7 @@ class MetaInfo {
    * ContentType.OTHER_CODE.
    * @return {integer} The type code.
    */
-  function getOtherTypeCode() { return otherTypeCode_; };
+  function getOtherTypeCode() { return otherTypeCode_; }
 
   /**
    * Get the freshness period.

@@ -125,7 +125,7 @@ class NameComponent {
     local result = NameComponent(digestBlob);
     result.type_ = NameComponentType.IMPLICIT_SHA256_DIGEST;
     return result;
-  };
+  }
 
   // TODO getSuccessor.
 

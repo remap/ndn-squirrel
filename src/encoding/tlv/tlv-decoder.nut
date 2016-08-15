@@ -337,5 +337,5 @@ class TlvDecoder {
 
     input_.seek(savePointer);
     return result;
-  };
+  }
 }

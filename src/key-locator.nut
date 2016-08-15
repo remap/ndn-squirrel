@@ -194,5 +194,5 @@ class KeyLocator {
       ++changeCount_;
 
     return changeCount_;
-  };
+  }
 }
