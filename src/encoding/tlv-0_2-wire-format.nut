@@ -47,8 +47,138 @@ class Tlv0_2WireFormat extends WireFormat {
     decodeName_(name, decoder);
   }
 
-  // TODO encodeInterest
-  // TODO decodeInterest
+  /**
+   * Encode interest as NDN-TLV and return the encoding and signed offsets.
+   * @param {Interest} interest The Interest object to encode.
+   * @return {table} A table with fields (encoding, signedPortionBeginOffset,
+   * signedPortionEndOffset) where encoding is a Blob containing the encoding,
+   * signedPortionBeginOffset is the offset in the encoding of the beginning of
+   * the signed portion, and signedPortionEndOffset is the offset in the
+   * encoding of the end of the signed portion. The signed portion starts from
+   * the first name component and ends just before the final name component
+   * (which is assumed to be a signature for a signed interest).
+   */
+  function encodeInterest(interest)
+  {
+    local encoder = TlvEncoder(500);
+
+    local result = encoder.writeNestedTlv
+      (Tlv.Interest, encodeInterestValue_, interest, false);
+
+    result.encoding <- encoder.finish();
+    return result;
+  }
+  /**
+   * This is called by writeNestedTlv to write the TLVs in the body of the
+   * Interest value.
+   * @param {Interest} interest The Interest object which was passed to writeTlv.
+   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
+   * @return {table} A table with fields (signedPortionBeginOffset,
+   * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
+   * encoding of the beginning of the signed portion, and signedPortionEndOffset
+   * is the offset in the encoding of the end of the signed portion.
+   */
+  static function encodeInterestValue_(interest, encoder)
+  {
+    local result = Tlv0_2WireFormat.encodeName_(interest.getName(), encoder);
+    // For Selectors, set omitZeroLength true.
+    encoder.writeNestedTlv
+      (Tlv.Selectors, Tlv0_2WireFormat.encodeSelectorsValue_, interest, true);
+
+    // Encode the Nonce as 4 bytes.
+    if (interest.getNonce().size() == 0)
+    {
+      // This is the most common case. Generate a nonce.
+      local nonce = blob(4);
+      Crypto.generateRandomBytes(nonce);
+      encoder.writeBlobTlv(Tlv.Nonce, nonce);
+    }
+    else {
+      local nonceBuf = interest.getNonce().buf();
+      if (nonceBuf.len() < 4) {
+        local nonce = blob(4);
+        // Copy existing nonce bytes.
+        for (local i = 0; i < nonceBuf.len(); ++i)
+          nonce[i] = nonceBuf[i];
+
+        // Generate random bytes for the remaining bytes in the nonce.
+        Crypto.generateRandomBytes(nonce, nonceBuf.len());
+        encoder.writeBlobTlv(Tlv.Nonce, nonce);
+      }
+      else
+        // Use the nonce as-is.
+        encoder.writeBlobTlv(Tlv.Nonce, nonceBuf, 0, 4);
+    }
+
+    encoder.writeOptionalNonNegativeIntegerTlvFromFloat
+      (Tlv.InterestLifetime, interest.getInterestLifetimeMilliseconds());
+
+/* TODO: Link.
+    if (interest->linkWireEncoding.value) {
+      // Encode the entire link as is.
+      if ((error = ndn_TlvEncoder_writeArray
+          (encoder, interest->linkWireEncoding.value, interest->linkWireEncoding.length)))
+        return error;
+    }
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.SelectedDelegation, interest.getSelectedDelegationIndex());
+*/
+
+    return result;
+  }
+
+  /**
+   * Decode input as an NDN-TLV interest packet, set the fields in the interest
+   * object, and return the signed offsets.
+   * @param {Interest} interest The Interest object whose fields are updated.
+   * @param {blob} input The Squirrel blob with the bytes to decode.  This
+   * decodes starting from input[0], ignoring the location of the blob pointer
+   * given by input.tell(). This does not update the blob pointer.
+   * @return {table} A table with fields (signedPortionBeginOffset,
+   * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
+   * encoding of the beginning of the signed portion, and signedPortionEndOffset
+   * is the offset in the encoding of the end of the signed portion. The signed
+   * portion starts from the first name component and ends just before the final
+   * name component (which is assumed to be a signature for a signed interest).
+   */
+  function decodeInterest(interest, input)
+  {
+    local decoder = TlvDecoder(input);
+
+    local endOffset = decoder.readNestedTlvsStart(Tlv.Interest);
+    local offsets = decodeName_(interest.getName(), decoder);
+    if (decoder.peekType(Tlv.Selectors, endOffset))
+      decodeSelectors_(interest, decoder);
+    // Require a Nonce, but don't force it to be 4 bytes.
+    local nonce = decoder.readBlobTlv(Tlv.Nonce);
+    interest.setInterestLifetimeMilliseconds
+      (decoder.readOptionalNonNegativeIntegerTlv(Tlv.InterestLifetime, endOffset));
+
+/* TODO Link.
+    if (decoder.peekType(Tlv.Data, endOffset)) {
+      // Get the bytes of the Link TLV.
+      local linkBeginOffset = decoder.getOffset();
+      local linkEndOffset = decoder.readNestedTlvsStart(Tlv.Data);
+      decoder.seek(linkEndOffset);
+
+      interest.setLinkWireEncoding
+        (Blob(decoder.getSlice(linkBeginOffset, linkEndOffset), true), this);
+    }
+    else
+      interest.unsetLink();
+    interest.setSelectedDelegationIndex
+      (decoder.readOptionalNonNegativeIntegerTlv(Tlv.SelectedDelegation, endOffset));
+    if (interest.getSelectedDelegationIndex() != null &&
+        interest.getSelectedDelegationIndex() >= 0 && !interest.hasLink())
+      throw "Interest has a selected delegation, but no link object";
+*/
+
+    // Set the nonce last because setting other interest fields clears it.
+    interest.setNonce(nonce);
+
+    decoder.finishNestedTlvs(endOffset);
+    return offsets;
+  }
 
   /**
    * Encode data as NDN-TLV and return the encoding and signed offsets.
@@ -243,6 +373,117 @@ class Tlv0_2WireFormat extends WireFormat {
 
     return { signedPortionBeginOffset = signedPortionBeginOffset,
              signedPortionEndOffset = signedPortionEndOffset };
+  }
+
+  /**
+   * This is called by writeNestedTlv to write the TLVs in the body of the
+   * interest Selectors value.
+   * @param {Interest} interest The Interest which was passed to writeTlv.
+   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
+   */
+  static function encodeSelectorsValue_(interest, encoder)
+  {
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.MinSuffixComponents, interest.getMinSuffixComponents());
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.MaxSuffixComponents, interest.getMaxSuffixComponents());
+
+    // Set omitZeroLength true to omit the KeyLocator if not specified.
+    encoder.writeNestedTlv
+      (Tlv.PublisherPublicKeyLocator, Tlv0_2WireFormat.encodeKeyLocatorValue_,
+       interest.getKeyLocator(), true);
+
+    if (interest.getExclude().size() > 0)
+      encoder.writeNestedTlv
+        (Tlv.Exclude, Tlv0_2WireFormat.encodeExcludeValue_, interest.getExclude(),
+         false);
+
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.ChildSelector, interest.getChildSelector());
+
+    if (interest.getMustBeFresh())
+      encoder.writeTypeAndLength(Tlv.MustBeFresh, 0);
+    // else MustBeFresh == false, so nothing to encode.
+  }
+
+  /**
+   * Decode an NDN-TLV Selectors from the decoder and set the fields of
+   * the Interest object.
+   * @param {Interest} interest The Interest object whose fields are
+   * updated.
+   * @param {TlvDecoder} decoder The decoder with the input.
+   */
+  static function decodeSelectors_(interest, decoder)
+  {
+    local endOffset = decoder.readNestedTlvsStart(Tlv.Selectors);
+
+    interest.setMinSuffixComponents(decoder.readOptionalNonNegativeIntegerTlv
+      (Tlv.MinSuffixComponents, endOffset));
+    interest.setMaxSuffixComponents(decoder.readOptionalNonNegativeIntegerTlv
+      (Tlv.MaxSuffixComponents, endOffset));
+
+    if (decoder.peekType(Tlv.PublisherPublicKeyLocator, endOffset))
+      decodeKeyLocator_
+        (Tlv.PublisherPublicKeyLocator, interest.getKeyLocator(), decoder);
+    else
+      interest.getKeyLocator().clear();
+
+    if (decoder.peekType(Tlv.Exclude, endOffset))
+      decodeExclude_(interest.getExclude(), decoder);
+    else
+      interest.getExclude().clear();
+
+    interest.setChildSelector(decoder.readOptionalNonNegativeIntegerTlv
+      (Tlv.ChildSelector, endOffset));
+    interest.setMustBeFresh(decoder.readBooleanTlv(Tlv.MustBeFresh, endOffset));
+
+    decoder.finishNestedTlvs(endOffset);
+  }
+
+  /**
+   * This is called by writeNestedTlv to write the TLVs in the body of the
+   * Exclude value.
+   * @param {Exclude} exclude The Exclude which was passed to writeTlv.
+   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
+   */
+  static function encodeExcludeValue_(exclude, encoder)
+  {
+    // TODO: Do we want to order the components (except for ANY)?
+    for (local i = 0; i < exclude.size(); ++i) {
+      local entry = exclude.get(i);
+
+      if (entry.getType() == ExcludeType.COMPONENT)
+        Tlv0_2WireFormat.encodeNameComponent_(entry.getComponent(), encoder);
+      else if (entry.getType() == ExcludeType.ANY)
+        encoder.writeTypeAndLength(Tlv.Any, 0);
+      else
+        throw "Unrecognized ExcludeType";
+    }
+  }
+
+  /**
+   * Clear the exclude, decode an NDN-TLV Exclude from the decoder and set the
+   * fields of the Exclude object.
+   * @param {Exclude} exclude The Exclude object whose fields are
+   * updated.
+   * @param {TlvDecoder} decoder The decoder with the input.
+   */
+  static function decodeExclude_(exclude, decoder)
+  {
+    local endOffset = decoder.readNestedTlvsStart(Tlv.Exclude);
+
+    exclude.clear();
+    while (decoder.getOffset() < endOffset) {
+      if (decoder.peekType(Tlv.Any, endOffset)) {
+        // Read past the Any TLV.
+        decoder.readBooleanTlv(Tlv.Any, endOffset);
+        exclude.appendAny();
+      }
+      else
+        exclude.appendComponent(decodeNameComponent_(decoder));
+    }
+
+    decoder.finishNestedTlvs(endOffset);
   }
 
   /**
