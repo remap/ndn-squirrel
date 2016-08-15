@@ -21,22 +21,25 @@
  * Standard Squirrel code should include this first to use Electric Imp Squirrel
  * code written with math.abs(x), etc.
  */
-math <- {
-  function abs(x) { return ::abs(x); }
-  function acos(x) { return ::acos(x); }
-  function asin(x) { return ::asin(x); }
-  function atan(x) { return ::atan(x); }
-  function atan2(x, y) { return ::atan2(x, y); }
-  function ceil(x) { return ::ceil(x); }
-  function cos(x) { return ::cos(x); }
-  function exp(x) { return ::exp(x); }
-  function fabs(x) { return ::fabs(x); }
-  function floor(x) { return ::floor(x); }
-  function log(x) { return ::log(x); }
-  function log10(x) { return ::log10(x); }
-  function pow(x, y) { return ::pow(x, y); }
-  function rand() { return ::rand(); }
-  function sin(x) { return ::sin(x); }
-  function sqrt(x) { return ::sqrt(x); }
-  function tan(x) { return ::tan(x); }
+if (!("math" in getroottable())) {
+  // We are not on the Imp, so define math.
+  math <- {
+    function abs(x) { return ::abs(x); }
+    function acos(x) { return ::acos(x); }
+    function asin(x) { return ::asin(x); }
+    function atan(x) { return ::atan(x); }
+    function atan2(x, y) { return ::atan2(x, y); }
+    function ceil(x) { return ::ceil(x); }
+    function cos(x) { return ::cos(x); }
+    function exp(x) { return ::exp(x); }
+    function fabs(x) { return ::fabs(x); }
+    function floor(x) { return ::floor(x); }
+    function log(x) { return ::log(x); }
+    function log10(x) { return ::log10(x); }
+    function pow(x, y) { return ::pow(x, y); }
+    function rand() { return ::rand(); }
+    function sin(x) { return ::sin(x); }
+    function sqrt(x) { return ::sqrt(x); }
+    function tan(x) { return ::tan(x); }
+  }
 }
