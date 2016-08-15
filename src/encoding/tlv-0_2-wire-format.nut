@@ -264,6 +264,60 @@ class Tlv0_2WireFormat extends WireFormat {
   }
 
   /**
+   * Encode signature as an NDN-TLV SignatureInfo and return the encoding.
+   * @param {Signature} signature An object of a subclass of Signature to encode.
+   * @return {Blob} A Blob containing the encoding.
+   */
+  function encodeSignatureInfo(signature)
+  {
+    local encoder = TlvEncoder(100);
+    encodeSignatureInfo_(signature, encoder);
+    return encoder.finish();
+  }
+
+  /**
+   * Encode the signatureValue in the Signature object as an NDN-TLV
+   * SignatureValue (the signature bits) and return the encoding.
+   * @param {Signature} signature An object of a subclass of Signature with the
+   * signature value to encode.
+   * @return {Blob} A Blob containing the encoding.
+   */
+  function encodeSignatureValue(signature)
+  {
+    local encoder = TlvEncoder(100);
+    encoder.writeBlobTlv(Tlv.SignatureValue, signature.getSignature().buf());
+    return encoder.finish();
+  }
+
+  /**
+   * Decode signatureInfo as an NDN-TLV SignatureInfo and signatureValue as the
+   * related SignatureValue, and return a new object which is a subclass of
+   * Signature.
+   * @param {blob} signatureInfo The Squirrel blob with the SignatureInfo bytes
+   * to decode. This decodes starting from signatureInfo[0], ignoring the
+   * location of the blob pointer given by signatureInfo.tell(). This does not
+   * update the blob pointer.
+   * @param {blob} signatureValue The Squirrel blob with the SignatureValue
+   * bytes to decode. This decodes starting from signatureValue[0], ignoring the
+   * location of the blob pointer given by signatureValue.tell(). This does not
+   * update the blob pointer.
+   * @return {Signature} A new object which is a subclass of Signature.
+   */
+  function decodeSignatureInfoAndValue(signatureInfo, signatureValue)
+  {
+    // Use a SignatureHolder to imitate a Data object for decodeSignatureInfo_.
+    local signatureHolder = Tlv0_2WireFormat_SignatureHolder();
+    local decoder = TlvDecoder(signatureInfo);
+    decodeSignatureInfo_(signatureHolder, decoder);
+
+    decoder = TlvDecoder(signatureValue);
+    signatureHolder.getSignature().setSignature
+      (Blob(decoder.readBlobTlv(Tlv.SignatureValue), true));
+
+    return signatureHolder.getSignature();
+  }
+
+  /**
    * Get a singleton instance of a Tlv0_2WireFormat.  To always use the
    * preferred version NDN-TLV, you should use TlvWireFormat.get().
    * @return {Tlv0_2WireFormat} The singleton instance.
@@ -716,6 +770,16 @@ class Tlv0_2WireFormat extends WireFormat {
 
     decoder.finishNestedTlvs(endOffset);
   }
+}
+
+// Tlv0_2WireFormat_SignatureHolder is used by decodeSignatureInfoAndValue.
+class Tlv0_2WireFormat_SignatureHolder
+{
+  signature_ = null;
+
+  function setSignature(signature) { signature_ = signature; }
+
+  function getSignature() { return signature_; }
 }
 
 // We use a global variable because static member variables are immutable.
