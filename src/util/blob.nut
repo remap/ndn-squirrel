@@ -69,12 +69,17 @@ class Blob {
     }
     else if (valueType == "blob") {
       if (copy) {
-        // Copy the value blob. Set and restore its read/write pointer.
-        local savePointer = value.tell();
-        value.seek(0);
-        buffer_ = value.readblob(value.len());
+        if (value.len() == 0)
+          // Nothing to copy.
+          buffer_ = blob(0);
+        else {
+          // Copy the value blob. Set and restore its read/write pointer.
+          local savePointer = value.tell();
+          value.seek(0);
+          buffer_ = value.readblob(value.len());
 
-        value.seek(savePointer);
+          value.seek(savePointer);
+        }
       }
       else
         buffer_ = value;
