@@ -300,8 +300,9 @@ class Interest {
 
     local result = wireFormat.encodeInterest(this);
     // To save memory, don't cache the encoding.
-    // Debug: Make a SignedBlob.
-    return result.encoding;
+    return SignedBlob
+      (result.encoding, result.signedPortionBeginOffset,
+       result.signedPortionEndOffset);
   }
 
   /**
