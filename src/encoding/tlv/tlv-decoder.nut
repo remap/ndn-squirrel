@@ -327,6 +327,9 @@ class TlvDecoder {
   function getSlice(beginOffset, endOffset)
   {
     // TODO: Can Squirrel do slice without copy?
+    if (endOffset <= beginOffset)
+      return blob(0);
+
     // Set and restore the read/write pointer.
     local savePointer = input_.tell();
     input_.seek(beginOffset);
