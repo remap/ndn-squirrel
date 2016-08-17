@@ -1,7 +1,6 @@
 # Build files
 /make-ndn-squirrel.sh
 /ndn-squirrel.nut
-/test.nut
 
 # JSDoc output
 /doc
