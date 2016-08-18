@@ -35,10 +35,10 @@ class NameComponent {
   /**
    * Create a new GENERIC NameComponent using the given value.
    * (To create an ImplicitSha256Digest component, use fromImplicitSha256Digest.)
-   * @param {NameComponent|Blob|blob|Array<integer>|string} value (optional) If
-   * the value is a NameComponent or Blob, use its value directly, otherwise use
-   * the value according to the Blob constructor. If the value is null or
-   * omitted, create a zero-length component.
+   * @param {NameComponent|Blob|blob|Buffer|Array<integer>|string} value
+   * (optional) If the value is a NameComponent or Blob, use its value directly,
+   * otherwise use the value according to the Blob constructor. If the value is
+   * null or omitted, create a zero-length component.
    * @throws string if value is a Blob and it isNull.
    */
   constructor(value = null)
@@ -111,7 +111,7 @@ class NameComponent {
   /**
    * Create a component of type ImplicitSha256DigestComponent, so that
    * isImplicitSha256Digest() is true.
-   * @param {Blob|blob|Array<integer>} digest The SHA-256 digest value.
+   * @param {Blob|blob|Buffer|Array<integer>} digest The SHA-256 digest value.
    * @return {NameComponent} The new NameComponent.
    * @throws string If the digest length is not 32 bytes.
    */
@@ -205,8 +205,8 @@ class Name {
 
   /**
    * Append a GENERIC component to this Name.
-   * @param {Name|NameComponent|Blob|blob|Array<integer>|string} component If
-   * component is a Name, append all its components. If component is a
+   * @param {Name|NameComponent|Blob|Buffer|blob|Array<integer>|string} component
+   * If component is a Name, append all its components. If component is a
    * NameComponent, append it as is. Otherwise use the value according to the 
    * Blob constructor. If component is a string, convert it directly as in the
    * Blob constructor (don't unescape it).
@@ -256,7 +256,7 @@ class Name {
   /**
    * Append a component of type ImplicitSha256DigestComponent, so that
    * isImplicitSha256Digest() is true.
-   * @param {Blob|blob|Array<integer>} digest The SHA-256 digest value.
+   * @param {Blob|blob|Buffer|Array<integer>} digest The SHA-256 digest value.
    * @return This name so that you can chain calls to append.
    * @throws string If the digest length is not 32 bytes.
    */
@@ -332,10 +332,7 @@ class Name {
 
   /**
    * Decode the input using a particular wire format and update this Name.
-   * @param {Blob|blob} input The buffer with the bytes to decode. If input is a
-   * Squirrel blob, this decodes starting from input[0], ignoring the location
-   * of the blob pointer given by input.tell(), and this does not update the
-   * blob pointer.
+   * @param {Blob|Buffer} input The buffer with the bytes to decode.
    * @param {WireFormat} wireFormat (optional) A WireFormat object used to
    * decode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
    */
