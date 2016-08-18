@@ -317,8 +317,10 @@ class Interest {
         // Don't use a default argument since getDefaultWireFormat can change.
         wireFormat = WireFormat.getDefaultWireFormat();
 
-    local decodeBuffer = input instanceof Blob ? input.buf() : input;
-    wireFormat.decodeInterest(this, decodeBuffer);
+    if (input instanceof Blob)
+      wireFormat.decodeInterest(this, input.buf(), false);
+    else
+      wireFormat.decodeInterest(this, input, true);
     // To save memory, don't cache the encoding.
   }
 

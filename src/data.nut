@@ -160,8 +160,11 @@ class Data {
         // Don't use a default argument since getDefaultWireFormat can change.
         wireFormat = WireFormat.getDefaultWireFormat();
 
-    local decodeBuffer = input instanceof Blob ? input.buf() : input;
-    wireFormat.decodeData(this, decodeBuffer);
+    local decodeBuffer;
+    if (input instanceof Blob)
+      wireFormat.decodeData(this, input.buf(), false);
+    else
+      wireFormat.decodeData(this, input, true);
     // To save memory, don't cache the encoding.
   }
 

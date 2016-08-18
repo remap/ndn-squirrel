@@ -342,8 +342,10 @@ class Name {
         // Don't use a default argument since getDefaultWireFormat can change.
         wireFormat = WireFormat.getDefaultWireFormat();
 
-    local decodeBuffer = input instanceof Blob ? input.buf() : input;
-    wireFormat.decodeName(this, decodeBuffer);
+    if (input instanceof Blob)
+      wireFormat.decodeName(this, input.buf(), false);
+    else
+      wireFormat.decodeName(this, input, true);
   }
 
   /**
