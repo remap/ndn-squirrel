@@ -29,11 +29,12 @@ class SignedBlob extends Blob {
 
   /**
    * Create a new SignedBlob using the given optional value and offsets.
-   * @param {SignedBlob|Blob|blob|array<number>|string} value (optional) If
-   * value is a Blob or SignedBlob, take another pointer to its Squirrel blob
-   * without copying. If value is a Squirrel blob or byte array, copy to create
-   * a new blob. If value is a string, treat it as "raw" and copy to a blob
-   * without UTF-8 encoding.  If omitted, buf() will return null.
+   * @param {Blob|SignedBlob|Buffer|blob|array<number>|string} value (optional)
+   * If value is a Blob or SignedBlob, take another pointer to its Buffer
+   * without copying. If value is a Buffer or Squirrel blob, optionally copy.
+   * If value is a byte array, copy to create a new Buffer. If value is a string,
+   * treat it as "raw" and copy to a byte array without UTF-8 encoding.  If
+   * omitted, buf() will return null.
    * @param {integer} signedPortionBeginOffset (optional) The offset in the
    * encoding of the beginning of the signed portion. If omitted, set to 0.
    * @param {integer} signedPortionEndOffset (optional) The offset in the
@@ -63,19 +64,9 @@ class SignedBlob extends Blob {
         signedPortionEndOffset_ = signedPortionEndOffset;
     }
 
-    if (buffer_ != null) {
-      if (signedPortionEndOffset_ <= signedPortionBeginOffset_)
-        signedBuffer_ = blob(0);
-      else {
-        // TODO: Can Squirrel do slice without copy?
-        // Set and restore the read/write pointer.
-        local savePointer = buffer_.tell();
-        buffer_.seek(signedPortionBeginOffset_);
-        signedBuffer_ = buffer_.readblob
-          (signedPortionEndOffset_ - signedPortionBeginOffset_);
-        buffer_.seek(savePointer);
-      }
-    }
+    if (buffer_ != null)
+      signedBuffer_ = buffer_.slice
+        (signedPortionBeginOffset_, signedPortionEndOffset_);
   }
 
   /**
@@ -93,7 +84,7 @@ class SignedBlob extends Blob {
 
   /**
    * Return a the signed portion of the immutable byte array.
-   * @return {blob} A Squirrel blob which is the signed portion. If the array is
+   * @return {Buffer} A Buffer which is the signed portion. If the array is
    * null, return null.
    */
   function signedBuf() { return signedBuffer_; }
