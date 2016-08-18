@@ -38,11 +38,14 @@ class Tlv0_2WireFormat extends WireFormat {
    * Decode input as an NDN-TLV name and set the fields of the Name object.
    * @param {Name} name The Name object whose fields are updated.
    * @param {Buffer} input The Buffer with the bytes to decode.
+   * @param {bool} copy (optional) If true, copy from the input when making new
+   * Blob values. If false, then Blob values share memory with the input, which
+   * must remain unchanged while the Blob values are used. If omitted, use true.
    */
-  function decodeName(name, input)
+  function decodeName(name, input, copy = true)
   {
     local decoder = TlvDecoder(input);
-    decodeName_(name, decoder);
+    decodeName_(name, decoder, copy);
   }
 
   /**
@@ -129,6 +132,9 @@ class Tlv0_2WireFormat extends WireFormat {
    * object, and return the signed offsets.
    * @param {Interest} interest The Interest object whose fields are updated.
    * @param {Buffer} input The Buffer with the bytes to decode.
+   * @param {bool} copy (optional) If true, copy from the input when making new
+   * Blob values. If false, then Blob values share memory with the input, which
+   * must remain unchanged while the Blob values are used. If omitted, use true.
    * @return {table} A table with fields (signedPortionBeginOffset,
    * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
    * encoding of the beginning of the signed portion, and signedPortionEndOffset
@@ -136,14 +142,14 @@ class Tlv0_2WireFormat extends WireFormat {
    * portion starts from the first name component and ends just before the final
    * name component (which is assumed to be a signature for a signed interest).
    */
-  function decodeInterest(interest, input)
+  function decodeInterest(interest, input, copy = true)
   {
     local decoder = TlvDecoder(input);
 
     local endOffset = decoder.readNestedTlvsStart(Tlv.Interest);
-    local offsets = decodeName_(interest.getName(), decoder);
+    local offsets = decodeName_(interest.getName(), decoder, copy);
     if (decoder.peekType(Tlv.Selectors, endOffset))
-      decodeSelectors_(interest, decoder);
+      decodeSelectors_(interest, decoder, copy);
     // Require a Nonce, but don't force it to be 4 bytes.
     local nonce = decoder.readBlobTlv(Tlv.Nonce);
     interest.setInterestLifetimeMilliseconds
@@ -157,7 +163,7 @@ class Tlv0_2WireFormat extends WireFormat {
       decoder.seek(linkEndOffset);
 
       interest.setLinkWireEncoding
-        (Blob(decoder.getSlice(linkBeginOffset, linkEndOffset), true), this);
+        (Blob(decoder.getSlice(linkBeginOffset, linkEndOffset), copy), this);
     }
     else
       interest.unsetLink();
@@ -169,7 +175,7 @@ class Tlv0_2WireFormat extends WireFormat {
 */
 
     // Set the nonce last because setting other interest fields clears it.
-    interest.setNonce(nonce);
+    interest.setNonce(Blob(nonce, copy));
 
     decoder.finishNestedTlvs(endOffset);
     return offsets;
@@ -230,26 +236,29 @@ class Tlv0_2WireFormat extends WireFormat {
    * and return the signed offsets.
    * @param {Data} data The Data object whose fields are updated.
    * @param {Buffer} input The Buffer with the bytes to decode.
+   * @param {bool} copy (optional) If true, copy from the input when making new
+   * Blob values. If false, then Blob values share memory with the input, which
+   * must remain unchanged while the Blob values are used. If omitted, use true.
    * @return {table} A table with fields (signedPortionBeginOffset,
    * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
    * encoding of the beginning of the signed portion, and signedPortionEndOffset
    * is the offset in the encoding of the end of the signed portion.
    */
-  function decodeData(data, input)
+  function decodeData(data, input, copy = true)
   {
     local decoder = TlvDecoder(input);
 
     local endOffset = decoder.readNestedTlvsStart(Tlv.Data);
     local signedPortionBeginOffset = decoder.getOffset();
 
-    decodeName_(data.getName(), decoder);
-    decodeMetaInfo_(data.getMetaInfo(), decoder);
-    data.setContent(Blob(decoder.readBlobTlv(Tlv.Content), true));
-    decodeSignatureInfo_(data, decoder);
+    decodeName_(data.getName(), decoder, copy);
+    decodeMetaInfo_(data.getMetaInfo(), decoder, copy);
+    data.setContent(Blob(decoder.readBlobTlv(Tlv.Content), copy));
+    decodeSignatureInfo_(data, decoder, copy);
 
     local signedPortionEndOffset = decoder.getOffset();
     data.getSignature().setSignature
-      (Blob(decoder.readBlobTlv(Tlv.SignatureValue), true));
+      (Blob(decoder.readBlobTlv(Tlv.SignatureValue), copy));
 
     decoder.finishNestedTlvs(endOffset);
     return { signedPortionBeginOffset = signedPortionBeginOffset,
@@ -290,18 +299,21 @@ class Tlv0_2WireFormat extends WireFormat {
    * decode.
    * @param {Buffer} signatureValue The Buffer with the SignatureValue bytes to
    * decode.
+   * @param {bool} copy (optional) If true, copy from the input when making new
+   * Blob values. If false, then Blob values share memory with the input, which
+   * must remain unchanged while the Blob values are used. If omitted, use true.
    * @return {Signature} A new object which is a subclass of Signature.
    */
-  function decodeSignatureInfoAndValue(signatureInfo, signatureValue)
+  function decodeSignatureInfoAndValue(signatureInfo, signatureValue, copy = true)
   {
     // Use a SignatureHolder to imitate a Data object for decodeSignatureInfo_.
     local signatureHolder = Tlv0_2WireFormat_SignatureHolder();
     local decoder = TlvDecoder(signatureInfo);
-    decodeSignatureInfo_(signatureHolder, decoder);
+    decodeSignatureInfo_(signatureHolder, decoder, copy);
 
     decoder = TlvDecoder(signatureValue);
     signatureHolder.getSignature().setSignature
-      (Blob(decoder.readBlobTlv(Tlv.SignatureValue), true));
+      (Blob(decoder.readBlobTlv(Tlv.SignatureValue), copy));
 
     return signatureHolder.getSignature();
   }
@@ -330,16 +342,18 @@ class Tlv0_2WireFormat extends WireFormat {
    * Decode the name component as NDN-TLV and return the component. This handles
    * different component types such as ImplicitSha256DigestComponent.
    * @param {TlvDecoder} decoder The decoder with the input.
-   * @return {NameComponent} A new NameComponent.
+   * @param {bool} copy If true, copy from the input when making new Blob
+   * values. If false, then Blob values share memory with the input, which must
+   * remain unchanged while the Blob values are used.
    */
-  static function decodeNameComponent_(decoder)
+  static function decodeNameComponent_(decoder, copy)
   {
     local savePosition = decoder.getOffset();
     local type = decoder.readVarNumber();
     // Restore the position.
     decoder.seek(savePosition);
 
-    local value = Blob(decoder.readBlobTlv(type), true);
+    local value = Blob(decoder.readBlobTlv(type), copy);
     if (type == Tlv.ImplicitSha256DigestComponent)
       return NameComponent.fromImplicitSha256Digest(value);
     else
@@ -391,6 +405,9 @@ class Tlv0_2WireFormat extends WireFormat {
    * name object.
    * @param {Name} name The name object whose fields are updated.
    * @param {TlvDecoder} decoder The decoder with the input.
+   * @param {bool} copy If true, copy from the input when making new Blob
+   * values. If false, then Blob values share memory with the input, which must
+   * remain unchanged while the Blob values are used.
    * @return {table} A table with fields signedPortionBeginOffset and
    * signedPortionEndOffset where signedPortionBeginOffset is the offset in the
    * encoding of the beginning of the signed portion, and signedPortionEndOffset
@@ -398,7 +415,7 @@ class Tlv0_2WireFormat extends WireFormat {
    * portion starts from the first name component and ends just before the final
    * name component (which is assumed to be a signature for a signed interest).
    */
-  static function decodeName_(name, decoder)
+  static function decodeName_(name, decoder, copy)
   {
     name.clear();
 
@@ -409,7 +426,7 @@ class Tlv0_2WireFormat extends WireFormat {
 
     while (decoder.getOffset() < endOffset) {
       signedPortionEndOffset = decoder.getOffset();
-      name.append(decodeNameComponent_(decoder));
+      name.append(decodeNameComponent_(decoder, copy));
     }
 
     decoder.finishNestedTlvs(endOffset);
@@ -455,8 +472,11 @@ class Tlv0_2WireFormat extends WireFormat {
    * @param {Interest} interest The Interest object whose fields are
    * updated.
    * @param {TlvDecoder} decoder The decoder with the input.
+   * @param {bool} copy If true, copy from the input when making new Blob
+   * values. If false, then Blob values share memory with the input, which must
+   * remain unchanged while the Blob values are used.
    */
-  static function decodeSelectors_(interest, decoder)
+  static function decodeSelectors_(interest, decoder, copy)
   {
     local endOffset = decoder.readNestedTlvsStart(Tlv.Selectors);
 
@@ -467,12 +487,12 @@ class Tlv0_2WireFormat extends WireFormat {
 
     if (decoder.peekType(Tlv.PublisherPublicKeyLocator, endOffset))
       decodeKeyLocator_
-        (Tlv.PublisherPublicKeyLocator, interest.getKeyLocator(), decoder);
+        (Tlv.PublisherPublicKeyLocator, interest.getKeyLocator(), decoder, copy);
     else
       interest.getKeyLocator().clear();
 
     if (decoder.peekType(Tlv.Exclude, endOffset))
-      decodeExclude_(interest.getExclude(), decoder);
+      decodeExclude_(interest.getExclude(), decoder, copy);
     else
       interest.getExclude().clear();
 
@@ -510,8 +530,11 @@ class Tlv0_2WireFormat extends WireFormat {
    * @param {Exclude} exclude The Exclude object whose fields are
    * updated.
    * @param {TlvDecoder} decoder The decoder with the input.
+   * @param {bool} copy If true, copy from the input when making new Blob
+   * values. If false, then Blob values share memory with the input, which must
+   * remain unchanged while the Blob values are used.
    */
-  static function decodeExclude_(exclude, decoder)
+  static function decodeExclude_(exclude, decoder, copy)
   {
     local endOffset = decoder.readNestedTlvsStart(Tlv.Exclude);
 
@@ -523,7 +546,7 @@ class Tlv0_2WireFormat extends WireFormat {
         exclude.appendAny();
       }
       else
-        exclude.appendComponent(decodeNameComponent_(decoder));
+        exclude.appendComponent(decodeNameComponent_(decoder, copy));
     }
 
     decoder.finishNestedTlvs(endOffset);
@@ -580,8 +603,11 @@ class Tlv0_2WireFormat extends WireFormat {
    * @param {KeyLocator} keyLocator The KeyLocator object whose fields are
    * updated.
    * @param {TlvDecoder} decoder The decoder with the input.
+   * @param {bool} copy If true, copy from the input when making new Blob
+   * values. If false, then Blob values share memory with the input, which must
+   * remain unchanged while the Blob values are used.
    */
-  static function decodeKeyLocator_(expectedType, keyLocator, decoder)
+  static function decodeKeyLocator_(expectedType, keyLocator, decoder, copy)
   {
     local endOffset = decoder.readNestedTlvsStart(expectedType);
 
@@ -594,12 +620,12 @@ class Tlv0_2WireFormat extends WireFormat {
     if (decoder.peekType(Tlv.Name, endOffset)) {
       // KeyLocator is a Name.
       keyLocator.setType(KeyLocatorType.KEYNAME);
-      decodeName_(keyLocator.getKeyName(), decoder);
+      decodeName_(keyLocator.getKeyName(), decoder, copy);
     }
     else if (decoder.peekType(Tlv.KeyLocatorDigest, endOffset)) {
       // KeyLocator is a KeyLocatorDigest.
       keyLocator.setType(KeyLocatorType.KEY_LOCATOR_DIGEST);
-      keyLocator.setKeyData(decoder.readBlobTlv(Tlv.KeyLocatorDigest));
+      keyLocator.setKeyData(Blob(decoder.readBlobTlv(Tlv.KeyLocatorDigest), copy));
     }
     else
       throw "decodeKeyLocator: Unrecognized key locator type";
@@ -651,8 +677,11 @@ class Tlv0_2WireFormat extends WireFormat {
    * with a new Signature object.
    * @param {Data} data This calls data.setSignature with a new Signature object.
    * @param {TlvDecoder} decoder The decoder with the input.
+   * @param {bool} copy If true, copy from the input when making new Blob
+   * values. If false, then Blob values share memory with the input, which must
+   * remain unchanged while the Blob values are used.
    */
-  static function decodeSignatureInfo_(data, decoder)
+  static function decodeSignatureInfo_(data, decoder, copy)
   {
     local beginOffset = decoder.getOffset();
     local endOffset = decoder.readNestedTlvsStart(Tlv.SignatureInfo);
@@ -663,12 +692,14 @@ class Tlv0_2WireFormat extends WireFormat {
       // Modify data's signature object because if we create an object
       //   and set it, then data will have to copy all the fields.
       local signatureInfo = data.getSignature();
-      decodeKeyLocator_(Tlv.KeyLocator, signatureInfo.getKeyLocator(), decoder);
+      decodeKeyLocator_
+        (Tlv.KeyLocator, signatureInfo.getKeyLocator(), decoder, copy);
     }
     else if (signatureType == Tlv.SignatureType_SignatureHmacWithSha256) {
       data.setSignature(HmacWithSha256Signature());
       local signatureInfo = data.getSignature();
-      decodeKeyLocator_(Tlv.KeyLocator, signatureInfo.getKeyLocator(), decoder);
+      decodeKeyLocator_
+        (Tlv.KeyLocator, signatureInfo.getKeyLocator(), decoder, copy);
     }
     else if (signatureType == Tlv.SignatureType_DigestSha256)
       data.setSignature(DigestSha256Signature());
@@ -678,7 +709,7 @@ class Tlv0_2WireFormat extends WireFormat {
 
       // Get the bytes of the SignatureInfo TLV.
       signatureInfo.setSignatureInfoEncoding
-        (Blob(decoder.getSlice(beginOffset, endOffset), true), signatureType);
+        (Blob(decoder.getSlice(beginOffset, endOffset), copy), signatureType);
     }
 
     decoder.finishNestedTlvs(endOffset);
@@ -726,8 +757,11 @@ class Tlv0_2WireFormat extends WireFormat {
    * the metaInfo object.
    * @param {MetaInfo} metaInfo The MetaInfo object whose fields are updated.
    * @param {TlvDecoder} decoder The decoder with the input.
+   * @param {bool} copy If true, copy from the input when making new Blob
+   * values. If false, then Blob values share memory with the input, which must
+   * remain unchanged while the Blob values are used.
    */
-  static function decodeMetaInfo_(metaInfo, decoder)
+  static function decodeMetaInfo_(metaInfo, decoder, copy)
   {
     local endOffset = decoder.readNestedTlvsStart(Tlv.MetaInfo);
 
@@ -751,7 +785,7 @@ class Tlv0_2WireFormat extends WireFormat {
       (decoder.readOptionalNonNegativeIntegerTlv(Tlv.FreshnessPeriod, endOffset));
     if (decoder.peekType(Tlv.FinalBlockId, endOffset)) {
       local finalBlockIdEndOffset = decoder.readNestedTlvsStart(Tlv.FinalBlockId);
-      metaInfo.setFinalBlockId(decodeNameComponent_(decoder));
+      metaInfo.setFinalBlockId(decodeNameComponent_(decoder, copy));
       decoder.finishNestedTlvs(finalBlockIdEndOffset);
     }
     else
