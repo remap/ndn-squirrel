@@ -22,11 +22,12 @@
  */
 class Crypto {
   /**
-   * Fill the blob with random bytes. Note: If not on the Imp, you must seed
+   * Fill the value with random bytes. Note: If not on the Imp, you must seed
    * with srand().
-   * @param value Write the random bytes to this Squirrel blob from startIndex
-   * to endIndex. This ignores the location of the blob pointer given by
-   * value.tell() and does not update the blob pointer.
+   * @param {Buffer|blob} value Write the random bytes to this array from
+   * startIndex to endIndex. If this is a Squirrel blob, it ignores the location
+   * of the blob pointer given by value.tell() and does not update the blob
+   * pointer.
    * @param startIndex (optional) The index of the first byte in value to set.
    * If omitted, start from index 0.
    * @param endIndex (optional) Set bytes in value up to endIndex - 1. If
