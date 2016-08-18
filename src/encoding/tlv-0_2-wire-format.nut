@@ -37,9 +37,7 @@ class Tlv0_2WireFormat extends WireFormat {
   /**
    * Decode input as an NDN-TLV name and set the fields of the Name object.
    * @param {Name} name The Name object whose fields are updated.
-   * @param {blob} input The Squirrel blob with the bytes to decode.  This
-   * decodes starting from input[0], ignoring the location of the blob pointer
-   * given by input.tell(). This does not update the blob pointer.
+   * @param {Buffer} input The Buffer with the bytes to decode.
    */
   function decodeName(name, input)
   {
@@ -89,26 +87,25 @@ class Tlv0_2WireFormat extends WireFormat {
     if (interest.getNonce().size() == 0)
     {
       // This is the most common case. Generate a nonce.
-      local nonce = blob(4);
+      local nonce = Buffer(4);
       Crypto.generateRandomBytes(nonce);
       encoder.writeBlobTlv(Tlv.Nonce, nonce);
     }
-    else {
-      local nonceBuf = interest.getNonce().buf();
-      if (nonceBuf.len() < 4) {
-        local nonce = blob(4);
-        // Copy existing nonce bytes.
-        for (local i = 0; i < nonceBuf.len(); ++i)
-          nonce[i] = nonceBuf[i];
+    else if (interest.getNonce().size() < 4) {
+      local nonce = Buffer(4);
+      // Copy existing nonce bytes.
+      interest.getNonce().buf().copy(nonce);
 
-        // Generate random bytes for the remaining bytes in the nonce.
-        Crypto.generateRandomBytes(nonce, nonceBuf.len());
-        encoder.writeBlobTlv(Tlv.Nonce, nonce);
-      }
-      else
-        // Use the nonce as-is.
-        encoder.writeBlobTlv(Tlv.Nonce, nonceBuf, 0, 4);
+      // Generate random bytes for remaining bytes in the nonce.
+      Crypto.generateRandomBytes(nonce.slice(interest.getNonce().size()));
+      encoder.writeBlobTlv(Tlv.Nonce, nonce);
     }
+    else if (interest.getNonce().size() == 4)
+      // Use the nonce as-is.
+      encoder.writeBlobTlv(Tlv.Nonce, interest.getNonce().buf());
+    else
+      // Truncate.
+      encoder.writeBlobTlv(Tlv.Nonce, interest.getNonce().buf().slice(0, 4));
 
     encoder.writeOptionalNonNegativeIntegerTlvFromFloat
       (Tlv.InterestLifetime, interest.getInterestLifetimeMilliseconds());
@@ -131,9 +128,7 @@ class Tlv0_2WireFormat extends WireFormat {
    * Decode input as an NDN-TLV interest packet, set the fields in the interest
    * object, and return the signed offsets.
    * @param {Interest} interest The Interest object whose fields are updated.
-   * @param {blob} input The Squirrel blob with the bytes to decode.  This
-   * decodes starting from input[0], ignoring the location of the blob pointer
-   * given by input.tell(). This does not update the blob pointer.
+   * @param {Buffer} input The Buffer with the bytes to decode.
    * @return {table} A table with fields (signedPortionBeginOffset,
    * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
    * encoding of the beginning of the signed portion, and signedPortionEndOffset
@@ -234,9 +229,7 @@ class Tlv0_2WireFormat extends WireFormat {
    * Decode input as an NDN-TLV data packet, set the fields in the data object,
    * and return the signed offsets.
    * @param {Data} data The Data object whose fields are updated.
-   * @param {blob} input The Squirrel blob with the bytes to decode.  This
-   * decodes starting from input[0], ignoring the location of the blob pointer
-   * given by input.tell(). This does not update the blob pointer.
+   * @param {Buffer} input The Buffer with the bytes to decode.
    * @return {table} A table with fields (signedPortionBeginOffset,
    * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
    * encoding of the beginning of the signed portion, and signedPortionEndOffset
@@ -293,14 +286,10 @@ class Tlv0_2WireFormat extends WireFormat {
    * Decode signatureInfo as an NDN-TLV SignatureInfo and signatureValue as the
    * related SignatureValue, and return a new object which is a subclass of
    * Signature.
-   * @param {blob} signatureInfo The Squirrel blob with the SignatureInfo bytes
-   * to decode. This decodes starting from signatureInfo[0], ignoring the
-   * location of the blob pointer given by signatureInfo.tell(). This does not
-   * update the blob pointer.
-   * @param {blob} signatureValue The Squirrel blob with the SignatureValue
-   * bytes to decode. This decodes starting from signatureValue[0], ignoring the
-   * location of the blob pointer given by signatureValue.tell(). This does not
-   * update the blob pointer.
+   * @param {Buffer} signatureInfo The Buffer with the SignatureInfo bytes to
+   * decode.
+   * @param {Buffer} signatureValue The Buffer with the SignatureValue bytes to
+   * decode.
    * @return {Signature} A new object which is a subclass of Signature.
    */
   function decodeSignatureInfoAndValue(signatureInfo, signatureValue)
