@@ -34,8 +34,8 @@ class ExcludeEntry {
 
   /**
    * Create a new Exclude.Entry.
-   * @param {NameComponent|Blob|blob|Array<integer>|string} (optional) If value
-   * is omitted or null, create an ExcludeEntry of type ExcludeType.ANY.
+   * @param {NameComponent|Blob|Buffer|blob|Array<integer>|string} (optional) If
+   * value is omitted or null, create an ExcludeEntry of type ExcludeType.ANY.
    * Otherwise creat an ExcludeEntry of type ExcludeType.COMPONENT with the value.
    * If the value is a NameComponent or Blob, use its value directly, otherwise
    * use the value according to the Blob constructor.
@@ -112,7 +112,7 @@ class Exclude {
 
   /**
    * Append a new entry of type ExcludeType.COMPONENT with the give component.
-   * @param component {NameComponent|Blob|blob|Array<integer>|string} The
+   * @param component {NameComponent|Blob|Buffer|blob|Array<integer>|string} The
    * component value for the entry. If component is a NameComponent or Blob, use
    * its value directly, otherwise use the value according to the Blob
    * constructor.
