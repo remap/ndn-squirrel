@@ -307,10 +307,7 @@ class Interest {
 
   /**
    * Decode the input using a particular wire format and update this Interest.
-   * @param {Blob|blob} input The buffer with the bytes to decode. If input is a
-   * Squirrel blob, this decodes starting from input[0], ignoring the location
-   * of the blob pointer given by input.tell(), and this does not update the
-   * blob pointer.
+   * @param {Blob|Buffer} input The buffer with the bytes to decode.
    * @param {WireFormat} wireFormat (optional) A WireFormat object used to
    * decode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
    */
