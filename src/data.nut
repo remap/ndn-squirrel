@@ -117,9 +117,9 @@ class Data {
 
   /**
    * Set the content to the given value.
-   * @param {Blob|blob|Array<integer>} content The content bytes. If content is
-   * not a Blob, then create a new Blob to copy the bytes (otherwise take
-   * another pointer to the same Blob).
+   * @param {Blob|Buffer|blob|Array<integer>} content The content bytes. If
+   * content is not a Blob, then create a new Blob to copy the bytes (otherwise
+   * take another pointer to the same Blob).
    * @return {Data} This Data so that you can chain calls to update values.
    */
   function setContent(content)
@@ -150,10 +150,7 @@ class Data {
 
   /**
    * Decode the input using a particular wire format and update this Data.
-   * @param {Blob|blob} input The buffer with the bytes to decode. If input is a
-   * Squirrel blob, this decodes starting from input[0], ignoring the location
-   * of the blob pointer given by input.tell(), and this does not update the
-   * blob pointer.
+   * @param {Blob|Buffer} input The buffer with the bytes to decode.
    * @param {WireFormat} wireFormat (optional) A WireFormat object used to
    * decode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
    */
