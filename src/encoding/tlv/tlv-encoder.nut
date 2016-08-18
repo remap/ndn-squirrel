@@ -201,51 +201,43 @@ class TlvEncoder {
   }
 
   /**
-   * Do the work of writeArray, assuming that enableOutput_ is true. This
+   * Do the work of writeBuffer, assuming that enableOutput_ is true. This
    * updates offset_.
-   * @param {blob} array A Squirrel blob with the array of bytes to copy. This
-   * ignores the array read/write pointer.
-   * @param {integer} arrayOffset The index in array of the first byte to copy.
-   * @param {integer} arrayLength The number of bytes to copy.
+   * @param {Buffer} buffer A Buffer with the bytes to copy.
    */
-  function writeArrayEnabled(array, arrayOffset, arrayLength)
+  function writeBufferEnabled(buffer)
   {
-    if (array != null)
-      output_.copy(array, arrayOffset, arrayLength, offset_);
-    offset_ += arrayLength;
+    if (buffer != null) {
+      output_.copy(buffer, offset_);
+      offset_ += buffer.len();
+    }
   }
 
   /**
-   * Copy the array to the output. Note that this does not encode a type and
-   * length; for that see writeBlobTlv. If enableOutput_ is false, just advance
-   * offset_ without writing to the output.
-   * @param {blob} array A Squirrel blob with the array of bytes to copy. This
-   * ignores the array read/write pointer.
-   * @param {integer} arrayOffset The index in array of the first byte to copy.
-   * @param {integer} arrayLength The number of bytes to copy.
+   * Copy the bytes of the buffer to the output. Note that this does not encode 
+   * a type and length; for that see writeBlobTlv. If enableOutput_ is false,
+   * just advance offset_ without writing to the output.
+   * @param {Buffer} buffer A Buffer with the bytes to copy.
    */
-  function writeArray(array, arrayOffset, arrayLength)
+  function writeBuffer(buffer)
   {
     if (enableOutput_)
-      writeArrayEnabled(array, arrayOffset, arrayLength);
+      writeBufferEnabled(buffer);
     else
       // Just advance offset_.
-      offset_ += arrayLength;
+      offset_ += buffer.len();
   }
 
   /**
    * A private function to do the work of writeBlobTlv, assuming that
    * enableOutput_ is true.
    * @param {integer} type the type of the TLV.
-   * @param {blob} array A Squirrel blob with the array of bytes to copy. This
-   * ignores the array read/write pointer.
-   * @param {integer} arrayOffset The index in array of the first byte to copy.
-   * @param {integer} arrayLength The number of bytes to copy.
+   * @param {Buffer} value A Buffer with the bytes to copy.
    */
-  function writeBlobTlvEnabled_(type, array, arrayOffset, arrayLength)
+  function writeBlobTlvEnabled_(type, value)
   {
-    writeTypeAndLength(type, arrayLength);
-    writeArrayEnabled(array, arrayOffset, arrayLength);
+    writeTypeAndLength(type, value.len());
+    writeBufferEnabled(value);
   }
 
   /**
@@ -253,45 +245,26 @@ class TlvEncoder {
    * output. If enableOutput_ is false, just advance offset_ without writing to
    * the output.
    * @param {integer} type the type of the TLV.
-   * @param {blob} array A Squirrel blob with the array of bytes to copy. This
-   * ignores the array read/write pointer.
-   * @param {integer} arrayOffset (optional) The index in array of the first
-   * byte to copy. If omitted, copy from 0.
-   * @param {integer} arrayLength (optional) The number of bytes to copy. If
-   * omitted, copy to up to array.len().
+   * @param {Buffer} value A Buffer with the bytes to copy.
    */
-  function writeBlobTlv(type, array, arrayOffset = 0, arrayLength = null)
+  function writeBlobTlv(type, value)
   {
-    if (arrayLength == null)
-      // Fix the default value.
-      arrayLength = (array == null ? 0 : array.len()) - arrayOffset;
-
     if (enableOutput_)
-      writeBlobTlvEnabled_(type, array, arrayOffset, arrayLength);
+      writeBlobTlvEnabled_(type, value);
     else
       // Just advance offset_.
-      offset_ += sizeOfBlobTlv(type, arrayLength);
+      offset_ += sizeOfBlobTlv(type, value.len());
   }
 
   /**
-   * If array is null or arrayLength is 0 then do nothing, otherwise call
-   * writeBlobTlv.
+   * If value is null or 0 length then do nothing, otherwise call writeBlobTlv.
    * @param {integer} type the type of the TLV.
-   * @param {blob} array A Squirrel blob with the array of bytes to copy. This
-   * ignores the array read/write pointer.
-   * @param {integer} arrayOffset (optional) The index in array of the first
-   * byte to copy. If omitted, copy from 0.
-   * @param {integer} arrayLength (optional) The number of bytes to copy. If
-   * omitted, copy to up to array.len().
+   * @param {Buffer} value A Buffer with the bytes to copy.
    */
-  function writeOptionalBlobTlv(type, array, arrayOffset = 0, arrayLength = null)
+  function writeOptionalBlobTlv(type, value)
   {
-    if (arrayLength == null)
-      // Fix the default value.
-      arrayLength = (array == null ? 0 : array.len()) - arrayOffset;
-
-    if (array != null && arrayLength > 0)
-      writeBlobTlv(type, array, arrayOffset, arrayLength);
+    if (value != null && value.len() > 0)
+      writeBlobTlv(type, value);
   }
 
   /**
