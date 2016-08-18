@@ -22,7 +22,8 @@
  * minimum capacity, resizing if necessary.
  */
 class DynamicBlobArray {
-  array_ = null;
+  array_ = null;        // blob
+  wrappedArray_ = null; // Buffer
 
   /**
    * Create a new DynamicBlobArray with an initial size.
@@ -55,34 +56,23 @@ class DynamicBlobArray {
     local newArray = blob(newSize);
     newArray.writeblob(array_);
     array_ = newArray;
+    wrappedArray_ = null;
   }
 
   /**
    * Copy the given array into this object's array, using ensureSize to make
    * sure there is enough room.
-   * @param {blob} array A Squirrel blob with the array of bytes to copy. This
-   * ignores the array read/write pointer.
-   * @param {integer} arrayOffset The index in array of the first byte to copy.
-   * @param {integer} arrayLength The number of bytes to copy.
+   * @param {Buffer} buffer A Buffer with the bytes to copy.
    * @param {offset} The offset in this object's array to copy to.
    */
-  function copy(array, arrayOffset, arrayLength, offset)
+  function copy(buffer, offset)
   {
-    ensureSize(offset + arrayLength);
+    ensureSize(offset + buffer.len());
 
-    array_.seek(offset);
-    if (arrayOffset == 0 && arrayLength == array.len())
-      // The simple case to avoid using readblob.
-      array_.writeblob(array);
-    else {
-      // TODO: readblob makes a copy. Can we avoid that?
-      // Set and restore the read/write pointer.
-      local savePointer = array.tell();
-      array.seek(arrayOffset);
-      array_.writeblob(array.readblob(arrayLength));
-
-      array.seek(savePointer);
-    }
+    // We want to use Buffer.copy, so we need array_ as a Buffer.
+    if (wrappedArray_ == null)
+      wrappedArray_ = Buffer.from(array_);
+    buffer.copy(wrappedArray_, offset);
   }
 
   /**
