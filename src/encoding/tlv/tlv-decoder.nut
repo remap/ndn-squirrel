@@ -26,9 +26,7 @@ class TlvDecoder {
 
   /**
    * Create a new TlvDecoder for decoding the input in the NDN-TLV wire format.
-   * @param {blob} input The Squirrel blob with the bytes to decode. This
-   * decodes starting from input[0], ignoring the location of the blob pointer
-   * given by input.tell(). This does not update the blob pointer.
+   * @param {Buffer} input The Buffer with the bytes to decode.
    */
   constructor(input)
   {
@@ -247,8 +245,8 @@ class TlvDecoder {
    * the type to be expectedType. Then return an array of the bytes in the value.
    * Update offset.
    * @param {integer} expectedType The expected type.
-   * @return {blob} The bytes in the value as a Squirrel blob.  This is a copy
-   * of the bytes in the input buffer.
+   * @return {Buffer} The bytes in the value as a Buffer. This is a slice onto a
+   * portion of the input Buffer.
    * @throws string if did not get the expected TLV type.
    */
   function readBlobTlv(expectedType)
@@ -269,9 +267,9 @@ class TlvDecoder {
    * @param {integer} expectedType The expected type.
    * @param {integer} endOffset The offset of the end of the parent TLV, returned
    * by readNestedTlvsStart.
-   * @return {Buffer} The bytes in the value as a Squirrel blob or null if the
-   * next TLV doesn't have the expected type. This is a copy of the bytes in the
-   * input buffer.
+   * @return {Buffer} The bytes in the value as Buffer or null if the next TLV
+   * doesn't have the expected type. This is a slice onto a portion of the input
+   * Buffer.
    */
   function readOptionalBlobTlv(expectedType, endOffset)
   {
@@ -317,25 +315,16 @@ class TlvDecoder {
   function seek(offset) { offset_ = offset; }
 
   /**
-   * Return an array of a slice of the input for the given offset range.
-   * @param {integer} beginOffset The offset in the input of the beginning of the
-   * slice.
-   * @param {integer} endOffset The offset in the input of the end of the slice.
-   * @return {blob} The bytes in the value as a Squirrel blob.  This is a copy
-   * of the bytes in the input buffer.
+   * Return a slice of the input for the given offset range.
+   * @param {integer} beginOffset The offset in the input of the beginning of
+   * the slice.
+   * @param {integer} endOffset The offset in the input of the end of the slice
+   * (not inclusive).
+   * @return {Buffer} The bytes in the value as a Buffer. This is a slice onto a
+   * portion of the input Buffer.
    */
   function getSlice(beginOffset, endOffset)
   {
-    // TODO: Can Squirrel do slice without copy?
-    if (endOffset <= beginOffset)
-      return blob(0);
-
-    // Set and restore the read/write pointer.
-    local savePointer = input_.tell();
-    input_.seek(beginOffset);
-    local result = input_.readblob(endOffset - beginOffset);
-
-    input_.seek(savePointer);
-    return result;
+    return input_.slice(beginOffset, endOffset);
   }
 }
