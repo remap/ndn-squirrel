@@ -19,66 +19,67 @@
 
 /**
  * A DynamicBlobArray holds a Squirrel blob and provides methods to ensure a
- * minimum capacity, resizing if necessary.
+ * minimum length, resizing if necessary.
  */
 class DynamicBlobArray {
   array_ = null;        // blob
 
   /**
-   * Create a new DynamicBlobArray with an initial size.
-   * @param initialSize The initial size of the allocated array.
+   * Create a new DynamicBlobArray with an initial length.
+   * @param initialLength (optional) The initial length of the allocated array.
+   * If omitted, use a default
    */
-  constructor(initialSize)
+  constructor(initialLength = 16)
   {
-    array_ = blob(initialSize);
+    array_ = blob(initialLength);
   }
 
   /**
-   * Ensure that the array has the minimal size, resizing it if necessary.
-   * The new size of the array may be greater than the given size. 
+   * Ensure that the array has the minimal length, resizing it if necessary.
+   * The new length of the array may be greater than the given length.
    * @param {integer} length The minimum length for the array.
    */
-  function ensureSize(size)
+  function ensureLength(length)
   {
-    // array_.len() is always the full size of the array.
-    if (array_.len() >= size)
+    // array_.len() is always the full length of the array.
+    if (array_.len() >= length)
       return;
 
     // See if double is enough.
-    local newSize = array_.len() * 2;
-    if (size > newSize)
-      // The needed size is much greater, so use it.
-      newSize = size;
+    local newLength = array_.len() * 2;
+    if (length > newLength)
+      // The needed length is much greater, so use it.
+      newLength = length;
 
     // Instead of using resize, we manually copy to a new blob so that
-    // array_.len() will be the full size.
-    local newArray = blob(newSize);
+    // array_.len() will be the full length.
+    local newArray = blob(newLength);
     newArray.writeblob(array_);
     array_ = newArray;
   }
 
   /**
-   * Copy the given array into this object's array, using ensureSize to make
+   * Copy the given array into this object's array, using ensureLength to make
    * sure there is enough room.
    * @param {Buffer} buffer A Buffer with the bytes to copy.
    * @param {offset} The offset in this object's array to copy to.
    */
   function copy(buffer, offset)
   {
-    ensureSize(offset + buffer.len());
+    ensureLength(offset + buffer.len());
     buffer.copy(array_, offset);
   }
 
   /**
-   * Resize this object's array to the given size, transfer the bytes to a Blob
-   * and return the Blob. Finally, set this object's array to null to prevent
-   * further use.
-   * @param {integer} size The final size of the allocated array.
+   * Resize this object's array to the given length, transfer the bytes to a 
+   * Blob and return the Blob. Finally, set this object's array to null to
+   * prevent further use.
+   * @param {integer} length The final length of the allocated array.
    * @return {Blob} A new NDN Blob with the bytes from the array.
    */
-  function finish(size)
+  function finish(length)
   {
-    array_.resize(size);
+    array_.resize(length);
     local result = Blob(array_, false);
     array_ = null;
     return result;

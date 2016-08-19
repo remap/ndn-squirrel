@@ -70,17 +70,17 @@ class TlvEncoder {
       throw "TlvEncoder: Can have a negative VAR-NUMBER";
 
     if (varNumber < 253) {
-      output_.ensureSize(offset_ + 1);
+      output_.ensureLength(offset_ + 1);
       output_.array_[offset_++] = varNumber;
     }
     else if (varNumber <= 0xffff) {
-      output_.ensureSize(offset_ + 3);
+      output_.ensureLength(offset_ + 3);
       output_.array_[offset_++] = 253;
       output_.array_[offset_++] = (varNumber >> 8) & 0xff;
       output_.array_[offset_++] =  varNumber & 0xff;
     }
     else {
-      output_.ensureSize(offset_ + 5);
+      output_.ensureLength(offset_ + 5);
       output_.array_[offset_++] = 254;
       output_.array_[offset_++] = (varNumber >> 24) & 0xff;
       output_.array_[offset_++] = (varNumber >> 16) & 0xff;
@@ -156,16 +156,16 @@ class TlvEncoder {
       throw "TlvEncoder: Non-negative integer cannot be negative";
 
     if (value <= 0xff) {
-      output_.ensureSize(offset_ + 1);
+      output_.ensureLength(offset_ + 1);
       output_.array_[offset_++] = value;
     }
     else if (value <= 0xffff) {
-      output_.ensureSize(offset_ + 2);
+      output_.ensureLength(offset_ + 2);
       output_.array_[offset_++] = (value >> 8) & 0xff;
       output_.array_[offset_++] =  value & 0xff;
     }
     else {
-      output_.ensureSize(offset_ + 4);
+      output_.ensureLength(offset_ + 4);
       output_.array_[offset_++] = (value >> 24) & 0xff;
       output_.array_[offset_++] = (value >> 16) & 0xff;
       output_.array_[offset_++] = (value >> 8)  & 0xff;
