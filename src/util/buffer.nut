@@ -28,6 +28,17 @@ class Buffer {
   offset_ = 0;
   len_ = 0;
 
+  /**
+   * Create a new Buffer based on the value.
+   * @param {integer|Buffer|blob|array<integer>|string} value If value is an
+   * integer, create a new underlying blob of the given size. If value is a
+   * Buffer, copy its bytes into a new underlying blob of size value.len(). (If
+   * you want a new Buffer without copying, use value.size().) If value is a
+   * Squirrel blob, copy its bytes into a new underlying blob. (If you want a
+   * new Buffer without copying the blob, use Buffer.from(value).) If value is a
+   * byte array, copy into a new underlying blob. If value is a string, treat it
+   * as "raw" and copy to a new underlying blob without UTF-8 encoding.
+   */
   constructor(value)
   {
     local valueType = typeof value;
@@ -71,7 +82,7 @@ class Buffer {
       if (value.len_ > 0) {
         // Copy only the bytes we needed from the value's blob.
         value.blob_.seek(value.offset_);
-        blob_ = value.blob_.readblob(value.blob_.len());
+        blob_ = value.blob_.readblob(value.len_);
 
         len_ = value.len_;
       }
