@@ -23,7 +23,6 @@
  */
 class DynamicBlobArray {
   array_ = null;        // blob
-  wrappedArray_ = null; // Buffer
 
   /**
    * Create a new DynamicBlobArray with an initial size.
@@ -56,7 +55,6 @@ class DynamicBlobArray {
     local newArray = blob(newSize);
     newArray.writeblob(array_);
     array_ = newArray;
-    wrappedArray_ = null;
   }
 
   /**
@@ -68,11 +66,7 @@ class DynamicBlobArray {
   function copy(buffer, offset)
   {
     ensureSize(offset + buffer.len());
-
-    // We want to use Buffer.copy, so we need array_ as a Buffer.
-    if (wrappedArray_ == null)
-      wrappedArray_ = Buffer.from(array_);
-    buffer.copy(wrappedArray_, offset);
+    buffer.copy(array_, offset);
   }
 
   /**
