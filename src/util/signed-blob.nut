@@ -29,7 +29,7 @@ class SignedBlob extends Blob {
 
   /**
    * Create a new SignedBlob using the given optional value and offsets.
-   * @param {Blob|SignedBlob|Buffer|blob|array<number>|string} value (optional)
+   * @param {Blob|SignedBlob|Buffer|blob|array<integer>|string} value (optional)
    * If value is a Blob or SignedBlob, take another pointer to its Buffer
    * without copying. If value is a Buffer or Squirrel blob, optionally copy.
    * If value is a byte array, copy to create a new Buffer. If value is a string,
