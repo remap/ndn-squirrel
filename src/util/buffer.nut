@@ -93,15 +93,24 @@ class Buffer {
 
   /**
    * Get a new Buffer which wraps the given Squirrel blob, sharing its array.
-   * @param {blob} The Squirrel blob to use for the new Buffer.
+   * @param {blob} blob The Squirrel blob to use for the new Buffer.
+   * @param {integer} offset (optional) The index where the new Buffer will
+   * start. If omitted, use 0.
+   * @param {integer} len (optional) The number of bytes from the given blob
+   * that this Buffer will share. If omitted, use blob.len() - offset.
    * @return {Buffer} A new Buffer.
    */
-  static function from(blob)
+  static function from(blob, offset = 0, len = null)
   {
+    if (len == null)
+      len = blob.len() - offset;
+
+    // TODO: Do a bounds check?
     // First create a Buffer with default values, then set the blob_ and len_.
     local result = Buffer(0);
     result.blob_ = blob;
-    result.len_ = blob.len();
+    result.offset_ = offset;
+    result.len_ = len;
     return result;
   }
 
