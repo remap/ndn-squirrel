@@ -103,7 +103,7 @@ class Buffer {
   /**
    * Copy bytes from a region of this Buffer to a region in target even if the
    * target region overlaps this Buffer.
-   * @param {Buffer} target The Buffer to copy to.
+   * @param {Buffer|blob} target The Buffer or Squirrel blob to copy to.
    * @param {integer} targetStart (optional) The start index in target to copy
    * to. If omitted, use 0.
    * @param {integer} sourceStart (optional) The start index in this Buffer to
@@ -118,27 +118,41 @@ class Buffer {
       sourceEnd = len_;
 
     local nBytes = sourceEnd - sourceStart;
-    local targetBlob = target.blob_;
+
+    // Get the index in the source and target blobs.
+    local iSource = offset_ + sourceStart;
+    local targetBlob;
+    local iTarget;
+    if (target instanceof ::Buffer) {
+      targetBlob = target.blob_;
+      iTarget = target.offset_ + targetStart;
+    }
+    else {
+      targetBlob = target;
+      iTarget = targetStart;
+    }
+
     if (targetBlob == blob_) {
       // We are copying within the same blob.
-      if (targetStart > sourceStart && targetStart < sourceEnd)
+      if (iTarget > iSource && iTarget < offset_ + sourceEnd)
         // Copying to the target will overwrite the source.
         throw "Buffer.copy: Overlapping copy is not supported yet";
     }
 
-    if (offset_ == 0 && sourceStart == 0 && sourceEnd == blob_.len()) {
-      // We can use writeblob to copy the entire blob_
-      targetBlob.seek(target.offset_ + targetStart);
+    if (iSource == 0 && sourceEnd == blob_.len()) {
+      // We can use writeblob to copy the entire blob_.
+      // Set and restore its read/write pointer.
+      local savePointer = targetBlob.tell();
+      targetBlob.seek(iTarget);
       targetBlob.writeblob(blob_);
+      targetBlob.seek(savePointer);
     }
     else {
       // Don't use blob's readblob since it makes its own copy.
       // TODO: Does Squirrel have a memcpy?
-      local iTarget = target.offset_ + targetStart;
       local iEnd = offset_ + sourceEnd;
-      local i = offset_ + sourceStart;
-      while (i < iEnd)
-        targetBlob[iTarget++] = blob_[i++];
+      while (iSource < iEnd)
+        targetBlob[iTarget++] = blob_[iSource++];
     }
 
     return nBytes;
