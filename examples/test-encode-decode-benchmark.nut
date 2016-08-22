@@ -166,7 +166,7 @@ function benchmarkDecodeDataSeconds(nIterations, useCrypto, encoding)
 function benchmarkEncodeDecodeData(useComplex, useCrypto)
 {
   local format = "TLV";
-  local nIterations = useCrypto ? 1 : 20000;
+  local nIterations = useCrypto ? 1 : 30000;
   local result = benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto);
   dump("Encode " + (useComplex ? "complex " : "simple  ") +
     format + " data: Crypto " + (useCrypto ? "RSA" : "-  ") +
