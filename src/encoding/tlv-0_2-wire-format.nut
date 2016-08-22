@@ -61,30 +61,21 @@ class Tlv0_2WireFormat extends WireFormat {
    */
   function encodeInterest(interest)
   {
-    local encoder = TlvEncoder(500);
+    local encoder = TlvEncoder(100);
+    local saveLength = encoder.getLength();
 
-    local result = encoder.writeNestedTlv
-      (Tlv.Interest, encodeInterestValue_, interest, false);
+    // Encode backwards.
+/* TODO: Link.
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.SelectedDelegation, interest.getSelectedDelegationIndex());
+    var linkWireEncoding = interest.getLinkWireEncoding(this);
+    if (!linkWireEncoding.isNull())
+      // Encode the entire link as is.
+      encoder.writeBuffer(linkWireEncoding.buf());
+*/
 
-    result.encoding <- encoder.finish();
-    return result;
-  }
-  /**
-   * This is called by writeNestedTlv to write the TLVs in the body of the
-   * Interest value.
-   * @param {Interest} interest The Interest object which was passed to writeTlv.
-   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
-   * @return {table} A table with fields (signedPortionBeginOffset,
-   * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
-   * encoding of the beginning of the signed portion, and signedPortionEndOffset
-   * is the offset in the encoding of the end of the signed portion.
-   */
-  static function encodeInterestValue_(interest, encoder)
-  {
-    local result = Tlv0_2WireFormat.encodeName_(interest.getName(), encoder);
-    // For Selectors, set omitZeroLength true.
-    encoder.writeNestedTlv
-      (Tlv.Selectors, Tlv0_2WireFormat.encodeSelectorsValue_, interest, true);
+    encoder.writeOptionalNonNegativeIntegerTlvFromFloat
+      (Tlv.InterestLifetime, interest.getInterestLifetimeMilliseconds());
 
     // Encode the Nonce as 4 bytes.
     if (interest.getNonce().size() == 0)
@@ -110,21 +101,22 @@ class Tlv0_2WireFormat extends WireFormat {
       // Truncate.
       encoder.writeBlobTlv(Tlv.Nonce, interest.getNonce().buf().slice(0, 4));
 
-    encoder.writeOptionalNonNegativeIntegerTlvFromFloat
-      (Tlv.InterestLifetime, interest.getInterestLifetimeMilliseconds());
+    encodeSelectors_(interest, encoder);
+    local tempOffsets = encodeName_(interest.getName(), encoder);
+    local signedPortionBeginOffsetFromBack =
+      encoder.getLength() - tempOffsets.signedPortionBeginOffset;
+    local signedPortionEndOffsetFromBack =
+      encoder.getLength() - tempOffsets.signedPortionEndOffset;
 
-/* TODO: Link.
-    if (interest->linkWireEncoding.value) {
-      // Encode the entire link as is.
-      if ((error = ndn_TlvEncoder_writeArray
-          (encoder, interest->linkWireEncoding.value, interest->linkWireEncoding.length)))
-        return error;
-    }
-    encoder.writeOptionalNonNegativeIntegerTlv
-      (Tlv.SelectedDelegation, interest.getSelectedDelegationIndex());
-*/
+    encoder.writeTypeAndLength(Tlv.Interest, encoder.getLength() - saveLength);
+    local signedPortionBeginOffset =
+      encoder.getLength() - signedPortionBeginOffsetFromBack;
+    local signedPortionEndOffset =
+      encoder.getLength() - signedPortionEndOffsetFromBack;
 
-    return result;
+    return { encoding = encoder.finish(),
+             signedPortionBeginOffset = signedPortionBeginOffset,
+             signedPortionEndOffset = signedPortionEndOffset };
   }
 
   /**
@@ -193,42 +185,28 @@ class Tlv0_2WireFormat extends WireFormat {
   function encodeData(data)
   {
     local encoder = TlvEncoder(500);
+    local saveLength = encoder.getLength();
 
-    local result = encoder.writeNestedTlv
-      (Tlv.Data, encodeDataValue_, data, false);
-
-    result.encoding <- encoder.finish();
-    return result;
-  }
-
-  /**
-   * This is called by writeNestedTlv to write the TLVs in the body of the Data
-   * value.
-   * @param {Data} data The Data object which was passed to writeTlv.
-   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
-   * @return {table} A table with fields (signedPortionBeginOffset,
-   * signedPortionEndOffset) where signedPortionBeginOffset is the offset in the
-   * encoding of the beginning of the signed portion, and signedPortionEndOffset
-   * is the offset in the encoding of the end of the signed portion.
-   */
-  static function encodeDataValue_(data, encoder)
-  {
-    local result = {};
-    result.signedPortionBeginOffset <- encoder.offset_;
-
-    Tlv0_2WireFormat.encodeName_(data.getName(), encoder);
-    encoder.writeNestedTlv
-      (Tlv.MetaInfo, Tlv0_2WireFormat.encodeMetaInfoValue_, data.getMetaInfo(),
-       false);
-    encoder.writeBlobTlv(Tlv.Content, data.getContent().buf());
-    Tlv0_2WireFormat.encodeSignatureInfo_(data.getSignature(), encoder);
-
-    result.signedPortionEndOffset <- encoder.offset_;
-
+    // Encode backwards.
     encoder.writeBlobTlv
       (Tlv.SignatureValue, data.getSignature().getSignature().buf());
+    local signedPortionEndOffsetFromBack = encoder.getLength();
 
-    return result;
+    encodeSignatureInfo_(data.getSignature(), encoder);
+    encoder.writeBlobTlv(Tlv.Content, data.getContent().buf());
+    encodeMetaInfo_(data.getMetaInfo(), encoder);
+    encodeName_(data.getName(), encoder);
+    local signedPortionBeginOffsetFromBack = encoder.getLength();
+
+    encoder.writeTypeAndLength(Tlv.Data, encoder.getLength() - saveLength);
+    local signedPortionBeginOffset =
+      encoder.getLength() - signedPortionBeginOffsetFromBack;
+    local signedPortionEndOffset =
+      encoder.getLength() - signedPortionEndOffsetFromBack;
+
+    return { encoding = encoder.finish(),
+             signedPortionBeginOffset = signedPortionBeginOffset,
+             signedPortionEndOffset = signedPortionEndOffset };
   }
 
   /**
@@ -373,28 +351,27 @@ class Tlv0_2WireFormat extends WireFormat {
    */
   static function encodeName_(name, encoder)
   {
-    local nameValueLength = 0;
+    local saveLength = encoder.getLength();
 
-    for (local i = 0; i < name.size(); ++i)
-      nameValueLength += TlvEncoder.sizeOfBlobTlv
-        (name.get(i).type_, name.get(i).getValue().size());
+    // Encode the components backwards.
+    local signedPortionEndOffsetFromBack;
+    for (local i = name.size() - 1; i >= 0; --i) {
+      encodeNameComponent_(name.get(i), encoder);
+      if (i == name.size() - 1)
+        signedPortionEndOffsetFromBack = encoder.getLength();
+    }
 
-    encoder.writeTypeAndLength(Tlv.Name, nameValueLength);
-    local signedPortionBeginOffset = encoder.offset_;
+    local signedPortionBeginOffsetFromBack = encoder.getLength();
+    encoder.writeTypeAndLength(Tlv.Name, encoder.getLength() - saveLength);
+
+    local signedPortionBeginOffset =
+      encoder.getLength() - signedPortionBeginOffsetFromBack;
     local signedPortionEndOffset;
-
     if (name.size() == 0)
       // There is no "final component", so set signedPortionEndOffset arbitrarily.
       signedPortionEndOffset = signedPortionBeginOffset;
-    else {
-      for (local i = 0; i < name.size(); ++i) {
-        if (i == name.size() - 1)
-          // We will begin the final component.
-          signedPortionEndOffset = encoder.offset_;
-
-        encodeNameComponent_(name.get(i), encoder);
-      }
-    }
+    else
+      signedPortionEndOffset = encoder.getLength() - signedPortionEndOffsetFromBack;
 
     return { signedPortionBeginOffset = signedPortionBeginOffset,
              signedPortionEndOffset = signedPortionEndOffset };
@@ -436,34 +413,36 @@ class Tlv0_2WireFormat extends WireFormat {
   }
 
   /**
-   * This is called by writeNestedTlv to write the TLVs in the body of the
-   * interest Selectors value.
-   * @param {Interest} interest The Interest which was passed to writeTlv.
-   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
+   * An internal method to encode the interest Selectors in NDN-TLV. If no
+   * selectors are written, do not output a Selectors TLV.
+   * @param {Interest} interest The Interest object with the selectors to encode.
+   * @param {TlvEncoder} encoder The encoder to receive the encoding.
    */
-  static function encodeSelectorsValue_(interest, encoder)
+  static function encodeSelectors_(interest, encoder)
   {
-    encoder.writeOptionalNonNegativeIntegerTlv
-      (Tlv.MinSuffixComponents, interest.getMinSuffixComponents());
-    encoder.writeOptionalNonNegativeIntegerTlv
-      (Tlv.MaxSuffixComponents, interest.getMaxSuffixComponents());
+    local saveLength = encoder.getLength();
 
-    // Set omitZeroLength true to omit the KeyLocator if not specified.
-    encoder.writeNestedTlv
-      (Tlv.PublisherPublicKeyLocator, Tlv0_2WireFormat.encodeKeyLocatorValue_,
-       interest.getKeyLocator(), true);
-
-    if (interest.getExclude().size() > 0)
-      encoder.writeNestedTlv
-        (Tlv.Exclude, Tlv0_2WireFormat.encodeExcludeValue_, interest.getExclude(),
-         false);
-
-    encoder.writeOptionalNonNegativeIntegerTlv
-      (Tlv.ChildSelector, interest.getChildSelector());
-
+    // Encode backwards.
     if (interest.getMustBeFresh())
       encoder.writeTypeAndLength(Tlv.MustBeFresh, 0);
     // else MustBeFresh == false, so nothing to encode.
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.ChildSelector, interest.getChildSelector());
+    if (interest.getExclude().size() > 0)
+      encodeExclude_(interest.getExclude(), encoder);
+
+    if (interest.getKeyLocator().getType() != null)
+      encodeKeyLocator_
+        (Tlv.PublisherPublicKeyLocator, interest.getKeyLocator(), encoder);
+
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.MaxSuffixComponents, interest.getMaxSuffixComponents());
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.MinSuffixComponents, interest.getMinSuffixComponents());
+
+    // Only output the type and length if values were written.
+    if (encoder.getLength() != saveLength)
+      encoder.writeTypeAndLength(Tlv.Selectors, encoder.getLength() - saveLength);
   }
 
   /**
@@ -504,24 +483,28 @@ class Tlv0_2WireFormat extends WireFormat {
   }
 
   /**
-   * This is called by writeNestedTlv to write the TLVs in the body of the
-   * Exclude value.
-   * @param {Exclude} exclude The Exclude which was passed to writeTlv.
-   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
+   * An internal method to encode exclude as an Exclude in NDN-TLV.
+   * @param {Exclude} exclude The Exclude object.
+   * @param {TlvEncoder} encoder The encoder to receive the encoding.
    */
-  static function encodeExcludeValue_(exclude, encoder)
+  static function encodeExclude_(exclude, encoder)
   {
+    local saveLength = encoder.getLength();
+
     // TODO: Do we want to order the components (except for ANY)?
-    for (local i = 0; i < exclude.size(); ++i) {
+    // Encode the entries backwards.
+    for (local i = exclude.size() - 1; i >= 0; --i) {
       local entry = exclude.get(i);
 
       if (entry.getType() == ExcludeType.COMPONENT)
-        Tlv0_2WireFormat.encodeNameComponent_(entry.getComponent(), encoder);
+        encodeNameComponent_(entry.getComponent(), encoder);
       else if (entry.getType() == ExcludeType.ANY)
         encoder.writeTypeAndLength(Tlv.Any, 0);
       else
         throw "Unrecognized ExcludeType";
     }
+
+    encoder.writeTypeAndLength(Tlv.Exclude, encoder.getLength() - saveLength);
   }
 
   /**
@@ -553,47 +536,26 @@ class Tlv0_2WireFormat extends WireFormat {
   }
 
   /**
-   * This is called by writeNestedTlv to write the TLVs in the body of the
-   * KeyLocator value.
-   * @param {KeyLocator} keyLocator The KeyLocator which was passed to writeTlv.
-   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
+   * An internal method to encode keyLocator as a KeyLocator in NDN-TLV with the
+   * given type.
+   * @param {integer} type The type for the TLV.
+   * @param {KeyLocator} keyLocator The KeyLocator object.
+   * @param {TlvEncoder} encoder The encoder to receive the encoding.
    */
-  static function encodeKeyLocatorValue_(keyLocator, encoder)
+  static function encodeKeyLocator_(type, keyLocator, encoder)
   {
-    if (keyLocator.getType() == null || keyLocator.getType() < 0)
-      return;
+    local saveLength = encoder.getLength();
 
+    // Encode backwards.
     if (keyLocator.getType() == KeyLocatorType.KEYNAME)
-      Tlv0_2WireFormat.encodeName_(keyLocator.getKeyName(), encoder);
+      encodeName_(keyLocator.getKeyName(), encoder);
     else if (keyLocator.getType() == KeyLocatorType.KEY_LOCATOR_DIGEST &&
              keyLocator.getKeyData().size() > 0)
       encoder.writeBlobTlv(Tlv.KeyLocatorDigest, keyLocator.getKeyData().buf());
     else
-      return NDN_ERROR_unrecognized_ndn_KeyLocatorType;
-  }
+      throw "Unrecognized KeyLocator type ";
 
-  /**
-   * This is called by writeNestedTlv to write the TLVs in the body of the
-   * SignatureInfo value, where the Signature has a KeyLocator, e.g.
-   * SignatureSha256WithRsa.
-   * @param {Signature} signature The Signature object which was passed to
-   * writeTlv.
-   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
-   */
-  static function encodeSignatureWithKeyLocatorValue_(signature, encoder)
-  {
-    local signatureType;
-    if (signature instanceof Sha256WithRsaSignature)
-      signatureType = Tlv.SignatureType_SignatureSha256WithRsa;
-    // TODO: Sha256WithEcdsaSignature.
-    // TODO: HmacWithSha256Signature.
-    else
-      throw "encodeSignatureInfo: Unrecognized Signature object type";
-
-    encoder.writeNonNegativeIntegerTlv(Tlv.SignatureType, signatureType);
-    encoder.writeNestedTlv
-      (Tlv.KeyLocator, Tlv0_2WireFormat.encodeKeyLocatorValue_,
-       signature.getKeyLocator(), false);
+    encoder.writeTypeAndLength(type, encoder.getLength() - saveLength);
   }
 
   /**
@@ -657,19 +619,27 @@ class Tlv0_2WireFormat extends WireFormat {
            ex;
       }
 
-      encoder.writeArray(encoding.buf(), 0, encoding.size());
+      encoder.writeBuffer(encoding.buf());
       return;
     }
 
-    if (signature instanceof Sha256WithRsaSignature)
-      encoder.writeNestedTlv
-        (Tlv.SignatureInfo, encodeSignatureWithKeyLocatorValue_, signature,
-         false);
+    local saveLength = encoder.getLength();
+
+    // Encode backwards.
+    if (signature instanceof Sha256WithRsaSignature) {
+      encodeKeyLocator_
+        (Tlv.KeyLocator, signature.getKeyLocator(), encoder);
+      encoder.writeNonNegativeIntegerTlv
+        (Tlv.SignatureType, Tlv.SignatureType_SignatureSha256WithRsa);
+    }
     // TODO: Sha256WithEcdsaSignature.
     // TODO: HmacWithSha256Signature.
     // TODO: DigestSha256Signature.
     else
       throw "encodeSignatureInfo: Unrecognized Signature object type";
+
+    encoder.writeTypeAndLength
+      (Tlv.SignatureInfo, encoder.getLength() - saveLength);
   }
 
   /**
@@ -716,13 +686,26 @@ class Tlv0_2WireFormat extends WireFormat {
   }
 
   /**
-   * This is called by writeNestedTlv to write the TLVs in the body of the
-   * MetaInfo value.
-   * @param {MetaInfo} metaInfo The MetaInfo which was passed to writeTlv.
-   * @param {TlvEncoder} encoder The TlvEncoder which is calling this.
+   * An internal method to encode metaInfo as a MetaInfo in NDN-TLV.
+   * @param {MetaInfo} metaInfo The MetaInfo object.
+   * @param {TlvEncoder} encoder The encoder to receive the encoding.
    */
-  static function encodeMetaInfoValue_(metaInfo, encoder)
+  static function encodeMetaInfo_(metaInfo, encoder)
   {
+    local saveLength = encoder.getLength();
+
+    // Encode backwards.
+    local finalBlockIdBuf = metaInfo.getFinalBlockId().getValue().buf();
+    if (finalBlockIdBuf != null && finalBlockIdBuf.len() > 0) {
+      // The FinalBlockId has an inner NameComponent.
+      local finalBlockIdSaveLength = encoder.getLength();
+      encodeNameComponent_(metaInfo.getFinalBlockId(), encoder);
+      encoder.writeTypeAndLength
+        (Tlv.FinalBlockId, encoder.getLength() - finalBlockIdSaveLength);
+    }
+
+    encoder.writeOptionalNonNegativeIntegerTlvFromFloat
+      (Tlv.FreshnessPeriod, metaInfo.getFreshnessPeriod());
     if (!(metaInfo.getType() == null || metaInfo.getType() < 0 ||
           metaInfo.getType() == ContentType.BLOB)) {
       // Not the default, so we need to encode the type.
@@ -740,16 +723,7 @@ class Tlv0_2WireFormat extends WireFormat {
         throw "Unrecognized ContentType";
     }
 
-    encoder.writeOptionalNonNegativeIntegerTlvFromFloat
-      (Tlv.FreshnessPeriod, metaInfo.getFreshnessPeriod());
-    local finalBlockIdBuf = metaInfo.getFinalBlockId().getValue().buf();
-    if (finalBlockIdBuf != null && finalBlockIdBuf.len() > 0) {
-      // The FinalBlockId has an inner NameComponent.
-      encoder.writeTypeAndLength
-        (Tlv.FinalBlockId, TlvEncoder.sizeOfBlobTlv
-         (metaInfo.getFinalBlockId().type_, finalBlockIdBuf.len()));
-      Tlv0_2WireFormat.encodeNameComponent_(metaInfo.getFinalBlockId(), encoder);
-    }
+    encoder.writeTypeAndLength(Tlv.MetaInfo, encoder.getLength() - saveLength);
   }
 
   /**
