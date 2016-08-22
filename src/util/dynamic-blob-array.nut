@@ -59,10 +59,10 @@ class DynamicBlobArray {
   }
 
   /**
-   * Copy the given array into this object's array, using ensureLength to make
+   * Copy the given buffer into this object's array, using ensureLength to make
    * sure there is enough room.
    * @param {Buffer} buffer A Buffer with the bytes to copy.
-   * @param {offset} The offset in this object's array to copy to.
+   * @param {integer} offset The offset in this object's array to copy to.
    */
   function copy(buffer, offset)
   {
@@ -71,16 +71,55 @@ class DynamicBlobArray {
   }
 
   /**
-   * Resize this object's array to the given length, transfer the bytes to a 
-   * Blob and return the Blob. Finally, set this object's array to null to
-   * prevent further use.
-   * @param {integer} length The final length of the allocated array.
+   * Ensure that the array has the minimal length. If necessary, reallocate the
+   * array and shift existing data to the back of the new array. The new length
+   * of the array may be greater than the given length.
+   * @param {integer} length The minimum length for the array.
+   */
+  function ensureLengthFromBack(length)
+  {
+    // array_.len() is always the full length of the array.
+    if (array_.len() >= length)
+      return;
+
+    // See if double is enough.
+    local newLength = array_.len() * 2;
+    if (length > newLength)
+      // The needed length is much greater, so use it.
+      newLength = length;
+
+    local newArray = blob(newLength);
+    // Copy to the back of newArray.
+    newArray.seek(newArray.len() - array_.len());
+    newArray.writeblob(array_);
+    array_ = newArray;
+  }
+
+  /**
+   * First call ensureLengthFromBack to make sure the bytearray has
+   * offsetFromBack bytes, then copy the given buffer into this object's array
+   * starting offsetFromBack bytes from the back of the array.
+   * @param {Buffer} buffer A Buffer with the bytes to copy.
+   * @param {integer} offset The offset from the back of the array to start
+   * copying.
+   */
+  function copyFromBack(buffer, offsetFromBack)
+  {
+    ensureLengthFromBack(offsetFromBack);
+    buffer.copy(array_, array_.len() - offsetFromBack);
+  }
+
+  /**
+   * Wrap this object's array in a Buffer slice starting lengthFromBack from the
+   * back of this object's array and make a Blob. Finally, set this object's
+   * array to null to prevent further use.
+   * @param {integer} lengthFromBack The final length of the allocated array.
    * @return {Blob} A new NDN Blob with the bytes from the array.
    */
-  function finish(length)
+  function finishFromBack(lengthFromBack)
   {
-    array_.resize(length);
-    local result = Blob(array_, false);
+    local result = Blob
+      (Buffer.from(array_, array_.len() - lengthFromBack), false);
     array_ = null;
     return result;
   }
