@@ -68,7 +68,21 @@ class NameComponent {
    */
   function getValue() { return value_; }
 
-  // TODO toEscapedString.
+  /**
+   * Convert this component value to a string by escaping characters according
+   * to the NDN URI Scheme.
+   * This also adds "..." to a value with zero or more ".".
+   * This adds a type code prefix as needed, such as "sha256digest=".
+   * @return {string} The escaped string.
+   */
+  function toEscapedString()
+  {
+    if (type_ == NameComponentType.IMPLICIT_SHA256_DIGEST)
+      return "sha256digest=" + value_.toHex();
+    else
+      return Name.toEscapedString(value_.buf());
+  }
+
   // TODO isSegment.
   // TODO isSegmentOffset.
   // TODO isVersion.
@@ -245,8 +259,29 @@ class Name {
     ++changeCount_;
   }
 
-  // TODO: toUri.
-  // TODO: _string.
+  /**
+   * Return the escaped name string according to NDN URI Scheme.
+   * @param {bool} includeScheme (optional) If true, include the "ndn:" scheme
+   * in the URI, e.g. "ndn:/example/name". If false, just return the path, e.g.
+   * "/example/name". If omitted, then just return the path which is the default
+   * case where toUri() is used for display.
+   * @return {string} The URI string.
+   */
+  function toUri(includeScheme = false)
+  {
+    if (this.size() == 0)
+      return includeScheme ? "ndn:/" : "/";
+
+    local result = includeScheme ? "ndn:" : "";
+
+    for (local i = 0; i < size(); ++i)
+      result += "/"+ components_[i].toEscapedString();
+
+    return result;
+  }
+
+  function _tostring() { return toUri(); }
+
   // TODO: appendSegment.
   // TODO: appendSegmentOffset.
   // TODO: appendVersion.
@@ -452,7 +487,46 @@ class Name {
       return 0;
   }
 
-  // TODO: toEscapedString
+  /**
+   * Return value as an escaped string according to NDN URI Scheme.
+   * This does not add a type code prefix such as "sha256digest=".
+   * @param {Buffer} value The value to escape.
+   * @return {string} The escaped string.
+   */
+  static function toEscapedString(value)
+  {
+    // TODO: Does Squirrel have a StringBuffer?
+    local result = "";
+    local gotNonDot = false;
+    for (local i = 0; i < value.len(); ++i) {
+      if (value[i] != 0x2e) {
+        gotNonDot = true;
+        break;
+      }
+    }
+
+    if (!gotNonDot) {
+      // Special case for a component of zero or more periods. Add 3 periods.
+      result = "...";
+      for (local i = 0; i < value.len(); ++i)
+        result += ".";
+    }
+    else {
+      for (local i = 0; i < value.len(); ++i) {
+        local x = value[i];
+        // Check for 0-9, A-Z, a-z, (+), (-), (.), (_)
+        if (x >= 0x30 && x <= 0x39 || x >= 0x41 && x <= 0x5a ||
+            x >= 0x61 && x <= 0x7a || x == 0x2b || x == 0x2d ||
+            x == 0x2e || x == 0x5f)
+          result += x.tochar();
+        else
+          result += "%" + ::format("%02X", x);
+      }
+    }
+  
+    return result;
+  }
+
   // TODO: fromEscapedString
   // TODO: getSuccessor
   // TODO: match
