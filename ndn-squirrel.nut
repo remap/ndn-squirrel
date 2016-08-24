@@ -1346,8 +1346,41 @@ class Name {
 
   // TODO: fromEscapedString
   // TODO: getSuccessor
-  // TODO: match
-  // TODO: isPrefixOf
+
+  /**
+   * Return true if the N components of this name are the same as the first N
+   * components of the given name.
+   * @param {Name} name The name to check.
+   * @return {bool} true if this matches the given name. This always returns
+   * true if this name is empty.
+   */
+  function match(name)
+  {
+    local i_name = components_;
+    local o_name = name.components_;
+
+    // This name is longer than the name we are checking it against.
+    if (i_name.len() > o_name.len())
+      return false;
+
+    // Check if at least one of given components doesn't match. Check from last
+    // to first since the last components are more likely to differ.
+    for (local i = i_name.len() - 1; i >= 0; --i) {
+      if (!i_name[i].equals(o_name[i]))
+        return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Return true if the N components of this name are the same as the first N
+   * components of the given name.
+   * @param {Name} name The name to check.
+   * @return {bool} true if this matches the given name. This always returns
+   * true if this name is empty.
+   */
+  function isPrefixOf(name) { return match(name); }
 
   /**
    * Get the change count, which is incremented each time this object is changed.
@@ -1769,7 +1802,87 @@ class Interest {
   }
 
   // TODO matchesName.
-  // TODO matchesData.
+
+  /**
+   * Check if the given Data packet can satisfy this Interest. This method
+   * considers the Name, MinSuffixComponents, MaxSuffixComponents,
+   * PublisherPublicKeyLocator, and Exclude. It does not consider the
+   * ChildSelector or MustBeFresh. This uses the given wireFormat to get the
+   * Data packet encoding for the full Name.
+   * @param {Data} data The Data packet to check.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * encode the Data packet to get its full Name. If omitted, use
+   * WireFormat.getDefaultWireFormat().
+   * @return {bool} True if the given Data packet can satisfy this Interest.
+   */
+  function matchesData(data, wireFormat = null)
+  {
+    // Imitate ndn-cxx Interest::matchesData.
+    local interestNameLength = getName().size();
+    local dataName = data.getName();
+    local fullNameLength = dataName.size() + 1;
+
+    // Check MinSuffixComponents.
+    local hasMinSuffixComponents = (getMinSuffixComponents() != null);
+    local minSuffixComponents =
+      hasMinSuffixComponents ? getMinSuffixComponents() : 0;
+    if (!(interestNameLength + minSuffixComponents <= fullNameLength))
+      return false;
+
+    // Check MaxSuffixComponents.
+    local hasMaxSuffixComponents = (getMaxSuffixComponents() != null);
+    if (hasMaxSuffixComponents &&
+        !(interestNameLength + getMaxSuffixComponents() >= fullNameLength))
+      return false;
+
+    // Check the prefix.
+    if (interestNameLength == fullNameLength) {
+      if (getName().get(-1).isImplicitSha256Digest()) {
+        if (!getName().equals(data.getFullName(wireFormat)))
+          return false;
+      }
+      else
+        // The Interest Name is the same length as the Data full Name, but the
+        //   last component isn't a digest so there's no possibility of matching.
+        return false;
+    }
+    else {
+      // The Interest Name should be a strict prefix of the Data full Name.
+      if (!getName().isPrefixOf(dataName))
+        return false;
+    }
+
+    // Check the Exclude.
+    // The Exclude won't be violated if the Interest Name is the same as the
+    //   Data full Name.
+    if (getExclude().size() > 0 && fullNameLength > interestNameLength) {
+      if (interestNameLength == fullNameLength - 1) {
+        // The component to exclude is the digest.
+        if (getExclude().matches
+            (data.getFullName(wireFormat).get(interestNameLength)))
+          return false;
+      }
+      else {
+        // The component to exclude is not the digest.
+        if (getExclude().matches(dataName.get(interestNameLength)))
+          return false;
+      }
+    }
+
+    // Check the KeyLocator.
+    local publisherPublicKeyLocator = getKeyLocator();
+    if (publisherPublicKeyLocator.getType()) {
+      local signature = data.getSignature();
+      if (!KeyLocator.canGetFromSignature(signature))
+        // No KeyLocator in the Data packet.
+        return false;
+      if (!publisherPublicKeyLocator.equals
+          (KeyLocator.getFromSignature(signature)))
+        return false;
+    }
+
+    return true;
+  }
 
   /**
    * Get the interest Name.
@@ -4164,114 +4277,3 @@ TlvWireFormat_instance <- TlvWireFormat();
 
 // On loading this code, make this the default wire format.
 WireFormat.setDefaultWireFormat(TlvWireFormat.get());
-/**
- * Copyright (C) 2016 Regents of the University of California.
- * @author: Jeff Thompson <jefft0@remap.ucla.edu>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- * A copy of the GNU Lesser General Public License is in the file COPYING.
- */
-
-function dump(message) { print(message); print("\n"); }
-
-local TlvInterest = Blob([
-0x05, 0x50, // Interest
-  0x07, 0x0A, 0x08, 0x03, 0x6E, 0x64, 0x6E, 0x08, 0x03, 0x61, 0x62, 0x63, // Name
-  0x09, 0x38, // Selectors
-    0x0D, 0x01, 0x04, // MinSuffixComponents
-    0x0E, 0x01, 0x06, // MaxSuffixComponents
-    0x0F, 0x22, // KeyLocator
-      0x1D, 0x20, // KeyLocatorDigest
-                  0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-                  0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
-    0x10, 0x07, // Exclude
-      0x08, 0x03, 0x61, 0x62, 0x63, // NameComponent
-      0x13, 0x00, // Any
-    0x11, 0x01, 0x01, // ChildSelector
-    0x12, 0x00, // MustBeFesh
-  0x0A, 0x04, 0x61, 0x62, 0x61, 0x62, // Nonce
-  0x0C, 0x02, 0x75, 0x30, // InterestLifetime
-1
-]);
-
-function excludeToRawUri(exclude) {
-  if (exclude.size() == 0)
-    return "";
-
-  local result = "";
-  for (local i = 0; i < exclude.size(); ++i) {
-    if (i > 0)
-      result += ",";
-
-    if (exclude.get(i).getType() == ExcludeType.ANY)
-      result += "*";
-    else
-      result += exclude.get(i).getComponent().getValue().toRawStr();
-  }
-
-  return result;
-}
-
-function dumpInterest(interest)
-{
-  dump("name: " + interest.getName().toUri());
-  dump("minSuffixComponents: " + (interest.getMinSuffixComponents() != null ?
-    interest.getMinSuffixComponents() : "<none>"));
-  dump("maxSuffixComponents: " + (interest.getMaxSuffixComponents() != null ?
-    interest.getMaxSuffixComponents() : "<none>"));
-  if (interest.getKeyLocator().getType() != null) {
-    if (interest.getKeyLocator().getType() == KeyLocatorType.KEY_LOCATOR_DIGEST)
-      dump("keyLocator: KeyLocatorDigest: " + interest.getKeyLocator().getKeyData().toHex());
-    else if (interest.getKeyLocator().getType() == KeyLocatorType.KEYNAME)
-      dump("keyLocator: KeyName: " + interest.getKeyLocator().getKeyName().toUri());
-    else
-      dump("keyLocator: <unrecognized ndn_KeyLocatorType " + interest.getKeyLocator().getType() + ">");
-  }
-  else
-    dump("keyLocator: <none>");
-
-  dump("exclude: " + (interest.getExclude().size() > 0 ? 
-                      excludeToRawUri(interest.getExclude()) : "<none>"));
-  dump("lifetimeMilliseconds: " +
-    (interest.getInterestLifetimeMilliseconds() != null ?
-    interest.getInterestLifetimeMilliseconds() : "<none>"));
-  dump("childSelector: " +
-    (interest.getChildSelector() != null ?interest.getChildSelector() : "<none>"));
-  dump("mustBeFresh: " + (interest.getMustBeFresh() ? "true" : "false"));
-  dump("nonce: " +
-    (interest.getNonce().size() > 0 ? interest.getNonce().toHex() : "<none>"));
-}
-
-function main()
-{
-  local interest = Interest();
-  interest.wireDecode(TlvInterest);
-  dump("Interest:");
-  dumpInterest(interest);
-
-  // Set the name again to clear the cached encoding so we encode again.
-  interest.setName(interest.getName());
-  local encoding = interest.wireEncode();
-  dump("");
-  dump("Re-encoded interest " + encoding.toHex());
-
-  local reDecodedInterest = Interest();
-  reDecodedInterest.wireDecode(encoding);
-  dump("Re-decoded Interest:");
-  dumpInterest(reDecodedInterest);
-}
-
-// If running on the Imp, uncomment to redefine dump().
-// function dump(message) { server.log(message); }
-main();

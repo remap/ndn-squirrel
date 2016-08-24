@@ -69,7 +69,87 @@ class Interest {
   }
 
   // TODO matchesName.
-  // TODO matchesData.
+
+  /**
+   * Check if the given Data packet can satisfy this Interest. This method
+   * considers the Name, MinSuffixComponents, MaxSuffixComponents,
+   * PublisherPublicKeyLocator, and Exclude. It does not consider the
+   * ChildSelector or MustBeFresh. This uses the given wireFormat to get the
+   * Data packet encoding for the full Name.
+   * @param {Data} data The Data packet to check.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * encode the Data packet to get its full Name. If omitted, use
+   * WireFormat.getDefaultWireFormat().
+   * @return {bool} True if the given Data packet can satisfy this Interest.
+   */
+  function matchesData(data, wireFormat = null)
+  {
+    // Imitate ndn-cxx Interest::matchesData.
+    local interestNameLength = getName().size();
+    local dataName = data.getName();
+    local fullNameLength = dataName.size() + 1;
+
+    // Check MinSuffixComponents.
+    local hasMinSuffixComponents = (getMinSuffixComponents() != null);
+    local minSuffixComponents =
+      hasMinSuffixComponents ? getMinSuffixComponents() : 0;
+    if (!(interestNameLength + minSuffixComponents <= fullNameLength))
+      return false;
+
+    // Check MaxSuffixComponents.
+    local hasMaxSuffixComponents = (getMaxSuffixComponents() != null);
+    if (hasMaxSuffixComponents &&
+        !(interestNameLength + getMaxSuffixComponents() >= fullNameLength))
+      return false;
+
+    // Check the prefix.
+    if (interestNameLength == fullNameLength) {
+      if (getName().get(-1).isImplicitSha256Digest()) {
+        if (!getName().equals(data.getFullName(wireFormat)))
+          return false;
+      }
+      else
+        // The Interest Name is the same length as the Data full Name, but the
+        //   last component isn't a digest so there's no possibility of matching.
+        return false;
+    }
+    else {
+      // The Interest Name should be a strict prefix of the Data full Name.
+      if (!getName().isPrefixOf(dataName))
+        return false;
+    }
+
+    // Check the Exclude.
+    // The Exclude won't be violated if the Interest Name is the same as the
+    //   Data full Name.
+    if (getExclude().size() > 0 && fullNameLength > interestNameLength) {
+      if (interestNameLength == fullNameLength - 1) {
+        // The component to exclude is the digest.
+        if (getExclude().matches
+            (data.getFullName(wireFormat).get(interestNameLength)))
+          return false;
+      }
+      else {
+        // The component to exclude is not the digest.
+        if (getExclude().matches(dataName.get(interestNameLength)))
+          return false;
+      }
+    }
+
+    // Check the KeyLocator.
+    local publisherPublicKeyLocator = getKeyLocator();
+    if (publisherPublicKeyLocator.getType()) {
+      local signature = data.getSignature();
+      if (!KeyLocator.canGetFromSignature(signature))
+        // No KeyLocator in the Data packet.
+        return false;
+      if (!publisherPublicKeyLocator.equals
+          (KeyLocator.getFromSignature(signature)))
+        return false;
+    }
+
+    return true;
+  }
 
   /**
    * Get the interest Name.
