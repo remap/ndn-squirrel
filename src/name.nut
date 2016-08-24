@@ -529,8 +529,41 @@ class Name {
 
   // TODO: fromEscapedString
   // TODO: getSuccessor
-  // TODO: match
-  // TODO: isPrefixOf
+
+  /**
+   * Return true if the N components of this name are the same as the first N
+   * components of the given name.
+   * @param {Name} name The name to check.
+   * @return {bool} true if this matches the given name. This always returns
+   * true if this name is empty.
+   */
+  function match(name)
+  {
+    local i_name = components_;
+    local o_name = name.components_;
+
+    // This name is longer than the name we are checking it against.
+    if (i_name.len() > o_name.len())
+      return false;
+
+    // Check if at least one of given components doesn't match. Check from last
+    // to first since the last components are more likely to differ.
+    for (local i = i_name.len() - 1; i >= 0; --i) {
+      if (!i_name[i].equals(o_name[i]))
+        return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Return true if the N components of this name are the same as the first N
+   * components of the given name.
+   * @param {Name} name The name to check.
+   * @return {bool} true if this matches the given name. This always returns
+   * true if this name is empty.
+   */
+  function isPrefixOf(name) { return match(name); }
 
   /**
    * Get the change count, which is incremented each time this object is changed.
