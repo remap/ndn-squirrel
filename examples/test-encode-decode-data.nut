@@ -55,20 +55,9 @@ local TlvData = Blob([
 1
 ]);
 
-function nameToRawUri(name) {
-  if (name.size() == 0)
-    return "/";
-
-  local result = "";
-  for (local i = 0; i < name.size(); ++i)
-    result += "/" + name.get(i).getValue().toRawStr();
-
-  return result;
-}
-
 function dumpData(data)
 {
-  dump("name: " + nameToRawUri(data.getName()));
+  dump("name: " + data.getName().toUri());
   if (data.getContent().size() > 0) {
     dump("content (raw): " + data.getContent().toRawStr());
     dump("content (hex): " + data.getContent().toHex());
@@ -133,8 +122,7 @@ function dumpData(data)
       dump("signature.keyLocator: KeyLocatorDigest: " +
            keyLocator.getKeyData().toHex());
     else if (keyLocator.getType() == KeyLocatorType.KEYNAME)
-      dump("signature.keyLocator: KeyName: " + 
-           nameToRawUri(keyLocator.getKeyName()));
+      dump("signature.keyLocator: KeyName: " + keyLocator.getKeyName().toUri());
     else
       dump("signature.keyLocator: <unrecognized ndn_KeyLocatorType>");
   }

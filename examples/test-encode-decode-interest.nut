@@ -39,17 +39,6 @@ local TlvInterest = Blob([
 1
 ]);
 
-function nameToRawUri(name) {
-  if (name.size() == 0)
-    return "/";
-
-  local result = "";
-  for (local i = 0; i < name.size(); ++i)
-    result += "/" + name.get(i).getValue().toRawStr();
-
-  return result;
-}
-
 function excludeToRawUri(exclude) {
   if (exclude.size() == 0)
     return "";
@@ -70,7 +59,7 @@ function excludeToRawUri(exclude) {
 
 function dumpInterest(interest)
 {
-  dump("name: " + nameToRawUri(interest.getName()));
+  dump("name: " + interest.getName().toUri());
   dump("minSuffixComponents: " + (interest.getMinSuffixComponents() != null ?
     interest.getMinSuffixComponents() : "<none>"));
   dump("maxSuffixComponents: " + (interest.getMaxSuffixComponents() != null ?
