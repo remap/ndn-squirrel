@@ -1,3 +1,4 @@
+#!/bin/sh
 # Concatenate all NDN-Squirrel library files into ndn-squirrel.nut .
 cat \
   src/util/imp-compatibility.nut \
@@ -18,6 +19,7 @@ cat \
   src/encoding/tlv/tlv.nut \
   src/encoding/tlv/tlv-decoder.nut \
   src/encoding/tlv/tlv-encoder.nut \
+  src/encoding/tlv/tlv-structure-decoder.nut \
   src/encoding/wire-format.nut \
   src/encoding/tlv-0_2-wire-format.nut \
   src/encoding/tlv-wire-format.nut \
