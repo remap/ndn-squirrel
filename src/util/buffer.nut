@@ -193,12 +193,49 @@ class Buffer {
     if (end == null)
       end = len_;
 
+    if (start == 0 && end == len_)
+      return this;
+
     // TODO: Do a bounds check?
     local result = ::Buffer.from(blob_);
     // Fix offset_ and len_.
     result.offset_ = offset_ + start;
     result.len_ = end - start;
     return result;
+  }
+
+  /**
+   * Return a new Buffer which is the result of concatenating all the Buffer 
+   * instances in the list together.
+   * @param {Array<Buffer>} list An array of Buffer instances to concat. If the
+   * list has no items, return a new zero-length Buffer.
+   * @param {integer} (optional) totalLength The total length of the Buffer
+   * instances in list when concatenated. If omitted, calculate the total
+   * length, but this causes an additional loop to be executed, so it is faster
+   * to provide the length explicitly if it is already known. If the total
+   * length is zero, return a new zero-length Buffer.
+   * @return {Buffer} A new Buffer.
+   */
+  static function concat(list, totalLength = null)
+  {
+    if (list.len() == 1)
+      // A simple case.
+      return ::Buffer(list[0]);
+  
+    if (totalLength == null) {
+      totalLength = 0;
+      foreach (buffer in list)
+        totalLength += buffer.len();
+    }
+
+    local result = ::blob(totalLength);
+    local offset = 0;
+    foreach (buffer in list) {
+      buffer.copy(result, offset);
+      offset += buffer.len();
+    }
+
+    return ::Buffer.from(result);
   }
 
   /**
