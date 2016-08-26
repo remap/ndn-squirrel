@@ -7,6 +7,7 @@ cat \
   src/util/change-counter.nut \
   src/util/crypto.nut \
   src/util/dynamic-blob-array.nut \
+  src/util/ndn-common.nut \
   src/util/signed-blob.nut \
   src/name.nut \
   src/key-locator.nut \
@@ -20,6 +21,7 @@ cat \
   src/encoding/tlv/tlv-decoder.nut \
   src/encoding/tlv/tlv-encoder.nut \
   src/encoding/tlv/tlv-structure-decoder.nut \
+  src/encoding/element-reader.nut \
   src/encoding/wire-format.nut \
   src/encoding/tlv-0_2-wire-format.nut \
   src/encoding/tlv-wire-format.nut \
