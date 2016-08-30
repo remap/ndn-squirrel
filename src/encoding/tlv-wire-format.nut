@@ -29,11 +29,16 @@ class TlvWireFormat extends Tlv0_2WireFormat {
    * if WireFormat.getDefaultWireFormat() == TlvWireFormat.get().
    * @return {TlvWireFormat} The singleton instance.
    */
-  static function get() { return TlvWireFormat_instance; }
+  static function get()
+  {
+    if (TlvWireFormat_instance == null)
+      ::TlvWireFormat_instance = TlvWireFormat();
+    return TlvWireFormat_instance;
+  }
 }
 
 // We use a global variable because static member variables are immutable.
-TlvWireFormat_instance <- TlvWireFormat();
+TlvWireFormat_instance <- null;
 
 // On loading this code, make this the default wire format.
 WireFormat.setDefaultWireFormat(TlvWireFormat.get());

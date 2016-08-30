@@ -301,7 +301,12 @@ class Tlv0_2WireFormat extends WireFormat {
    * preferred version NDN-TLV, you should use TlvWireFormat.get().
    * @return {Tlv0_2WireFormat} The singleton instance.
    */
-  static function get() { return Tlv0_2WireFormat_instance; }
+  static function get()
+  {
+    if (Tlv0_2WireFormat_instance == null)
+      ::Tlv0_2WireFormat_instance = Tlv0_2WireFormat();
+    return Tlv0_2WireFormat_instance;
+  }
 
   /**
    * Encode the name component to the encoder as NDN-TLV. This handles different
@@ -780,4 +785,4 @@ class Tlv0_2WireFormat_SignatureHolder
 }
 
 // We use a global variable because static member variables are immutable.
-Tlv0_2WireFormat_instance <- Tlv0_2WireFormat();
+Tlv0_2WireFormat_instance <- null;
