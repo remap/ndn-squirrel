@@ -38,8 +38,14 @@ class Buffer {
    * new Buffer without copying the blob, use Buffer.from(value).) If value is a
    * byte array, copy into a new underlying blob. If value is a string, treat it
    * as "raw" and copy to a new underlying blob without UTF-8 encoding.
+   * @param {string} encoding (optional) If value is a string, convert it to a
+   * byte array as follows. If encoding is "raw" or omitted, copy value to a new
+   * underlying blob without UTF-8 encoding. If encoding is "hex", value must be
+   * a sequence of pairs of hexadecimal digits, so convert them to integers.
+   * @throws string if the encoding is unrecognized or a hex string has invalid
+   * characters (or is not a multiple of 2 in length).
    */
-  constructor(value)
+  constructor(value, encoding = "raw")
   {
     local valueType = typeof value;
 
@@ -70,13 +76,33 @@ class Buffer {
       len_ = value.len();
     }
     else if (valueType == "string") {
-      // Just copy the string. Don't UTF-8 decode.
-      blob_ = ::blob(value.len());
-      // Don't use writestring since Standard Squirrel doesn't have it.
-      foreach (x in value)
-        blob_.writen(x, 'b');
+      if (encoding == "raw") {
+        // Just copy the string. Don't UTF-8 decode.
+        blob_ = ::blob(value.len());
+        // Don't use writestring since Standard Squirrel doesn't have it.
+        foreach (x in value)
+          blob_.writen(x, 'b');
 
-      len_ = value.len();
+        len_ = value.len();
+      }
+      else if (encoding == "hex") {
+        if (value.len() % 2 != 0)
+          throw "Invalid hex value";
+        len_ = value.len() / 2;
+        blob_ = ::blob(len_);
+
+        local iBlob = 0;
+        for (local i = 0; i < value.len(); i += 2) {
+          local hi = ::Buffer.fromHexChar(value[i]);
+          local lo = ::Buffer.fromHexChar(value[i + 1]);
+          if (hi < 0 || lo < 0)
+            throw "Invalid hex value";
+
+          blob_[iBlob++] = 16 * hi + lo;
+        }
+      }
+      else
+        throw "Unrecognized encoding";
     }
     else if (value instanceof ::Buffer) {
       if (value.len_ > 0) {
@@ -268,7 +294,24 @@ class Buffer {
       return result;
     }
     else
-      throw "Unrecognized type";
+      throw "Unrecognized encoding";
+  }
+
+  /**
+   * A utility function to convert the hex character to an integer from 0 to 15.
+   * @param {integer} c The integer character.
+   * @return The hex value, or -1 if x is not a hex character.
+   */
+  static function fromHexChar(c)
+  {
+    if (c >= '0' && c <= '9')
+      return c - '0';
+    else if (c >= 'A' && c <= 'F')
+      return c - 'A' + 10;
+    else if (c >= 'a' && c <= 'f')
+      return c - 'a' + 10;
+    else
+      return -1;
   }
 
   function _get(i)
