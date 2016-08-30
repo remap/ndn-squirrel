@@ -52,11 +52,8 @@ class NameComponent {
 
     if (value == null)
       value_ = Blob([]);
-    else if (value instanceof Blob) {
-      if (value.isNull())
-        throw "NameComponent: The Blob value may not be null";
+    else if (value instanceof Blob)
       value_ = value;
-    }
     else
       // Blob will make a copy if needed.
       value_ = Blob(value);
@@ -215,7 +212,71 @@ class Name {
       throw "Name constructor: Unrecognized components type";
   }
 
-  // TODO: set(uri).
+  /**
+   * Parse the uri according to the NDN URI Scheme and set the name with the
+   * components.
+   * @param {string} uri The URI string.
+   */
+  function set(uri)
+  {
+    clear();
+
+    uri = strip(uri);
+    if (uri.len() <= 0)
+      return;
+
+    local iColon = uri.find(":");
+    if (iColon != null) {
+      // Make sure the colon came before a "/".
+      local iFirstSlash = uri.find("/");
+      if (iFirstSlash == null || iColon < iFirstSlash)
+        // Omit the leading protocol such as ndn:
+        uri = strip(uri.slice(iColon + 1));
+    }
+
+    if (uri[0] == '/') {
+      if (uri.len() >= 2 && uri[1] == '/') {
+        // Strip the authority following "//".
+        local iAfterAuthority = uri.find("/", 2);
+        if (iAfterAuthority == null)
+          // Unusual case: there was only an authority.
+          return;
+        else
+          uri = strip(uri.slice(iAfterAuthority + 1));
+      }
+      else
+        uri = strip(uri.slice(1));
+    }
+
+    // Note that Squirrel split does not return an empty entry between "//".
+    local array = split(uri, "/");
+
+    // Unescape the components.
+    local sha256digestPrefix = "sha256digest=";
+    for (local i = 0; i < array.len(); ++i) {
+      local component;
+      if (array[i].len() > sha256digestPrefix.len() &&
+          array[i].slice(0, sha256digestPrefix.len()) == sha256digestPrefix) {
+        local hexString = strip(array[i].slice(sha256digestPrefix.len()));
+        component = NameComponent.fromImplicitSha256Digest
+          (Blob(Buffer(hexString, "hex"), false));
+      }
+      else
+        component = NameComponent(Name.fromEscapedString(array[i]));
+
+      if (component.getValue().isNull()) {
+        // Ignore the illegal componenent.  This also gets rid of a trailing '/'.
+        array.remove(i);
+        --i;
+        continue;
+      }
+      else
+        array[i] = component;
+    }
+
+    components_ = array;
+    ++changeCount_;
+  }
 
   /**
    * Append a GENERIC component to this Name.
@@ -527,7 +588,76 @@ class Name {
     return result;
   }
 
-  // TODO: fromEscapedString
+  /**
+   * Make a blob value by decoding the escapedString according to NDN URI 
+   * Scheme. If escapedString is "", "." or ".." then return an isNull() Blob,
+   * which means to skip the component in the name.
+   * This does not check for a type code prefix such as "sha256digest=".
+   * @param {string} escapedString The escaped string to decode.
+   * @return {Blob} The unescaped Blob value. If the escapedString is not a
+   * valid escaped component, then the Blob isNull().
+   */
+  static function fromEscapedString(escapedString)
+  {
+    local value = Name.unescape_(strip(escapedString));
+
+    // Check for all dots.
+    local gotNonDot = false;
+    for (local i = 0; i < value.len(); ++i) {
+      if (value[i] != '.') {
+        gotNonDot = true;
+        break;
+      }
+    }
+
+    if (!gotNonDot) {
+      // Special case for value of only periods.
+      if (value.len() <= 2)
+        // Zero, one or two periods is illegal.  Ignore this componenent to be
+        //   consistent with the C implementation.
+        return Blob();
+      else
+        // Remove 3 periods.
+        return Blob(value.slice(3), false);
+    }
+    else
+      return Blob(value, false);
+  };
+
+  /**
+   * Return a copy of str, converting each escaped "%XX" to the char value.
+   * @param {string} str The escaped string.
+   * return {Buffer} The unescaped string as a Buffer.
+   */
+  static function unescape_(str)
+  {
+    local result = blob(str.len());
+
+    for (local i = 0; i < str.len(); ++i) {
+      if (str[i] == '%' && i + 2 < str.len()) {
+        local hi = Buffer.fromHexChar(str[i + 1]);
+        local lo = Buffer.fromHexChar(str[i + 2]);
+
+        if (hi < 0 || lo < 0) {
+          // Invalid hex characters, so just keep the escaped string.
+          result.writen(str[i], 'b');
+          result.writen(str[i + 1], 'b');
+          result.writen(str[i + 2], 'b');
+        }
+        else
+          result.writen(16 * hi + lo, 'b');
+
+        // Skip ahead past the escaped value.
+        i += 2;
+      }
+      else
+        // Just copy through.
+        result.writen(str[i], 'b');
+    }
+
+    return Buffer.from(result, 0, result.tell());
+  }
+
   // TODO: getSuccessor
 
   /**
