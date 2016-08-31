@@ -83,8 +83,14 @@ class Buffer {
    * new Buffer without copying the blob, use Buffer.from(value).) If value is a
    * byte array, copy into a new underlying blob. If value is a string, treat it
    * as "raw" and copy to a new underlying blob without UTF-8 encoding.
+   * @param {string} encoding (optional) If value is a string, convert it to a
+   * byte array as follows. If encoding is "raw" or omitted, copy value to a new
+   * underlying blob without UTF-8 encoding. If encoding is "hex", value must be
+   * a sequence of pairs of hexadecimal digits, so convert them to integers.
+   * @throws string if the encoding is unrecognized or a hex string has invalid
+   * characters (or is not a multiple of 2 in length).
    */
-  constructor(value)
+  constructor(value, encoding = "raw")
   {
     local valueType = typeof value;
 
@@ -115,13 +121,33 @@ class Buffer {
       len_ = value.len();
     }
     else if (valueType == "string") {
-      // Just copy the string. Don't UTF-8 decode.
-      blob_ = ::blob(value.len());
-      // Don't use writestring since Standard Squirrel doesn't have it.
-      foreach (x in value)
-        blob_.writen(x, 'b');
+      if (encoding == "raw") {
+        // Just copy the string. Don't UTF-8 decode.
+        blob_ = ::blob(value.len());
+        // Don't use writestring since Standard Squirrel doesn't have it.
+        foreach (x in value)
+          blob_.writen(x, 'b');
 
-      len_ = value.len();
+        len_ = value.len();
+      }
+      else if (encoding == "hex") {
+        if (value.len() % 2 != 0)
+          throw "Invalid hex value";
+        len_ = value.len() / 2;
+        blob_ = ::blob(len_);
+
+        local iBlob = 0;
+        for (local i = 0; i < value.len(); i += 2) {
+          local hi = ::Buffer.fromHexChar(value[i]);
+          local lo = ::Buffer.fromHexChar(value[i + 1]);
+          if (hi < 0 || lo < 0)
+            throw "Invalid hex value";
+
+          blob_[iBlob++] = 16 * hi + lo;
+        }
+      }
+      else
+        throw "Unrecognized encoding";
     }
     else if (value instanceof ::Buffer) {
       if (value.len_ > 0) {
@@ -313,7 +339,24 @@ class Buffer {
       return result;
     }
     else
-      throw "Unrecognized type";
+      throw "Unrecognized encoding";
+  }
+
+  /**
+   * A utility function to convert the hex character to an integer from 0 to 15.
+   * @param {integer} c The integer character.
+   * @return The hex value, or -1 if x is not a hex character.
+   */
+  static function fromHexChar(c)
+  {
+    if (c >= '0' && c <= '9')
+      return c - '0';
+    else if (c >= 'A' && c <= 'F')
+      return c - 'A' + 10;
+    else if (c >= 'a' && c <= 'f')
+      return c - 'a' + 10;
+    else
+      return -1;
   }
 
   function _get(i)
@@ -938,11 +981,8 @@ class NameComponent {
 
     if (value == null)
       value_ = Blob([]);
-    else if (value instanceof Blob) {
-      if (value.isNull())
-        throw "NameComponent: The Blob value may not be null";
+    else if (value instanceof Blob)
       value_ = value;
-    }
     else
       // Blob will make a copy if needed.
       value_ = Blob(value);
@@ -1101,7 +1141,71 @@ class Name {
       throw "Name constructor: Unrecognized components type";
   }
 
-  // TODO: set(uri).
+  /**
+   * Parse the uri according to the NDN URI Scheme and set the name with the
+   * components.
+   * @param {string} uri The URI string.
+   */
+  function set(uri)
+  {
+    clear();
+
+    uri = strip(uri);
+    if (uri.len() <= 0)
+      return;
+
+    local iColon = uri.find(":");
+    if (iColon != null) {
+      // Make sure the colon came before a "/".
+      local iFirstSlash = uri.find("/");
+      if (iFirstSlash == null || iColon < iFirstSlash)
+        // Omit the leading protocol such as ndn:
+        uri = strip(uri.slice(iColon + 1));
+    }
+
+    if (uri[0] == '/') {
+      if (uri.len() >= 2 && uri[1] == '/') {
+        // Strip the authority following "//".
+        local iAfterAuthority = uri.find("/", 2);
+        if (iAfterAuthority == null)
+          // Unusual case: there was only an authority.
+          return;
+        else
+          uri = strip(uri.slice(iAfterAuthority + 1));
+      }
+      else
+        uri = strip(uri.slice(1));
+    }
+
+    // Note that Squirrel split does not return an empty entry between "//".
+    local array = split(uri, "/");
+
+    // Unescape the components.
+    local sha256digestPrefix = "sha256digest=";
+    for (local i = 0; i < array.len(); ++i) {
+      local component;
+      if (array[i].len() > sha256digestPrefix.len() &&
+          array[i].slice(0, sha256digestPrefix.len()) == sha256digestPrefix) {
+        local hexString = strip(array[i].slice(sha256digestPrefix.len()));
+        component = NameComponent.fromImplicitSha256Digest
+          (Blob(Buffer(hexString, "hex"), false));
+      }
+      else
+        component = NameComponent(Name.fromEscapedString(array[i]));
+
+      if (component.getValue().isNull()) {
+        // Ignore the illegal componenent.  This also gets rid of a trailing '/'.
+        array.remove(i);
+        --i;
+        continue;
+      }
+      else
+        array[i] = component;
+    }
+
+    components_ = array;
+    ++changeCount_;
+  }
 
   /**
    * Append a GENERIC component to this Name.
@@ -1413,7 +1517,76 @@ class Name {
     return result;
   }
 
-  // TODO: fromEscapedString
+  /**
+   * Make a blob value by decoding the escapedString according to NDN URI 
+   * Scheme. If escapedString is "", "." or ".." then return an isNull() Blob,
+   * which means to skip the component in the name.
+   * This does not check for a type code prefix such as "sha256digest=".
+   * @param {string} escapedString The escaped string to decode.
+   * @return {Blob} The unescaped Blob value. If the escapedString is not a
+   * valid escaped component, then the Blob isNull().
+   */
+  static function fromEscapedString(escapedString)
+  {
+    local value = Name.unescape_(strip(escapedString));
+
+    // Check for all dots.
+    local gotNonDot = false;
+    for (local i = 0; i < value.len(); ++i) {
+      if (value[i] != '.') {
+        gotNonDot = true;
+        break;
+      }
+    }
+
+    if (!gotNonDot) {
+      // Special case for value of only periods.
+      if (value.len() <= 2)
+        // Zero, one or two periods is illegal.  Ignore this componenent to be
+        //   consistent with the C implementation.
+        return Blob();
+      else
+        // Remove 3 periods.
+        return Blob(value.slice(3), false);
+    }
+    else
+      return Blob(value, false);
+  };
+
+  /**
+   * Return a copy of str, converting each escaped "%XX" to the char value.
+   * @param {string} str The escaped string.
+   * return {Buffer} The unescaped string as a Buffer.
+   */
+  static function unescape_(str)
+  {
+    local result = blob(str.len());
+
+    for (local i = 0; i < str.len(); ++i) {
+      if (str[i] == '%' && i + 2 < str.len()) {
+        local hi = Buffer.fromHexChar(str[i + 1]);
+        local lo = Buffer.fromHexChar(str[i + 2]);
+
+        if (hi < 0 || lo < 0) {
+          // Invalid hex characters, so just keep the escaped string.
+          result.writen(str[i], 'b');
+          result.writen(str[i + 1], 'b');
+          result.writen(str[i + 2], 'b');
+        }
+        else
+          result.writen(16 * hi + lo, 'b');
+
+        // Skip ahead past the escaped value.
+        i += 2;
+      }
+      else
+        // Just copy through.
+        result.writen(str[i], 'b');
+    }
+
+    return Buffer.from(result, 0, result.tell());
+  }
+
   // TODO: getSuccessor
 
   /**
@@ -4159,7 +4332,12 @@ class Tlv0_2WireFormat extends WireFormat {
    * preferred version NDN-TLV, you should use TlvWireFormat.get().
    * @return {Tlv0_2WireFormat} The singleton instance.
    */
-  static function get() { return Tlv0_2WireFormat_instance; }
+  static function get()
+  {
+    if (Tlv0_2WireFormat_instance == null)
+      ::Tlv0_2WireFormat_instance = Tlv0_2WireFormat();
+    return Tlv0_2WireFormat_instance;
+  }
 
   /**
    * Encode the name component to the encoder as NDN-TLV. This handles different
@@ -4638,7 +4816,7 @@ class Tlv0_2WireFormat_SignatureHolder
 }
 
 // We use a global variable because static member variables are immutable.
-Tlv0_2WireFormat_instance <- Tlv0_2WireFormat();
+Tlv0_2WireFormat_instance <- null;
 /**
  * Copyright (C) 2016 Regents of the University of California.
  * @author: Jeff Thompson <jefft0@remap.ucla.edu>
@@ -4670,11 +4848,319 @@ class TlvWireFormat extends Tlv0_2WireFormat {
    * if WireFormat.getDefaultWireFormat() == TlvWireFormat.get().
    * @return {TlvWireFormat} The singleton instance.
    */
-  static function get() { return TlvWireFormat_instance; }
+  static function get()
+  {
+    if (TlvWireFormat_instance == null)
+      ::TlvWireFormat_instance = TlvWireFormat();
+    return TlvWireFormat_instance;
+  }
 }
 
 // We use a global variable because static member variables are immutable.
-TlvWireFormat_instance <- TlvWireFormat();
+TlvWireFormat_instance <- null;
 
 // On loading this code, make this the default wire format.
 WireFormat.setDefaultWireFormat(TlvWireFormat.get());
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * Transport is a base class for specific transport classes such as 
+ * AgentDeviceTransport.
+ */
+class Transport {
+}
+
+/**
+ * TransportConnectionInfo is a base class for connection information used by
+ * subclasses of Transport.
+ */
+class TransportConnectionInfo {
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * A SquirrelObjectTransport extends Transport to communicate with a connection
+ * object which supports "on" and "send" methods, such as an Imp agent or device
+ * object. This can send a blob as well as another type of Squirrel object.
+ */
+class SquirrelObjectTransport extends Transport {
+  elementReader_ = null;
+  onReceivedObject_ = null;
+  connection_ = null;
+
+  /**
+   * Create a SquirrelObjectTransport.
+   * @param {function} onReceivedObject (optional) If supplied and the received
+   * object is not a blob then just call onReceivedObject(obj).
+   */
+  constructor(onReceivedObject = null) {
+    onReceivedObject_ = onReceivedObject;
+  }
+
+  /**
+   * Connect to the connection object given by connectionInfo.getConnnection(),
+   * communicating with connection.on and connection.send using the message name
+   * "NDN". If a received object is a Squirrel blob, make a Buffer from it and
+   * use it to read an entire packet element and call
+   * elementListener.onReceivedElement(element). Otherwise just call
+   * onReceivedObject(obj) using the callback given to the constructor.
+   * @param {SquirrelObjectTransportConnectionInfo} connectionInfo The
+   * ConnectionInfo with the connection object.
+   * @param {instance} elementListener The elementListener with function
+   * onReceivedElement which must remain valid during the life of this object.
+   * @param {function} onOpenCallback Once connected, call onOpenCallback().
+   * @param {function} onClosedCallback (optional) If the connection is closed 
+   * by the remote host, call onClosedCallback(). If omitted or null, don't call
+   * it.
+   */
+  function connect
+    (connectionInfo, elementListener, onOpenCallback, onClosedCallback = null)
+  {
+    elementReader_ = ElementReader(elementListener);
+    connection_ = connectionInfo.getConnnection();
+
+    // Add a listener to wait for a message object.
+    local thisTransport = this;
+    connection_.on("NDN", function(obj) {
+      if (typeof obj == "blob")
+        thisTransport.elementReader_.onReceivedData(Buffer.from(obj));
+      else {
+        if (thisTransport.onReceivedObject_ != null)
+          thisTransport.onReceivedObject_(obj);
+      }
+    });
+
+    onOpenCallback();
+  }
+
+  /**
+   * Send the object over the connection created by connect, using the message
+   * name "NDN".
+   * @param {blob|table} obj The object to send. If it is a blob then it is
+   * processed like an NDN packet.
+   */
+  function sendObject(obj) 
+  {
+    if (connection_ == null)
+      throw "not connected";
+    connection_.send("NDN", obj);
+  }
+
+  /**
+   * Convert the buffer to a Squirrel blob and send it over the connection
+   * created by connect.
+   * @param {Buffer} buffer The bytes to send.
+   */
+  function send(buffer)
+  {
+    local output = blob(buffer.len());
+    buffer.copy(output);
+    sendObject(output);
+  }
+}
+
+/**
+ * An SquirrelObjectTransportConnectionInfo extends TransportConnectionInfo to
+ * hold the connection object.
+ */
+class SquirrelObjectTransportConnectionInfo extends TransportConnectionInfo {
+  connection_ = null;
+
+  /**
+   * Create a new SquirrelObjectTransportConnectionInfo with the connection
+   * object.
+   * @param {instance} connection The connection object which supports "on" and
+   * "send" methods, such as an Imp agent or device object.
+   */
+  constructor(connection)
+  {
+    connection_ = connection;
+  }
+
+  /**
+   * Get the connection object given to the constructor.
+   * @return {instance} The connection object.
+   */
+  function getConnnection() { return connection_; }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * A MicroForwarderTransport extends Transport to communicate with the a
+ * MicroForwarder object. This also supports "on" and "send" methods so that
+ * this can be used by SquirrelObjectTransport as the connection object.
+ */
+class MicroForwarderTransport extends Transport {
+  elementReader_ = null;
+  onReceivedObject_ = null;
+  onCallbacks_ = null; // array of function which takes a Squirrel object.
+
+  /**
+   * Create a MicroForwarderTransport.
+   * @param {function} onReceivedObject (optional) If supplied and the received
+   * object is not a blob then just call onReceivedObject(obj).
+   */
+  constructor(onReceivedObject = null) {
+    onReceivedObject_ = onReceivedObject;
+    onCallbacks_ = [];
+  }
+
+  /**
+   * Connect to connectionInfo.getForwarder().
+   * If a received object is a Squirrel blob, make a Buffer from it and use it
+   * to read an entire packet element and call
+   * elementListener.onReceivedElement(element). Otherwise just call
+   * onReceivedObject(obj) using the callback given to the constructor.
+   * @param {MicroForwarderTransportConnectionInfo} connectionInfo The
+   * ConnectionInfo with the MicroForwarder object.
+   * @param {instance} elementListener The elementListener with function
+   * onReceivedElement which must remain valid during the life of this object.
+   * @param {function} onOpenCallback Once connected, call onOpenCallback().
+   * @param {function} onClosedCallback (optional) If the connection is closed 
+   * by the remote host, call onClosedCallback(). If omitted or null, don't call
+   * it.
+   */
+  function connect
+    (connectionInfo, elementListener, onOpenCallback, onClosedCallback = null)
+  {
+    elementReader_ = ElementReader(elementListener);
+    connectionInfo.getForwarder().addFace("internal://app", this);
+
+    onOpenCallback();
+  }
+
+  /**
+   * Send the object to the MicroForwarder over the connection created by
+   * connect (and to anyone else who called on("NDN", callback)).
+   * @param {blob|table} obj The object to send. If it is a blob then it is
+   * processed by the MicroForwarder like an NDN packet.
+   */
+  function sendObject(obj) 
+  {
+    if (onCallbacks_.len() == null)
+      // There should have been at least one callback added during connect.
+      throw "not connected";
+
+    foreach (callback in onCallbacks_)
+      callback(obj);
+  }
+
+  /**
+   * This is overloaded with the following two forms:
+   * send(buffer) - Convert the buffer to a Squirrel blob and send it to the
+   * MicroForwarder over the connection created by connect (and to anyone else
+   * who called on("NDN", callback)).
+   * send(messageName, obj) - When the MicroForwarder calls send, if it is a
+   * Squirrel blob then make a Buffer from it and use it to read an entire
+   * packet element and call elementListener_.onReceivedElement(element),
+   * otherwise just call onReceivedObject(obj) using the callback given to the
+   * constructor.
+   * @param {Buffer} buffer The bytes to send.
+   * @param {string} messageName The name of the message if calling
+   * send(messageName, obj). If messageName is not "NDN", do nothing.
+   * @param {blob|table} obj The object if calling send(messageName, obj).
+   */
+  function send(arg1, obj = null)
+  {
+    if (arg1 instanceof Buffer) {
+      local output = blob(arg1.len());
+      arg1.copy(output);
+      sendObject(output);
+    }
+    else {
+      if (arg1 != "NDN")
+        // The messageName is not "NDN". Ignore.
+        return;
+
+      if (typeof obj == "blob")
+        elementReader_.onReceivedData(Buffer.from(obj));
+      else {
+        if (onReceivedObject_ != null)
+          onReceivedObject_(obj);
+      }
+    }
+  }
+
+  function on(messageName, callback)
+  {
+    if (messageName != "NDN")
+      return;
+    onCallbacks_.append(callback);
+  }
+}
+
+/**
+ * A MicroForwarderTransportConnectionInfo extends TransportConnectionInfo to
+ * hold the MicroForwarder object to connect to.
+ */
+class MicroForwarderTransportConnectionInfo extends TransportConnectionInfo {
+  forwarder_ = null;
+
+  /**
+   * Create a new MicroForwarderTransportConnectionInfo with the forwarder
+   * object.
+   * @param {MicroForwarder} forwarder (optional) The MicroForwarder to
+   * communicate with. If omitted or null, use the static MicroForwarder.get().
+   */
+  constructor(forwarder = null)
+  {
+    forwarder_ = forwarder != null ? forwarder : MicroForwarder.get();
+  }
+
+  /**
+   * Get the MicroForwarder object given to the constructor.
+   * @return {MicroForwarder} The MicroForwarder object.
+   */
+  function getForwarder() { return forwarder_; }
+}
