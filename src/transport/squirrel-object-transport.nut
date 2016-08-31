@@ -18,16 +18,17 @@
  */
 
 /**
- * An AgentDeviceTransport extends Transport to use an Imp agent or device
- * object for communication, using the message name "NDN".
+ * A SquirrelObjectTransport extends Transport to communicate with a connection
+ * object which supports "on" and "send" methods, such as an Imp agent or device
+ * object. This can send a blob as well as another type of Squirrel object.
  */
-class AgentDeviceTransport extends Transport {
+class SquirrelObjectTransport extends Transport {
   elementReader_ = null;
   onReceivedObject_ = null;
   connection_ = null;
 
   /**
-   * Create an AgentDeviceTransport.
+   * Create a SquirrelObjectTransport.
    * @param {function} onReceivedObject (optional) If supplied and the received
    * object is not a blob then just call onReceivedObject(obj).
    */
@@ -36,14 +37,14 @@ class AgentDeviceTransport extends Transport {
   }
 
   /**
-   * Connect to the Imp agent or device object, communicating with
-   * connectionInfo.getConnnection().on and connectionInfo.getConnnection().send.
-   * If a received object is a Squirrel blob, make a Buffer from it and use it
-   * to read an entire packet element and call
+   * Connect to the connection object given by connectionInfo.getConnnection(),
+   * communicating with connection.on and connection.send using the message name
+   * "NDN". If a received object is a Squirrel blob, make a Buffer from it and
+   * use it to read an entire packet element and call
    * elementListener.onReceivedElement(element). Otherwise just call
    * onReceivedObject(obj) using the callback given to the constructor.
-   * @param {AgentDeviceTransportConnectionInfo} connectionInfo The
-   * ConnectionInfo with the agent or device connection object.
+   * @param {SquirrelObjectTransportConnectionInfo} connectionInfo The
+   * ConnectionInfo with the connection object.
    * @param {instance} elementListener The elementListener with function
    * onReceivedElement which must remain valid during the life of this object.
    * @param {function} onOpenCallback Once connected, call onOpenCallback().
@@ -98,15 +99,17 @@ class AgentDeviceTransport extends Transport {
 }
 
 /**
- * An AgentDeviceTransportConnectionInfo extends TransportConnectionInfo to hold
- * the connection object.
+ * An SquirrelObjectTransportConnectionInfo extends TransportConnectionInfo to
+ * hold the connection object.
  */
-class AgentDeviceTransportConnectionInfo extends TransportConnectionInfo {
+class SquirrelObjectTransportConnectionInfo extends TransportConnectionInfo {
   connection_ = null;
 
   /**
-   * Create a new AgentDeviceTransportConnectionInfo with the connection object.
-   * @param {instance} connection This is the Imp agent or device object.
+   * Create a new SquirrelObjectTransportConnectionInfo with the connection
+   * object.
+   * @param {instance} connection The connection object which supports "on" and
+   * "send" methods, such as an Imp agent or device object.
    */
   constructor(connection)
   {
@@ -115,7 +118,7 @@ class AgentDeviceTransportConnectionInfo extends TransportConnectionInfo {
 
   /**
    * Get the connection object given to the constructor.
-   * @return {instance} The Imp agent or device object.
+   * @return {instance} The connection object.
    */
   function getConnnection() { return connection_; }
 }

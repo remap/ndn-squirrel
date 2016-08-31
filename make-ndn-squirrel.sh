@@ -26,5 +26,5 @@ cat \
   src/encoding/tlv-0_2-wire-format.nut \
   src/encoding/tlv-wire-format.nut \
   src/transport/transport.nut \
-  src/transport/agent-device-transport.nut \
+  src/transport/squirrel-object-transport.nut \
   > ndn-squirrel.nut
