@@ -59,7 +59,8 @@ class MicroForwarderTransport extends Transport {
     elementReader_ = ElementReader(elementListener);
     connectionInfo.getForwarder().addFace("internal://app", this);
 
-    onOpenCallback();
+    if (onOpenCallback != null)
+      onOpenCallback();
   }
 
   /**

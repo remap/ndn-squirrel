@@ -69,7 +69,8 @@ class SquirrelObjectTransport extends Transport {
       }
     });
 
-    onOpenCallback();
+    if (onOpenCallback != null)
+      onOpenCallback();
   }
 
   /**
