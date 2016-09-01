@@ -13,6 +13,7 @@ cat \
   src/key-locator.nut \
   src/exclude.nut \
   src/interest.nut \
+  src/interest-filter.nut \
   src/meta-info.nut \
   src/generic-signature.nut \
   src/sha256-with-rsa-signature.nut \
