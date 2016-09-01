@@ -20,30 +20,32 @@
 // This file is loaded for testing if not on the Imp to create simple stubs for
 // the global agent and device objects.
 
-agentOnCallbacks <- {}; // Key: the messageName. Value: An array of callbacks.
-agent <- {
-  on = function(messageName, callback) {
-    if (!(messageName in agentOnCallbacks))
-      agentOnCallbacks[messageName] <- [];
-    agentOnCallbacks[messageName].append(callback);
-  },
-  send = function(messageName, obj) {
-    if (messageName in deviceOnCallbacks)
-      foreach (callback in deviceOnCallbacks[messageName])
-        callback(obj);
+if (!("agent" in getroottable()) && !("device" in getroottable())) {
+  agentOnCallbacks <- {}; // Key: the messageName. Value: An array of callbacks.
+  agent <- {
+    on = function(messageName, callback) {
+      if (!(messageName in agentOnCallbacks))
+        agentOnCallbacks[messageName] <- [];
+      agentOnCallbacks[messageName].append(callback);
+    },
+    send = function(messageName, obj) {
+      if (messageName in deviceOnCallbacks)
+        foreach (callback in deviceOnCallbacks[messageName])
+          callback(obj);
+    }
   }
-}
 
-deviceOnCallbacks <- {};
-device <- {
-  on = function(messageName, callback) { 
-    if (!(messageName in deviceOnCallbacks))
-      deviceOnCallbacks[messageName] <- [];
-    deviceOnCallbacks[messageName].append(callback);
-  },
-  send = function(messageName, obj) {
-    if (messageName in agentOnCallbacks)
-      foreach (callback in agentOnCallbacks[messageName])
-        callback(obj);
+  deviceOnCallbacks <- {};
+  device <- {
+    on = function(messageName, callback) {
+      if (!(messageName in deviceOnCallbacks))
+        deviceOnCallbacks[messageName] <- [];
+      deviceOnCallbacks[messageName].append(callback);
+    },
+    send = function(messageName, obj) {
+      if (messageName in agentOnCallbacks)
+        foreach (callback in agentOnCallbacks[messageName])
+          callback(obj);
+    }
   }
 }
