@@ -39,7 +39,10 @@ class TlvDecoder {
    */
   function readVarNumber()
   {
+/* To avoid a bug in the Imp device Squirrel implementation, don't use the metamethod.
     local firstOctet = input_[offset_];
+*/
+    local firstOctet = input_.get(offset_);
     offset_ += 1;
     if (firstOctet < 253)
       return firstOctet;
