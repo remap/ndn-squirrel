@@ -371,6 +371,13 @@ class Buffer {
       throw "Unrecognized type";
   }
 
+  /**
+   * Get the value at the index.
+   * @param {integer} The zero-based index into the buffer array.
+   * @return {integer} The value at the index.
+   */
+  function get(i) { return blob_[offset_ + i]; }
+
   function _set(i, value)
   {
     if (typeof i == "integer")
@@ -2332,7 +2339,7 @@ class Interest {
   function setNonce(nonce)
   {
     nonce_ = nonce instanceof Blob ? nonce : Blob(nonce, true);
-    // Set _getNonceChangeCount so that the next call to getNonce() won't clear
+    // Set getNonceChangeCount_ so that the next call to getNonce() won't clear
     // nonce_.
     ++changeCount_;
     getNonceChangeCount_ = getChangeCount();
@@ -2379,7 +2386,33 @@ class Interest {
     // To save memory, don't cache the encoding.
   }
 
-  // TODO: refreshNonce.
+  /**
+   * Update the bytes of the nonce with new random values. This ensures that the
+   * new nonce value is different than the current one. If the current nonce is
+   * not specified, this does nothing.
+   */
+  function refreshNonce()
+  {
+    local currentNonce = getNonce();
+    if (currentNonce.size() == 0)
+      return;
+
+    local newNonce;
+    while (true) {
+      local buffer = Buffer(currentNonce.size());
+      Crypto.generateRandomBytes(buffer);
+      newNonce = Blob(buffer, false);
+      if (!newNonce.equals(currentNonce))
+        break;
+    }
+
+    nonce_ = newNonce;
+    // Set getNonceChangeCount_ so that the next call to getNonce() won't clear
+    // this.nonce_.
+    ++changeCount_;
+    getNonceChangeCount_ = getChangeCount();
+  }
+
   // TODO: setLpPacket.
 
   /**
@@ -2399,6 +2432,117 @@ class Interest {
 
     return changeCount_;
   }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * An InterestFilter holds a Name prefix and optional regex match expression for
+ * use in Face.setInterestFilter.
+ */
+class InterestFilter {
+  prefix_ = null;
+  regexFilter_ = null;
+  regexFilterPattern_ = null;
+
+  /**
+   * Create an InterestFilter to match any Interest whose name starts with the
+   * given prefix. If the optional regexFilter is provided then the remaining
+   * components match the regexFilter regular expression as described in
+   * doesMatch.
+   * @param {InterestFilter|Name|string} prefix If prefix is another
+   * InterestFilter copy its values. If prefix is a Name then this makes a copy
+   * of the Name. Otherwise this creates a Name from the URI string.
+   * @param {string} regexFilter (optional) The regular expression for matching
+   * the remaining name components.
+   */
+  constructor(prefix, regexFilter = null)
+  {
+    if (prefix instanceof InterestFilter) {
+      // The copy constructor.
+      local interestFilter = prefix;
+      prefix_ = Name(interestFilter.prefix_);
+      regexFilter_ = interestFilter.regexFilter_;
+      regexFilterPattern_ = interestFilter.regexFilterPattern_;
+    }
+    else {
+      prefix_ = Name(prefix);
+      if (regexFilter != null) {
+/*      TODO: Support regex.
+        regexFilter_ = regexFilter;
+        regexFilterPattern_ = InterestFilter.makePattern(regexFilter);
+*/
+        throw "not supported";
+      }
+    }
+  }
+  
+  /**
+   * Check if the given name matches this filter. Match if name starts with this
+   * filter's prefix. If this filter has the optional regexFilter then the
+   * remaining components match the regexFilter regular expression.
+   * For example, the following InterestFilter:
+   *
+   *    InterestFilter("/hello", "<world><>+")
+   *
+   * will match all Interests, whose name has the prefix `/hello` which is
+   * followed by a component `world` and has at least one more component after it.
+   * Examples:
+   *
+   *    /hello/world/!
+   *    /hello/world/x/y/z
+   *
+   * Note that the regular expression will need to match all remaining components
+   * (e.g., there are implicit heading `^` and trailing `$` symbols in the
+   * regular expression).
+   * @param {Name} name The name to check against this filter.
+   * @return {boolean} True if name matches this filter, otherwise false.
+   */
+  function doesMatch(name)
+  {
+    if (name.size() < prefix_.size())
+      return false;
+
+/*  TODO: Support regex. The constructor already rejected a regexFilter.
+    if (hasRegexFilter()) {
+      // Perform a prefix match and regular expression match for the remaining
+      // components.
+      if (!prefix_.match(name))
+        return false;
+
+      return null != NdnRegexMatcher.match
+        (this.regexFilterPattern, name.getSubName(this.prefix.size()));
+    }
+    else
+*/
+      // Just perform a prefix match.
+      return prefix_.match(name);
+  }
+
+  /**
+   * Get the prefix given to the constructor.
+   * @return {Name} The prefix Name which you should not modify.
+   */
+  function getPrefix() { return prefix_; }
+
+  // TODO: hasRegexFilter
+  // TODO: getRegexFilter
 }
 /**
  * Copyright (C) 2016 Regents of the University of California.
@@ -3129,7 +3273,10 @@ class TlvDecoder {
    */
   function readVarNumber()
   {
+/* To avoid a bug in the Imp device Squirrel implementation, don't use the metamethod.
     local firstOctet = input_[offset_];
+*/
+    local firstOctet = input_.get(offset_);
     offset_ += 1;
     if (firstOctet < 253)
       return firstOctet;
@@ -4881,6 +5028,280 @@ WireFormat.setDefaultWireFormat(TlvWireFormat.get());
  */
 
 /**
+ * An InterestFilterTable is an internal class to hold a list of entries with
+ * an interest Filter and its OnInterestCallback.
+ */
+class InterestFilterTable {
+  table_ = null; // Array of InterestFilterTableEntry
+
+  constructor()
+  {
+    table_ = [];
+  }
+
+  /**
+   * Add a new entry to the table.
+   * @param {integer} interestFilterId The ID from Node.getNextEntryId().
+   * @param {InterestFilter} filter The InterestFilter for this entry.
+   * @param {function} onInterest The callback to call.
+   * @param {Face} face The face on which was called registerPrefix or
+   * setInterestFilter which is passed to the onInterest callback.
+   */
+  function setInterestFilter(interestFilterId, filter, onInterest, face)
+  {
+    table_.append(InterestFilterTableEntry
+      (interestFilterId, filter, onInterest, face));
+  }
+
+  /**
+   * Find all entries from the interest filter table where the interest conforms
+   * to the entry's filter, and add to the matchedFilters list.
+   * @param {Interest} interest The interest which may match the filter in
+   * multiple entries.
+   * @param {Array<InterestFilterTableEntry>} matchedFilters Add each matching
+   * InterestFilterTableEntry from the interest filter table.  The caller
+   * should pass in an empty array.
+   */
+  function getMatchedFilters(interest, matchedFilters)
+  {
+    foreach (entry in table_) {
+      if (entry.getFilter().doesMatch(interest.getName()))
+        matchedFilters.append(entry);
+    }
+  }
+
+  // TODO: unsetInterestFilter
+}
+
+/**
+ * InterestFilterTable.Entry holds an interestFilterId, an InterestFilter and
+ * the OnInterestCallback with its related Face.
+ */
+class InterestFilterTableEntry {
+  interestFilterId_ = 0;
+  filter_ = null;
+  onInterest_ = null;
+  face_ = null;
+
+  /**
+   * Create a new InterestFilterTableEntry with the given values.
+   * @param {integer} interestFilterId The ID from getNextEntryId().
+   * @param {InterestFilter} filter The InterestFilter for this entry.
+   * @param {function} onInterest The callback to call.
+   * @param {Face} face The face on which was called registerPrefix or
+   * setInterestFilter which is passed to the onInterest callback.
+   */
+  constructor(interestFilterId, filter, onInterest, face)
+  {
+    interestFilterId_ = interestFilterId;
+    filter_ = filter;
+    onInterest_ = onInterest;
+    face_ = face;
+  }
+
+  /**
+   * Get the interestFilterId given to the constructor.
+   * @return {integer} The interestFilterId.
+   */
+  function getInterestFilterId () { return interestFilterId_; }
+
+  /**
+   * Get the InterestFilter given to the constructor.
+   * @return {InterestFilter} The InterestFilter.
+   */
+  function getFilter() { return filter_; }
+
+  /**
+   * Get the onInterest callback given to the constructor.
+   * @return {function} The onInterest callback.
+   */
+  function getOnInterest() { return onInterest_; }
+
+  /**
+   * Get the Face given to the constructor.
+   * @return {Face} The Face.
+   */
+  function getFace() { return face_; }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * A PendingInterestTable is an internal class to hold a list of pending
+ * interests with their callbacks.
+ */
+class PendingInterestTable {
+  table_ = null;          // Array of PendingInterestTableEntry
+  removeRequests_ = null; // Array of integer
+
+  constructor()
+  {
+    table_ = [];
+    removeRequests_ = [];
+  }
+
+  /**
+   * Add a new entry to the pending interest table. Also set a timer to call the
+   * timeout. However, if removePendingInterest was already called with the
+   * pendingInterestId, don't add an entry and return null.
+   * @param {integer} pendingInterestId
+   * @param {Interest} interestCopy
+   * @param {function} onData
+   * @param {function} onTimeout
+   * @param {function} onNetworkNack
+   * @return {PendingInterestTableEntry} The new PendingInterestTableEntry, or
+   * null if removePendingInterest was already called with the pendingInterestId.
+   */
+  function add(pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack)
+  {
+    local removeRequestIndex = removeRequests_.find(pendingInterestId);
+    if (removeRequestIndex != null) {
+      // removePendingInterest was called with the pendingInterestId returned by
+      //   expressInterest before we got here, so don't add a PIT entry.
+      removeRequests_.remove(removeRequestIndex);
+      return null;
+    }
+
+    local entry = PendingInterestTableEntry
+      (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack);
+    table_.append(entry);
+
+/*  TODO: Implement timeout.
+    // Set interest timer.
+    var timeoutMilliseconds = (interestCopy.getInterestLifetimeMilliseconds() || 4000);
+    var thisTable = this;
+    var timeoutCallback = function() {
+      if (LOG > 1) console.log("Interest time out: " + interestCopy.getName().toUri());
+
+      // Remove the entry from the table.
+      var index = thisTable.table_.indexOf(entry);
+      if (index >= 0)
+        thisTable.table_.splice(index, 1);
+
+      entry.callTimeout();
+    };
+
+    entry.setTimeout(timeoutCallback, timeoutMilliseconds);
+*/
+
+    return entry;
+  }
+
+  /**
+   * Find all entries from the pending interest table where data conforms to
+   * the entry's interest selectors, remove the entries from the table, and add
+   * to the entries list.
+   * @param {Data} data The incoming Data packet to find the interest for.
+   * @param {Array<PendingInterestTableEntry>} entries Add matching
+   * PendingInterestTableEntry from the pending interest table. The caller
+   * should pass in an empty array.
+   */
+  function extractEntriesForExpressedInterest(data, entries)
+  {
+    // Go backwards through the list so we can erase entries.
+    for (local i = table_.len() - 1; i >= 0; --i) {
+      local pendingInterest = table_[i];
+      if (pendingInterest.getInterest().matchesData(data)) {
+/*  TODO: Implement timeout.
+        pendingInterest.clearTimeout();
+*/
+        entries.append(pendingInterest);
+        table_.remove(i);
+      }
+    }
+  }
+
+  // TODO: extractEntriesForNackInterest
+  // TODO: removePendingInterest
+}
+
+/**
+ * PendingInterestTableEntry holds the callbacks and other fields for an entry
+ * in the pending interest table.
+ */
+class PendingInterestTableEntry {
+  pendingInterestId_ = 0;
+  interest_ = null;
+  onData_ = null;
+  onTimeout_ = null;
+  onNetworkNack_ = null;
+
+  /*
+   * Create a new Entry with the given fields. Note: You should not call this
+   * directly but call PendingInterestTable.add.
+   */
+  constructor(pendingInterestId, interest, onData, onTimeout, onNetworkNack)
+  {
+    pendingInterestId_ = pendingInterestId;
+    interest_ = interest;
+    onData_ = onData;
+    onTimeout_ = onTimeout;
+    onNetworkNack_ = onNetworkNack;
+  }
+
+  /**
+   * Get the pendingInterestId given to the constructor.
+   * @return {integer} The pendingInterestId.
+   */
+  function getPendingInterestId() { return this.pendingInterestId_; }
+
+  /**
+   * Get the interest given to the constructor (from Face.expressInterest).
+   * @return {Interest} The interest. NOTE: You must not change the interest
+   * object - if you need to change it then make a copy.
+   */
+  function getInterest() { return this.interest_; }
+
+  /**
+   * Get the OnData callback given to the constructor.
+   * @return {function} The OnData callback.
+   */
+  function getOnData() { return this.onData_; }
+
+  /**
+   * Get the OnNetworkNack callback given to the constructor.
+   * @return {function} The OnNetworkNack callback.
+   */
+  function getOnNetworkNack() { return this.onNetworkNack_; }
+
+  // TODO: callTimeout
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
  * Transport is a base class for specific transport classes such as 
  * AgentDeviceTransport.
  */
@@ -4964,7 +5385,8 @@ class SquirrelObjectTransport extends Transport {
       }
     });
 
-    onOpenCallback();
+    if (onOpenCallback != null)
+      onOpenCallback();
   }
 
   /**
@@ -5039,7 +5461,8 @@ class SquirrelObjectTransportConnectionInfo extends TransportConnectionInfo {
 /**
  * A MicroForwarderTransport extends Transport to communicate with the a
  * MicroForwarder object. This also supports "on" and "send" methods so that
- * this can be used by SquirrelObjectTransport as the connection object.
+ * this can be used by SquirrelObjectTransport as the connection object (see
+ * connect).
  */
 class MicroForwarderTransport extends Transport {
   elementReader_ = null;
@@ -5057,9 +5480,9 @@ class MicroForwarderTransport extends Transport {
   }
 
   /**
-   * Connect to connectionInfo.getForwarder().
-   * If a received object is a Squirrel blob, make a Buffer from it and use it
-   * to read an entire packet element and call
+   * Connect to connectionInfo.getForwarder() by calling its addFace and using
+   * this as the connection object. If a received object is a Squirrel blob,
+   * make a Buffer from it and use it to read an entire packet element and call
    * elementListener.onReceivedElement(element). Otherwise just call
    * onReceivedObject(obj) using the callback given to the constructor.
    * @param {MicroForwarderTransportConnectionInfo} connectionInfo The
@@ -5077,7 +5500,8 @@ class MicroForwarderTransport extends Transport {
     elementReader_ = ElementReader(elementListener);
     connectionInfo.getForwarder().addFace("internal://app", this);
 
-    onOpenCallback();
+    if (onOpenCallback != null)
+      onOpenCallback();
   }
 
   /**
@@ -5163,4 +5587,408 @@ class MicroForwarderTransportConnectionInfo extends TransportConnectionInfo {
    * @return {MicroForwarder} The MicroForwarder object.
    */
   function getForwarder() { return forwarder_; }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+enum FaceConnectStatus_ { UNCONNECTED, CONNECT_REQUESTED, CONNECT_COMPLETE }
+
+/**
+ * A Face provides the top-level interface to the library. It holds a connection
+ * to a forwarder and supports interest / data exchange.
+ */
+class Face {
+  transport_ = null;
+  connectionInfo_ = null;
+  pendingInterestTable_ = null;
+  interestFilterTable_ = null;
+  registeredPrefixTable_ = null;
+  connectStatus_ = FaceConnectStatus_.UNCONNECTED;
+  lastEntryId_ = 0;
+  timeoutPrefix_ = Name("/local/timeout");
+  nonceTemplate_ = Blob(Buffer(4), false);
+
+  /**
+   * Create a new Face. The constructor has the forms Face() or
+   * Face(transport, connectionInfo). If the default Face() constructor is
+   * used, create a MicroForwarderTransport connection to the static instance
+   * MicroForwarder.get(). Otherwise connect using the given transport and
+   * connectionInfo.
+   * @param {Transport} transport (optional) An object of a subclass of
+   * Transport to use for communication. If supplied, you must also supply a
+   * connectionInfo.
+   * @param {TransportConnectionInfo} connectionInfo (optional) This must be a
+   * ConnectionInfo from the same subclass of Transport as transport.
+   */
+  constructor(transport = null, connectionInfo = null)
+  {
+    if (transport == null) {
+      transport_ = MicroForwarderTransport();
+      connectionInfo_ = MicroForwarderTransportConnectionInfo();
+    }
+    else {
+      transport_ = transport;
+      connectionInfo_ = connectionInfo;
+    }
+
+    pendingInterestTable_ = PendingInterestTable();
+    interestFilterTable_ = InterestFilterTable();
+// TODO    registeredPrefixTable_ = RegisteredPrefixTable(interestFilterTable_);
+  }
+
+  /**
+   * Send the interest through the transport, read the entire response and call
+   * onData, onTimeout or onNetworkNack as described below.
+   * There are two forms of expressInterest. The first form takes the exact
+   * interest (including lifetime):
+   * expressInterest(interest, onData [, onTimeout] [, onNetworkNack] [, wireFormat]).
+   * The second form creates the interest from a name and optional interest template:
+   * expressInterest(name [, template], onData [, onTimeout] [, onNetworkNack] [, wireFormat]).
+   * @param {Interest} interest The Interest to send which includes the interest
+   * lifetime for the timeout.
+   * @param {function} onData When a matching data packet is received, this
+   * calls onData(interest, data) where interest is the interest given to
+   * expressInterest and data is the received Data object. NOTE: You must not
+   * change the interest object - if you need to change it then make a copy.
+   * NOTE: The library will log any exceptions thrown by this callback, but for
+   * better error handling the callback should catch and properly handle any
+   * exceptions.
+   * @param {function} onTimeout (optional) If the interest times out according
+   * to the interest lifetime, this calls onTimeout(interest) where interest is
+   * the interest given to expressInterest.
+   * NOTE: The library will log any exceptions thrown by this callback, but for
+   * better error handling the callback should catch and properly handle any
+   * exceptions.
+   * @param {function} onNetworkNack (optional) When a network Nack packet for
+   * the interest is received and onNetworkNack is not null, this calls
+   * onNetworkNack(interest, networkNack) and does not call onTimeout. interest
+   * is the sent Interest and networkNack is the received NetworkNack. If
+   * onNetworkNack is supplied, then onTimeout must be supplied too. However, if 
+   * a network Nack is received and onNetworkNack is null, do nothing and wait
+   * for the interest to time out. (Therefore, an application which does not yet
+   * process a network Nack reason treats a Nack the same as a timeout.)
+   * NOTE: The library will log any exceptions thrown by this callback, but for
+   * better error handling the callback should catch and properly handle any
+   * exceptions.
+   * @param {Name} name The Name for the interest. (only used for the second
+   * form of expressInterest).
+   * @param {Interest} template (optional) If not omitted, copy the interest 
+   * selectors from this Interest. If omitted, use a default interest lifetime.
+   * (only used for the second form of expressInterest).
+   * @param {WireFormat} (optional) A WireFormat object used to encode the
+   * message. If omitted, use WireFormat.getDefaultWireFormat().
+   * @return {integer} The pending interest ID which can be used with
+   * removePendingInterest.
+   * @throws string If the encoded interest size exceeds
+   * Face.getMaxNdnPacketSize().
+   */
+  function expressInterest
+    (interestOrName, arg2 = null, arg3 = null, arg4 = null, arg5 = null,
+     arg6 = null)
+  {
+    local interestCopy;
+    if (interestOrName instanceof Interest)
+      // Just use a copy of the interest.
+      interestCopy = Interest(interestOrName);
+    else {
+      // The first argument is a name. Make the interest from the name and
+      // possible template.
+      if (arg2 instanceof Interest) {
+        local template = arg2;
+        // Copy the template.
+        interestCopy = Interest(template);
+        interestCopy.setName(interestOrName);
+
+        // Shift the remaining args to be processed below.
+        arg2 = arg3;
+        arg3 = arg4;
+        arg4 = arg5;
+        arg5 = arg6;
+      }
+      else {
+        // No template.
+        interestCopy = Interest(interestOrName);
+        // Use a default timeout.
+        interestCopy.setInterestLifetimeMilliseconds(4000.0);
+      }
+    }
+
+    local onData = arg2;
+    local onTimeout;
+    local onNetworkNack;
+    local wireFormat;
+    // arg3,       arg4,          arg5 may be:
+    // OnTimeout,  OnNetworkNack, WireFormat
+    // OnTimeout,  OnNetworkNack, null
+    // OnTimeout,  WireFormat,    null
+    // OnTimeout,  null,          null
+    // WireFormat, null,          null
+    // null,       null,          null
+    if (typeof arg3 == "function")
+      onTimeout = arg3;
+    else
+      onTimeout = function() {};
+
+    if (typeof arg4 == "function")
+      onNetworkNack = arg4;
+    else
+      onNetworkNack = null;
+
+    if (arg3 instanceof WireFormat)
+      wireFormat = arg3;
+    else if (arg4 instanceof WireFormat)
+      wireFormat = arg4;
+    else if (arg5 instanceof WireFormat)
+      wireFormat = arg5;
+    else
+      wireFormat = WireFormat.getDefaultWireFormat();
+
+    local pendingInterestId = getNextEntryId();
+
+    // Set the nonce in our copy of the Interest so it is saved in the PIT.
+    interestCopy.setNonce(Face.nonceTemplate_);
+    interestCopy.refreshNonce();
+
+    // TODO: Handle async connect.
+    connectSync();
+    expressInterestHelper_
+      (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack,
+       wireFormat);
+
+    return pendingInterestId;
+  }
+
+  /**
+   * Do the work of reconnectAndExpressInterest once we know we are connected.
+   * Add to the pendingInterestTable_ and call transport_.send to send the
+   * interest.
+   * @param {integer} pendingInterestId The getNextEntryId() for the pending
+   * interest ID which expressInterest got so it could return it to the caller.
+   * @param {Interest} interestCopy The Interest to send, which has already
+   * been copied.
+   * @param {function} onData A function object to call when a matching data
+   * packet is received.
+   * @param {function} onTimeout A function to call if the interest times out.
+   * If onTimeout is null, this does not use it.
+   * @param {function} onNetworkNack A function to call when a network Nack
+   * packet is received. If onNetworkNack is null, this does not use it.
+   * @param {WireFormat} wireFormat A WireFormat object used to encode the
+   * message.
+   */
+  function expressInterestHelper_
+    (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack,
+     wireFormat)
+  {
+    if (pendingInterestTable_.add
+        (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack) == null)
+      // removePendingInterest was already called with the pendingInterestId.
+      return;
+
+    // Special case: For timeoutPrefix we don't actually send the interest.
+    if (!Face.timeoutPrefix_.match(interestCopy.getName())) {
+      local encoding = interestCopy.wireEncode(wireFormat);
+      if (encoding.size() > Face.getMaxNdnPacketSize())
+        throw
+          "The encoded interest size exceeds the maximum limit getMaxNdnPacketSize()";
+
+      transport_.send(encoding.buf());
+    }
+  }
+
+  /**
+   * Add an entry to the local interest filter table to call the onInterest
+   * callback for a matching incoming Interest. This method only modifies the
+   * library's local callback table and does not register the prefix with the
+   * forwarder. It will always succeed. To register a prefix with the forwarder,
+   * use registerPrefix. There are two forms of setInterestFilter.
+   * The first form uses the exact given InterestFilter:
+   * setInterestFilter(filter, onInterest).
+   * The second form creates an InterestFilter from the given prefix Name:
+   * setInterestFilter(prefix, onInterest).
+   * @param {InterestFilter} filter The InterestFilter with a prefix and 
+   * optional regex filter used to match the name of an incoming Interest. This
+   * makes a copy of filter.
+   * @param {Name} prefix The Name prefix used to match the name of an incoming
+   * Interest.
+   * @param {function} onInterest When an Interest is received which matches the
+   * filter, this calls
+   * onInterest(prefix, interest, face, interestFilterId, filter).
+   * NOTE: The library will log any exceptions thrown by this callback, but for
+   * better error handling the callback should catch and properly handle any
+   * exceptions.
+   */
+  function setInterestFilter(filterOrPrefix, onInterest)
+  {
+    local interestFilterId = getNextEntryId();
+    interestFilterTable_.setInterestFilter
+      (interestFilterId, InterestFilter(filterOrPrefix), onInterest, this);
+    return interestFilterId;
+  }
+
+  /**
+   * The OnInterest callback calls this to put a Data packet which satisfies an
+   * Interest.
+   * @param {Data} data The Data packet which satisfies the interest.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * encode the Data packet. If omitted, use WireFormat.getDefaultWireFormat().
+   * @throws Error If the encoded Data packet size exceeds getMaxNdnPacketSize().
+   */
+  function putData(data, wireFormat = null)
+  {
+    local encoding = data.wireEncode(wireFormat);
+    if (encoding.size() > Face.getMaxNdnPacketSize())
+      throw
+        "The encoded Data packet size exceeds the maximum limit getMaxNdnPacketSize()";
+
+    transport_.send(encoding.buf());
+  }
+
+  /**
+   * This is a simple form of registerPrefix to register with a local forwarder
+   * where the transport (such as MicroForwarderTransport) supports "sendObject"
+   * to communicate using Squirrel objects, avoiding the time and code space
+   * to encode/decode control packets. Register the prefix with the forwarder
+   * and call onInterest when a matching interest is received.
+   * @param {Name} prefix The Name prefix.
+   * @param {function} onInterest (optional) If not null, this creates an
+   * interest filter from prefix so that when an Interest is received which
+   * matches the filter, this calls
+   * onInterest(prefix, interest, face, interestFilterId, filter).
+   * NOTE: You must not change the prefix object - if you need to change it then
+   * make a copy. If onInterest is null, it is ignored and you must call
+   * setInterestFilter.
+   * NOTE: The library will log any exceptions thrown by this callback, but for
+   * better error handling the callback should catch and properly handle any
+   * exceptions.
+   */
+  function registerPrefixUsingObject(prefix, onInterest = null)
+  {
+    // TODO: Handle async connect.
+    connectSync();
+
+    // TODO: Handle async register.
+    transport_.sendObject({
+      type = "rib/register",
+      nameUri = prefix.toUri()
+    });
+
+    if (onInterest != null)
+      setInterestFilter(InterestFilter(prefix), onInterest);
+  }
+
+  /**
+   * Get the practical limit of the size of a network-layer packet. If a packet
+   * is larger than this, the library or application MAY drop it.
+   * @return {integer} The maximum NDN packet size.
+   */
+  static function getMaxNdnPacketSize() { return NdnCommon.MAX_NDN_PACKET_SIZE; }
+
+  /**
+   * An internal method to get the next unique entry ID for the pending interest
+   * table, interest filter table, etc. Most entry IDs are for the pending
+   * interest table (there usually are not many interest filter table entries)
+   * so we use a common pool to only have to have one method which is called by
+   * Face.
+   *
+   * @return {integer} The next entry ID.
+   */
+  function getNextEntryId() { return ++lastEntryId_; }
+
+  /**
+   * If connectionStatus_ is not already CONNECT_COMPLETE, do a synchronous
+   * transport_connect and set the status to CONNECT_COMPLETE.
+   */
+  function connectSync()
+  {
+    if (connectStatus_ != FaceConnectStatus_.CONNECT_COMPLETE) {
+      transport_.connect(connectionInfo_, this, null);
+      connectStatus_ = FaceConnectStatus_.CONNECT_COMPLETE;
+    }
+  }
+
+  /**
+   * This is called by the transport's ElementReader to process an entire
+   * received element such as a Data or Interest packet.
+   * @param {Buffer} element The bytes of the incoming element.
+   */
+  function onReceivedElement(element)
+  {
+    local lpPacket = null;
+    if (element[0] == Tlv.LpPacket_LpPacket)
+      // TODO: Support LpPacket.
+      throw "not supported";
+
+    // First, decode as Interest or Data.
+    local interest = null;
+    local data = null;
+    if (element[0] == Tlv.Interest || element[0] == Tlv.Data) {
+      local decoder = TlvDecoder (element);
+      if (decoder.peekType(Tlv.Interest, element.len())) {
+        interest = Interest();
+        interest.wireDecode(element, TlvWireFormat.get());
+
+        if (lpPacket != null)
+          interest.setLpPacket(lpPacket);
+      }
+      else if (decoder.peekType(Tlv.Data, element.len())) {
+        data = Data();
+        data.wireDecode(element, TlvWireFormat.get());
+
+        if (lpPacket != null)
+          data.setLpPacket(lpPacket);
+      }
+    }
+
+    if (lpPacket != null) {
+      // We have decoded the fragment, so remove the wire encoding to save memory.
+      lpPacket.setFragmentWireEncoding(Blob());
+
+      // TODO: Check for NetworkNack.
+    }
+
+    // Now process as Interest or Data.
+    if (interest != null) {
+      // Call all interest filter callbacks which match.
+      local matchedFilters = [];
+      interestFilterTable_.getMatchedFilters(interest, matchedFilters);
+      foreach (entry in matchedFilters) {
+        try {
+          entry.getOnInterest()
+            (entry.getFilter().getPrefix(), interest, this,
+             entry.getInterestFilterId(), entry.getFilter());
+        } catch (ex) {
+          // TODO: Log "Error in onInterest: " + ex.
+        }
+      }
+    }
+    else if (data != null) {
+      local pendingInterests = [];
+      pendingInterestTable_.extractEntriesForExpressedInterest
+        (data, pendingInterests);
+      // Process each matching PIT entry (if any).
+      foreach (pendingInterest in pendingInterests) {
+        try {
+          pendingInterest.getOnData()(pendingInterest.getInterest(), data);
+        } catch (ex) {
+          // TODO: Log "Error in onData: " + ex.
+        }
+      }
+    }
+  }
 }

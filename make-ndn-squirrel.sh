@@ -31,4 +31,5 @@ cat \
   src/transport/transport.nut \
   src/transport/squirrel-object-transport.nut \
   src/transport/micro-forwarder-transport.nut \
+  src/face.nut \
   > ndn-squirrel.nut
