@@ -104,7 +104,6 @@ class MicroForwarder {
 
     // Now process as Interest or Data.
     if (interest != null) {
-      dump("Debug received interest " + interest.getName().toUri());
       if (localhostNamePrefix.match(interest.getName()))
         // Ignore localhost.
         return;
@@ -122,7 +121,7 @@ class MicroForwarder {
       // Add to the PIT.
       local pitEntry = PitEntry(interest, face);
       PIT_.append(pitEntry);
-/* debug
+/*    TODO: Implement timeout.
       // Set the interest timeout timer.
       local timeoutCallback = function() {
         // Remove the face's entry from the PIT
@@ -239,7 +238,9 @@ class MicroForwarder {
 MicroForwarder_instance <- null;
 
 /**
- * A PitEntry is used in the PIT to record the face on which an Interest came in.
+ * A PitEntry is used in the PIT to record the face on which an Interest came 
+ * in. (This is not to be confused with the entry object used by the application
+ * library's PendingInterestTable class.)
  * @param {Interest} interest
  * @param {ForwarderFace} face
  */
@@ -279,7 +280,7 @@ class ForwarderFace {
   faceId = null;
 
   /**
-   * Create a `ForwarderFace and set the faceId to  a unique value.
+   * Create a ForwarderFace and set the faceId to a unique value.
    * @param {string} uri The URI to use in the faces/query and faces/list
    * commands.
    * @param {Transport} transport Communicate using the Transport object. You
