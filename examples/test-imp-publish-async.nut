@@ -20,7 +20,7 @@
 /**
  * This is called by the library when an Interest is received. Make a Data
  * packet with the same name as the Interest, add a message content to the Data
- * packet and sent it.
+ * packet and send it.
  */
 function onInterest(prefix, interest, face, interestFilterId, filter)
 {
