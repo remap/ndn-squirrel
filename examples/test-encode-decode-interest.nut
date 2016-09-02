@@ -17,8 +17,6 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-function dump(message) { print(message); print("\n"); }
-
 local TlvInterest = Blob([
 0x05, 0x50, // Interest
   0x07, 0x0A, 0x08, 0x03, 0x6E, 0x64, 0x6E, 0x08, 0x03, 0x61, 0x62, 0x63, // Name
@@ -59,31 +57,34 @@ function excludeToRawUri(exclude) {
 
 function dumpInterest(interest)
 {
-  dump("name: " + interest.getName().toUri());
-  dump("minSuffixComponents: " + (interest.getMinSuffixComponents() != null ?
+  consoleLog("name: " + interest.getName().toUri());
+  consoleLog("minSuffixComponents: " + (interest.getMinSuffixComponents() != null ?
     interest.getMinSuffixComponents() : "<none>"));
-  dump("maxSuffixComponents: " + (interest.getMaxSuffixComponents() != null ?
+  consoleLog("maxSuffixComponents: " + (interest.getMaxSuffixComponents() != null ?
     interest.getMaxSuffixComponents() : "<none>"));
   if (interest.getKeyLocator().getType() != null) {
     if (interest.getKeyLocator().getType() == KeyLocatorType.KEY_LOCATOR_DIGEST)
-      dump("keyLocator: KeyLocatorDigest: " + interest.getKeyLocator().getKeyData().toHex());
+      consoleLog("keyLocator: KeyLocatorDigest: " +
+                 interest.getKeyLocator().getKeyData().toHex());
     else if (interest.getKeyLocator().getType() == KeyLocatorType.KEYNAME)
-      dump("keyLocator: KeyName: " + interest.getKeyLocator().getKeyName().toUri());
+      consoleLog("keyLocator: KeyName: " +
+                 interest.getKeyLocator().getKeyName().toUri());
     else
-      dump("keyLocator: <unrecognized ndn_KeyLocatorType " + interest.getKeyLocator().getType() + ">");
+      consoleLog("keyLocator: <unrecognized ndn_KeyLocatorType " +
+                 interest.getKeyLocator().getType() + ">");
   }
   else
-    dump("keyLocator: <none>");
+    consoleLog("keyLocator: <none>");
 
-  dump("exclude: " + (interest.getExclude().size() > 0 ? 
+  consoleLog("exclude: " + (interest.getExclude().size() > 0 ?
                       excludeToRawUri(interest.getExclude()) : "<none>"));
-  dump("lifetimeMilliseconds: " +
+  consoleLog("lifetimeMilliseconds: " +
     (interest.getInterestLifetimeMilliseconds() != null ?
     interest.getInterestLifetimeMilliseconds() : "<none>"));
-  dump("childSelector: " +
+  consoleLog("childSelector: " +
     (interest.getChildSelector() != null ?interest.getChildSelector() : "<none>"));
-  dump("mustBeFresh: " + (interest.getMustBeFresh() ? "true" : "false"));
-  dump("nonce: " +
+  consoleLog("mustBeFresh: " + (interest.getMustBeFresh() ? "true" : "false"));
+  consoleLog("nonce: " +
     (interest.getNonce().size() > 0 ? interest.getNonce().toHex() : "<none>"));
 }
 
@@ -91,21 +92,19 @@ function main()
 {
   local interest = Interest();
   interest.wireDecode(TlvInterest);
-  dump("Interest:");
+  consoleLog("Interest:");
   dumpInterest(interest);
 
   // Set the name again to clear the cached encoding so we encode again.
   interest.setName(interest.getName());
   local encoding = interest.wireEncode();
-  dump("");
-  dump("Re-encoded interest " + encoding.toHex());
+  consoleLog("");
+  consoleLog("Re-encoded interest " + encoding.toHex());
 
   local reDecodedInterest = Interest();
   reDecodedInterest.wireDecode(encoding);
-  dump("Re-decoded Interest:");
+  consoleLog("Re-decoded Interest:");
   dumpInterest(reDecodedInterest);
 }
 
-// If running on the Imp, uncomment to redefine dump().
-// function dump(message) { server.log(message); }
 main();

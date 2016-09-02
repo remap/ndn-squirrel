@@ -17,8 +17,6 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-function dump(message) { print(message); print("\n"); }
-
 local TlvData = Blob([
 0x06, 0xfd, 0x01, 0x50, // NDN Data
   0x07, 0x0a, 0x08, 0x03, 0x6e, 0x64, 0x6e, 0x08, 0x03, 0x61, 0x62, 0x63, // Name
@@ -57,28 +55,28 @@ local TlvData = Blob([
 
 function dumpData(data)
 {
-  dump("name: " + data.getName().toUri());
+  consoleLog("name: " + data.getName().toUri());
   if (data.getContent().size() > 0) {
-    dump("content (raw): " + data.getContent().toRawStr());
-    dump("content (hex): " + data.getContent().toHex());
+    consoleLog("content (raw): " + data.getContent().toRawStr());
+    consoleLog("content (hex): " + data.getContent().toHex());
   }
   else
-    dump("content: <empty>");
+    consoleLog("content: <empty>");
 
   if (!(data.getMetaInfo().getType() == ContentType.BLOB)) {
     if (data.getMetaInfo().getType() == ContentType.KEY)
-      dump("metaInfo.type: KEY");
+      consoleLog("metaInfo.type: KEY");
     else if (data.getMetaInfo().getType() == ContentType.LINK)
-      dump("metaInfo.type: LINK");
+      consoleLog("metaInfo.type: LINK");
     else if (data.getMetaInfo().getType() == ContentType.NACK)
-      dump("metaInfo.type: NACK");
+      consoleLog("metaInfo.type: NACK");
     else if (data.getMetaInfo().getType() == ContentType.OTHER_CODE)
-      dump("metaInfo.type: other code " + data.getMetaInfo().getOtherTypeCode());
+      consoleLog("metaInfo.type: other code " + data.getMetaInfo().getOtherTypeCode());
   }
-  dump("metaInfo.freshnessPeriod (milliseconds): " +
+  consoleLog("metaInfo.freshnessPeriod (milliseconds): " +
     (data.getMetaInfo().getFreshnessPeriod() >= 0 ?
       "" + data.getMetaInfo().getFreshnessPeriod() : "<none>"));
-  dump("metaInfo.finalBlockId: " +
+  consoleLog("metaInfo.finalBlockId: " +
     (data.getMetaInfo().getFinalBlockId().getValue().size() > 0 ?
      data.getMetaInfo().getFinalBlockId().getValue().toHex() : "<none>"));
 
@@ -86,7 +84,7 @@ function dumpData(data)
   local signature = data.getSignature();
   if (signature instanceof Sha256WithRsaSignature) {
     local signature = data.getSignature();
-    dump("Sha256WithRsa signature.signature: " +
+    consoleLog("Sha256WithRsa signature.signature: " +
       (signature.getSignature().size() > 0 ?
        signature.getSignature().toHex() : "<none>"));
     keyLocator = signature.getKeyLocator();
@@ -94,37 +92,37 @@ function dumpData(data)
 /*
   else if (signature instanceof HmacWithSha256Signature) {
     local signature = data.getSignature();
-    dump("HmacWithSha256 signature.signature: " +
+    consoleLog("HmacWithSha256 signature.signature: " +
       (signature.getSignature().size() > 0 ?
        signature.getSignature().toHex() : "<none>"));
     keyLocator = signature.getKeyLocator();
   }
   else if (signature instanceof DigestSha256Signature) {
     local signature = data.getSignature();
-    dump("DigestSha256 signature.signature: " +
+    consoleLog("DigestSha256 signature.signature: " +
       (signature.getSignature().size() > 0 ?
        signature.getSignature().toHex() : "<none>"));
   }
 */
   else if (signature instanceof GenericSignature) {
     local signature = data.getSignature();
-    dump("Generic signature.signature: " +
+    consoleLog("Generic signature.signature: " +
       (signature.getSignature().size() > 0 ?
        signature.getSignature().toHex() : "<none>"));
-    dump("  Type code: " + signature.getTypeCode() + " signatureInfo: " +
+    consoleLog("  Type code: " + signature.getTypeCode() + " signatureInfo: " +
       (signature.getSignatureInfoEncoding().size() > 0 ?
        signature.getSignatureInfoEncoding().toHex() : "<none>"));
   }
   if (keyLocator != null) {
     if (keyLocator.getType() == null)
-      dump("signature.keyLocator: <none>");
+      consoleLog("signature.keyLocator: <none>");
     else if (keyLocator.getType() == KeyLocatorType.KEY_LOCATOR_DIGEST)
-      dump("signature.keyLocator: KeyLocatorDigest: " +
+      consoleLog("signature.keyLocator: KeyLocatorDigest: " +
            keyLocator.getKeyData().toHex());
     else if (keyLocator.getType() == KeyLocatorType.KEYNAME)
-      dump("signature.keyLocator: KeyName: " + keyLocator.getKeyName().toUri());
+      consoleLog("signature.keyLocator: KeyName: " + keyLocator.getKeyName().toUri());
     else
-      dump("signature.keyLocator: <unrecognized ndn_KeyLocatorType>");
+      consoleLog("signature.keyLocator: <unrecognized ndn_KeyLocatorType>");
   }
 }
 
@@ -132,7 +130,7 @@ function main()
 {
   local data = Data();
   data.wireDecode(TlvData);
-  dump("Decoded Data:");
+  consoleLog("Decoded Data:");
   dumpData(data);
 
   // Set the content again to clear the cached encoding so we encode again.
@@ -141,11 +139,9 @@ function main()
 
   local reDecodedData = Data();
   reDecodedData.wireDecode(encoding);
-  dump("");
-  dump("Re-decoded Data:");
+  consoleLog("");
+  consoleLog("Re-decoded Data:");
   dumpData(reDecodedData);
 }
 
-// If running on the Imp, uncomment to redefine dump().
-// function dump(message) { server.log(message); }
 main();

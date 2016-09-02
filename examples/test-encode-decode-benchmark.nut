@@ -17,8 +17,6 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-function dump(message) { print(message); print("\n"); }
-
 function getNowSeconds() { return clock(); }
 
 /**
@@ -156,7 +154,7 @@ function benchmarkEncodeDecodeData(useComplex, useCrypto)
   local format = "TLV";
   local nIterations = useCrypto ? 1 : 30000;
   local result = benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto);
-  dump("Encode " + (useComplex ? "complex " : "simple  ") +
+  consoleLog("Encode " + (useComplex ? "complex " : "simple  ") +
     format + " data: Crypto " + (useCrypto ? "RSA" : "-  ") +
     ", Duration sec, Hz: " + result.duration + ", " + 
     (nIterations / result.duration));
@@ -164,7 +162,7 @@ function benchmarkEncodeDecodeData(useComplex, useCrypto)
   nIterations = useCrypto ? 1 : 30000;
   local duration = benchmarkDecodeDataSeconds
     (nIterations, useCrypto, result.encoding);
-  dump("Decode " + (useComplex ? "complex " : "simple  ") +
+  consoleLog("Decode " + (useComplex ? "complex " : "simple  ") +
     format + " data: Crypto " + (useCrypto ? "RSA" : "-  ") +
     ", Duration sec, Hz: " + duration + ", " + (nIterations / duration));
 }
@@ -175,6 +173,4 @@ function main()
   benchmarkEncodeDecodeData(true, false);
 }
 
-// If running on the Imp, uncomment to redefine dump().
-// function dump(message) { server.log(message); }
 main();
