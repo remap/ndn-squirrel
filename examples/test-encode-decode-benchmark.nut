@@ -38,14 +38,8 @@ function benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto)
   local content;
   if (useComplex) {
     // Use a large name and content.
-/* debug
     name = Name
       ("/ndn/ucla.edu/apps/lwndn-test/numbers.txt/%FD%05%05%E8%0C%CE%1D/%00");
-*/
-    name = Name().append("ndn").append("ucla.edu").append("apps")
-      .append("lwndn-test").append("numbers.txt")
-      .append(Blob([0xFD, 0x05, 0x05, 0xE8, 0x0C, 0xCE, 0x1D]))
-      .append(NameComponent("\0"));
 
     local contentString = "";
     local count = 1;
@@ -56,20 +50,14 @@ function benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto)
   }
   else {
     // Use a small name and content.
-/* debug
     name = Name("/test");
-*/
-    name = Name().append("test");
     content = Blob("abc");
   }
   local finalBlockId = NameComponent("\0");
 
   // Initialize the KeyChain storage in case useCrypto is true.
 
-/* debug
   local keyName = Name("/testname/DSK-123");
-*/
-  local keyName = Name().append("testname").append("DSK-123");
   local certificateName = keyName.getSubName(0, keyName.size() - 1)
     .append("KEY").append(keyName.get(keyName.size() - 1)).append("ID-CERT")
     .append("0");
