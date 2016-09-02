@@ -326,6 +326,13 @@ class Buffer {
       throw "Unrecognized type";
   }
 
+  /**
+   * Get the value at the index.
+   * @param {integer} The zero-based index into the buffer array.
+   * @return {integer} The value at the index.
+   */
+  function get(i) { return blob_[offset_ + i]; }
+
   function _set(i, value)
   {
     if (typeof i == "integer")
