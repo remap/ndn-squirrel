@@ -17,7 +17,7 @@ in a terminal change directory to the NDN-Squirrel root and enter:
 
     ./make-ndn-squirrel.sh
 
-To make the examples, enter the following (which also runs make-ndn-squirrel.sh):
+To make the examples, enter the following (which also runs `make-ndn-squirrel.sh`):
 
     ./make-examples.sh
 
@@ -34,7 +34,7 @@ Running ./make-ndn-squirrel.sh (see above) makes a single Squirrel file
 
 Running ./make-examples.sh makes the following example programs:
 
-* bin/test-encode-decode-interest.nut: Encode and decode an interest, testing interest selectors and the name URI.
 * bin/test-encode-decode-data.nut: Encode and decode a data packet, including signing the data packet.
-* bin/test-imp-publish-async.nut: On the Imp Device connect a local MicroForwarder which connects to the Agent, accept interests with prefix /testecho and echo back a data packet. See test-imp-echo-consumer.
-* bin/test-imp-echo-consumer.nut: On the Agent, select a word, send the interest /testecho/word to the Imp Device which is echoed by test-imp-publish-async.
+* bin/test-encode-decode-interest.nut: Encode and decode an interest, testing interest selectors and the name URI.
+* bin/test-imp-publish-async.nut: On the Imp Device connect to a local MicroForwarder which has a route to the Agent, accept interests with prefix /testecho and echo back a data packet. See test-imp-echo-consumer.
+* bin/test-imp-echo-consumer.nut: On the Agent, select a word and send the interest /testecho/word to the Imp Device which is echoed by test-imp-publish-async.
