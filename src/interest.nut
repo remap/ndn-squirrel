@@ -357,7 +357,7 @@ class Interest {
   function setNonce(nonce)
   {
     nonce_ = nonce instanceof Blob ? nonce : Blob(nonce, true);
-    // Set _getNonceChangeCount so that the next call to getNonce() won't clear
+    // Set getNonceChangeCount_ so that the next call to getNonce() won't clear
     // nonce_.
     ++changeCount_;
     getNonceChangeCount_ = getChangeCount();
@@ -404,7 +404,33 @@ class Interest {
     // To save memory, don't cache the encoding.
   }
 
-  // TODO: refreshNonce.
+  /**
+   * Update the bytes of the nonce with new random values. This ensures that the
+   * new nonce value is different than the current one. If the current nonce is
+   * not specified, this does nothing.
+   */
+  function refreshNonce()
+  {
+    local currentNonce = getNonce();
+    if (currentNonce.size() == 0)
+      return;
+
+    local newNonce;
+    while (true) {
+      local buffer = Buffer(currentNonce.size());
+      Crypto.generateRandomBytes(buffer);
+      newNonce = Blob(buffer, false);
+      if (!newNonce.equals(currentNonce))
+        break;
+    }
+
+    nonce_ = newNonce;
+    // Set getNonceChangeCount_ so that the next call to getNonce() won't clear
+    // this.nonce_.
+    ++changeCount_;
+    getNonceChangeCount_ = getChangeCount();
+  }
+
   // TODO: setLpPacket.
 
   /**
