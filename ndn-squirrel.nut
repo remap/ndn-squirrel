@@ -831,6 +831,20 @@ class NdnCommon {
    */
   MAX_NDN_PACKET_SIZE = 8800;
 }
+
+/**
+ * Make a global function to log a message to the console which works with
+ * standard Squirrel or on the Imp.
+ * @param {string} message The message to log.
+ */
+if (!("consoleLog" in getroottable())) {
+  consoleLog <- function(message) {
+    if ("server" in getroottable())
+      server.log(message);
+    else
+      print(message); print("\n");
+  }
+}
 /**
  * Copyright (C) 2016 Regents of the University of California.
  * @author: Jeff Thompson <jefft0@remap.ucla.edu>
