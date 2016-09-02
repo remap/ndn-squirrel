@@ -5391,11 +5391,21 @@ class SquirrelObjectTransport extends Transport {
     // Add a listener to wait for a message object.
     local thisTransport = this;
     connection_.on("NDN", function(obj) {
-      if (typeof obj == "blob")
-        thisTransport.elementReader_.onReceivedData(Buffer.from(obj));
+      if (typeof obj == "blob") {
+        try {
+          thisTransport.elementReader_.onReceivedData(Buffer.from(obj));
+        } catch (ex) {
+          consoleLog("Error in onReceivedData: " + ex);
+        }
+      }
       else {
-        if (thisTransport.onReceivedObject_ != null)
-          thisTransport.onReceivedObject_(obj);
+        if (thisTransport.onReceivedObject_ != null) {
+          try {
+            thisTransport.onReceivedObject_(obj);
+          } catch (ex) {
+            consoleLog("Error in onReceivedObject: " + ex);
+          }
+        }
       }
     });
 
@@ -5561,11 +5571,21 @@ class MicroForwarderTransport extends Transport {
         // The messageName is not "NDN". Ignore.
         return;
 
-      if (typeof obj == "blob")
-        elementReader_.onReceivedData(Buffer.from(obj));
+      if (typeof obj == "blob") {
+        try {
+          elementReader_.onReceivedData(Buffer.from(obj));
+        } catch (ex) {
+          consoleLog("Error in onReceivedData: " + ex);
+        }
+      }
       else {
-        if (onReceivedObject_ != null)
-          onReceivedObject_(obj);
+        if (onReceivedObject_ != null) {
+          try {
+            onReceivedObject_(obj);
+          } catch (ex) {
+            consoleLog("Error in onReceivedObject: " + ex);
+          }
+        }
       }
     }
   }
@@ -5987,7 +6007,7 @@ class Face {
             (entry.getFilter().getPrefix(), interest, this,
              entry.getInterestFilterId(), entry.getFilter());
         } catch (ex) {
-          // TODO: Log "Error in onInterest: " + ex.
+          consoleLog("Error in onInterest: " + ex);
         }
       }
     }
@@ -6000,7 +6020,7 @@ class Face {
         try {
           pendingInterest.getOnData()(pendingInterest.getInterest(), data);
         } catch (ex) {
-          // TODO: Log "Error in onData: " + ex.
+          consoleLog("Error in onData: " + ex);
         }
       }
     }

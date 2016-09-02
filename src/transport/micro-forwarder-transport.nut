@@ -106,11 +106,21 @@ class MicroForwarderTransport extends Transport {
         // The messageName is not "NDN". Ignore.
         return;
 
-      if (typeof obj == "blob")
-        elementReader_.onReceivedData(Buffer.from(obj));
+      if (typeof obj == "blob") {
+        try {
+          elementReader_.onReceivedData(Buffer.from(obj));
+        } catch (ex) {
+          consoleLog("Error in onReceivedData: " + ex);
+        }
+      }
       else {
-        if (onReceivedObject_ != null)
-          onReceivedObject_(obj);
+        if (onReceivedObject_ != null) {
+          try {
+            onReceivedObject_(obj);
+          } catch (ex) {
+            consoleLog("Error in onReceivedObject: " + ex);
+          }
+        }
       }
     }
   }

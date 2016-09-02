@@ -61,11 +61,21 @@ class SquirrelObjectTransport extends Transport {
     // Add a listener to wait for a message object.
     local thisTransport = this;
     connection_.on("NDN", function(obj) {
-      if (typeof obj == "blob")
-        thisTransport.elementReader_.onReceivedData(Buffer.from(obj));
+      if (typeof obj == "blob") {
+        try {
+          thisTransport.elementReader_.onReceivedData(Buffer.from(obj));
+        } catch (ex) {
+          consoleLog("Error in onReceivedData: " + ex);
+        }
+      }
       else {
-        if (thisTransport.onReceivedObject_ != null)
-          thisTransport.onReceivedObject_(obj);
+        if (thisTransport.onReceivedObject_ != null) {
+          try {
+            thisTransport.onReceivedObject_(obj);
+          } catch (ex) {
+            consoleLog("Error in onReceivedObject: " + ex);
+          }
+        }
       }
     });
 

@@ -383,7 +383,7 @@ class Face {
             (entry.getFilter().getPrefix(), interest, this,
              entry.getInterestFilterId(), entry.getFilter());
         } catch (ex) {
-          // TODO: Log "Error in onInterest: " + ex.
+          consoleLog("Error in onInterest: " + ex);
         }
       }
     }
@@ -396,7 +396,7 @@ class Face {
         try {
           pendingInterest.getOnData()(pendingInterest.getInterest(), data);
         } catch (ex) {
-          // TODO: Log "Error in onData: " + ex.
+          consoleLog("Error in onData: " + ex);
         }
       }
     }
