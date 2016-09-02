@@ -36,5 +36,6 @@ Running ./make-examples.sh makes the following example programs:
 
 * bin/test-encode-decode-data.nut: Encode and decode a data packet, including signing the data packet.
 * bin/test-encode-decode-interest.nut: Encode and decode an interest, testing interest selectors and the name URI.
+* bin/test-encode-decode-benchmark.nut: Show the benchmarks to encode and decode various kinds of Data packet.
 * bin/test-imp-publish-async.nut: On the Imp Device connect to a local MicroForwarder which has a route to the Agent, accept interests with prefix /testecho and echo back a data packet. See test-imp-echo-consumer.
 * bin/test-imp-echo-consumer.nut: On the Agent, select a word and send the interest /testecho/word to the Imp Device which is echoed by test-imp-publish-async.
