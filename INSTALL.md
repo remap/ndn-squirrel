@@ -39,3 +39,4 @@ Running ./make-examples.sh makes the following example programs:
 * bin/test-encode-decode-benchmark.nut: Show the benchmarks to encode and decode various kinds of Data packet.
 * bin/test-imp-publish-async.nut: On the Imp Device connect to a local MicroForwarder which has a route to the Agent, accept interests with prefix /testecho and echo back a data packet. See test-imp-echo-consumer.
 * bin/test-imp-echo-consumer.nut: On the Agent, select a word and send the interest /testecho/word to the Imp Device which is echoed by test-imp-publish-async.
+* bin/test-micro-forwarder.nut: Simulate the communication of test-imp-publish-async and test-imp-echo-consumer in one app using the micro-forwarder and stubs for the agent and device.

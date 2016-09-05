@@ -18,3 +18,8 @@ cat ndn-squirrel.nut \
   tools/micro-forwarder.nut \
   examples/test-imp-publish-async.nut \
   > bin/test-imp-publish-async.nut
+cat ndn-squirrel.nut \
+  tools/micro-forwarder.nut \
+  examples/agent-device-stubs.nut \
+  examples/test-micro-forwarder.nut \
+  > bin/test-micro-forwarder.nut
