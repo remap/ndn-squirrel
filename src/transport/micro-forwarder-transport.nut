@@ -96,11 +96,8 @@ class MicroForwarderTransport extends Transport {
    */
   function send(arg1, obj = null)
   {
-    if (arg1 instanceof Buffer) {
-      local output = blob(arg1.len());
-      arg1.copy(output);
-      sendObject(output);
-    }
+    if (arg1 instanceof Buffer)
+      sendObject(arg1.toBlob());
     else {
       if (arg1 != "NDN")
         // The messageName is not "NDN". Ignore.

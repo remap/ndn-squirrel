@@ -103,9 +103,7 @@ class SquirrelObjectTransport extends Transport {
    */
   function send(buffer)
   {
-    local output = blob(buffer.len());
-    buffer.copy(output);
-    sendObject(output);
+    sendObject(buffer.toBlob());
   }
 }
 

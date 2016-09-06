@@ -343,9 +343,19 @@ class Buffer {
   }
 
   /**
+   * Return a copy of the bytes of the array as a Squirrel blob.
+   * @return {blob} A new Squirrel blob with the copied bytes.
+   */
+  function toBlob()
+  {
+    blob_.seek(offset_);
+    return blob_.readblob(len_);
+  }
+
+  /**
    * A utility function to convert the hex character to an integer from 0 to 15.
    * @param {integer} c The integer character.
-   * @return The hex value, or -1 if x is not a hex character.
+   * @return (integer} The hex value, or -1 if x is not a hex character.
    */
   static function fromHexChar(c)
   {
@@ -5433,9 +5443,7 @@ class SquirrelObjectTransport extends Transport {
    */
   function send(buffer)
   {
-    local output = blob(buffer.len());
-    buffer.copy(output);
-    sendObject(output);
+    sendObject(buffer.toBlob());
   }
 }
 
@@ -5561,11 +5569,8 @@ class MicroForwarderTransport extends Transport {
    */
   function send(arg1, obj = null)
   {
-    if (arg1 instanceof Buffer) {
-      local output = blob(arg1.len());
-      arg1.copy(output);
-      sendObject(output);
-    }
+    if (arg1 instanceof Buffer)
+      sendObject(arg1.toBlob());
     else {
       if (arg1 != "NDN")
         // The messageName is not "NDN". Ignore.
