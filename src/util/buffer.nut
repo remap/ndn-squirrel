@@ -298,9 +298,19 @@ class Buffer {
   }
 
   /**
+   * Return a copy of the bytes of the array as a Squirrel blob.
+   * @return {blob} A new Squirrel blob with the copied bytes.
+   */
+  function toBlob()
+  {
+    blob_.seek(offset_);
+    return blob_.readblob(len_);
+  }
+
+  /**
    * A utility function to convert the hex character to an integer from 0 to 15.
    * @param {integer} c The integer character.
-   * @return The hex value, or -1 if x is not a hex character.
+   * @return (integer} The hex value, or -1 if x is not a hex character.
    */
   static function fromHexChar(c)
   {
