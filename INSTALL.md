@@ -32,11 +32,15 @@ Files
 Running ./make-ndn-squirrel.sh (see above) makes a single Squirrel file
 `ndn-squirrel.nut` contaning the NDN-Squirrel library.
 
-Running ./make-examples.sh makes the following example programs:
+Running ./make-examples.sh makes the following example applications which have
+ndn-squirrel.nut plus the example code and other files concatenated into one file.
+To distinguish it from the example code, the output file name includes "app". For
+example, examples/test-encode-decode-data.nut has the output file
+bin/test-encode-decode-data.app.nut .
 
-* bin/test-encode-decode-data.nut: Encode and decode a data packet, including signing the data packet.
-* bin/test-encode-decode-interest.nut: Encode and decode an interest, testing interest selectors and the name URI.
-* bin/test-encode-decode-benchmark.nut: Show the benchmarks to encode and decode various kinds of Data packet.
-* bin/test-imp-publish-async.device.nut: On the Imp Device connect to a local MicroForwarder which has a route to the Agent, accept interests with prefix /testecho and echo back a data packet. See test-imp-echo-consumer.agent.nut.
-* bin/test-imp-echo-consumer.agent.nut: On the Agent, select a word and send the interest /testecho/word to the Imp Device which is echoed by test-imp-publish-async.device.nut.
-* bin/test-micro-forwarder.nut: Simulate the communication of test-imp-publish-async.device.nut and test-imp-echo-consumer.agent.nut in one app using the micro-forwarder and stubs for the agent and device.
+* bin/test-encode-decode-data.app.nut: Encode and decode a data packet, including signing the data packet.
+* bin/test-encode-decode-interest.app.nut: Encode and decode an interest, testing interest selectors and the name URI.
+* bin/test-encode-decode-benchmark.app.nut: Show the benchmarks to encode and decode various kinds of Data packet.
+* bin/test-imp-publish-async.device.app.nut: On the Imp Device connect to a local MicroForwarder which has a route to the Agent, accept interests with prefix /testecho and echo back a data packet. See test-imp-echo-consumer.agent.nut.
+* bin/test-imp-echo-consumer.agent.app.nut: On the Agent, select a word and send the interest /testecho/word to the Imp Device which is echoed by test-imp-publish-async.device.nut.
+* bin/test-micro-forwarder.app.nut: Simulate the communication of test-imp-publish-async.device.nut and test-imp-echo-consumer.agent.nut in one app using the micro-forwarder and stubs for the agent and device.
