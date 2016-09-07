@@ -5051,6 +5051,212 @@ WireFormat.setDefaultWireFormat(TlvWireFormat.get());
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
+// These correspond to the TLV codes.
+enum EncryptAlgorithmType {
+  AesEcb = 0,
+  AesCbc = 1,
+  RsaPkcs = 2,
+  RsaOaep = 3
+}
+
+/**
+ * An EncryptParams holds an algorithm type and other parameters used to encrypt
+ * and decrypt.
+ */
+class EncryptParams {
+  algorithmType_ = 0;
+  initialVector_ = null;
+
+  /**
+   * Create an EncryptParams with the given parameters.
+   * @param {integer} algorithmType The algorithm type from the
+   * EncryptAlgorithmType enum, or null if not specified.
+   * @param {integer} initialVectorLength (optional) The initial vector length,
+   * or 0 if the initial vector is not specified. If omitted, the initial
+   * vector is not specified.
+   * @note This class is an experimental feature. The API may change.
+   */
+  constructor(algorithmType, initialVectorLength = null)
+  {
+    algorithmType_ = algorithmType;
+
+    if (initialVectorLength != null && initialVectorLength > 0) {
+      local initialVector = Buffer(initialVectorLength);
+      Crypto.generateRandomBytes(initialVector);
+      initialVector_ = Blob(initialVector, false);
+    }
+    else
+      initialVector_ = Blob();
+  }
+
+  /**
+   * Get the algorithmType.
+   * @return {integer} The algorithm type from the EncryptAlgorithmType enum,
+   * or null if not specified.
+   */
+  function getAlgorithmType() { return algorithmType_; }
+
+  /**
+   * Get the initial vector.
+   * @return {Blob} The initial vector. If not specified, isNull() is true.
+   */
+  function getInitialVector() { return initialVector_; }
+
+  /**
+   * Set the algorithm type.
+   * @param {integer} algorithmType The algorithm type from the
+   * EncryptAlgorithmType enum. If not specified, set to null.
+   * @return {EncryptParams} This EncryptParams so that you can chain calls to
+   * update values.
+   */
+  function setAlgorithmType(algorithmType)
+  {
+    algorithmType_ = algorithmType;
+    return this;
+  }
+
+  /**
+   * Set the initial vector.
+   * @param {Blob} initialVector The initial vector. If not specified, set to
+   * the default Blob() where isNull() is true.
+   * @return {EncryptParams} This EncryptParams so that you can chain calls to
+   * update values.
+   */
+  function setInitialVector(initialVector)
+  {
+    this.initialVector_ =
+      initialVector instanceof Blob ? initialVector : Blob(initialVector, true);
+    return this;
+  }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+// This requires contrib/aes-squirrel/aes.class.nut .
+
+/**
+ * The AesAlgorithm class provides static methods to manipulate keys, encrypt
+ * and decrypt using the AES symmetric key cipher.
+ * @note This class is an experimental feature. The API may change.
+ */
+class AesAlgorithm {
+  // TODO: generateKey
+  // TODO: deriveEncryptKey
+
+  /**
+   * Decrypt the encryptedData using the keyBits according the encrypt params.
+   * @param {Blob} keyBits The key value.
+   * @param {Blob} encryptedData The data to decrypt.
+   * @param {EncryptParams} params This decrypts according to
+   * params.getAlgorithmType() and other params as needed such as
+   * params.getInitialVector().
+   * @return {Blob} The decrypted data.
+   */
+  static function decrypt(keyBits, encryptedData, params)
+  {
+    local paddedData;
+    if (params.getAlgorithmType() == EncryptAlgorithmType.AesEcb) {
+      local cipher = AES(keyBits.buf().toBlob());
+      // For the aes-squirrel package, we have to process each ECB block.
+      local input = encryptedData.buf().toBlob();
+      paddedData = blob(input.len());
+
+      for (local i = 0; i < paddedData.len(); i += 16) {
+        // TODO: Do we really have to copy once with readblob and again with writeblob?
+        input.seek(i);
+        paddedData.writeblob(cipher.decrypt(input.readblob(16)));
+      }
+    }
+    else if (params.getAlgorithmType() == EncryptAlgorithmType.AesCbc) {
+      local cipher = AES_CBC
+        (keyBits.buf().toBlob(), params.getInitialVector().buf().toBlob());
+      paddedData = cipher.decrypt(encryptedData.buf().toBlob());
+    }
+    else
+      throw "Unsupported encryption mode";
+
+    // For the aes-squirrel package, we have to remove the padding.
+    local padLength = paddedData[paddedData.len() - 1];
+    return Blob
+      (Buffer.from(paddedData).slice(0, paddedData.len() - padLength), false);
+  }
+
+  /**
+   * Encrypt the plainData using the keyBits according the encrypt params.
+   * @param {Blob} keyBits The key value.
+   * @param {Blob} plainData The data to encrypt.
+   * @param {EncryptParams} params This encrypts according to
+   * params.getAlgorithmType() and other params as needed such as
+   * params.getInitialVector().
+   * @return {Blob} The encrypted data.
+   */
+  static function encrypt(keyBits, plainData, params)
+  {
+    // For the aes-squirrel package, we have to do the padding.
+    local padLength = 16 - (plainData.size() % 16);
+    local paddedData = blob(plainData.size() + padLength);
+    plainData.buf().copy(paddedData);
+    for (local i = 0; i < padLength; ++i)
+      paddedData[plainData.size() + i] = padLength;
+
+    local encrypted;
+    if (params.getAlgorithmType() == EncryptAlgorithmType.AesEcb) {
+      local cipher = AES(keyBits.buf().toBlob());
+      // For the aes-squirrel package, we have to process each ECB block.
+      encrypted = blob(paddedData.len());
+
+      for (local i = 0; i < paddedData.len(); i += 16) {
+        // TODO: Do we really have to copy once with readblob and again with writeblob?
+        paddedData.seek(i);
+        encrypted.writeblob(cipher.encrypt(paddedData.readblob(16)));
+      }
+    }
+    else if (params.getAlgorithmType() == EncryptAlgorithmType.AesCbc) {
+      local cipher = AES_CBC
+        (keyBits.buf().toBlob(), params.getInitialVector().buf().toBlob());
+      encrypted = cipher.encrypt(paddedData);
+    }
+    else
+      throw "Unsupported encryption mode";
+
+    return Blob(Buffer.from(encrypted), false);
+  }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
 /**
  * An InterestFilterTable is an internal class to hold a list of entries with
  * an interest Filter and its OnInterestCallback.

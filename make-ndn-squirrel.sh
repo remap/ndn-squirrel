@@ -26,6 +26,8 @@ cat \
   src/encoding/wire-format.nut \
   src/encoding/tlv-0_2-wire-format.nut \
   src/encoding/tlv-wire-format.nut \
+  src/encrypt/algo/encrypt-params.nut \
+  src/encrypt/algo/aes-algorithm.nut \
   src/impl/interest-filter-table.nut \
   src/impl/pending-interest-table.nut \
   src/transport/transport.nut \
