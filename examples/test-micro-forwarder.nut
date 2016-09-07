@@ -82,7 +82,8 @@ function testConsume()
  * Run testPublish and testConsume to test agent/device communication through
  * the MicroForwarder and simulated agent/device communication in one
  * stand-alone standard Squirrel application. (To test on a real agent and Imp
- * device, see test-imp-publish-async.nut and test-imp-echo-consumer.nut .)
+ * device, see test-imp-publish-async.device.nut and
+ * test-imp-echo-consumer.agent.nut .)
  */
 function main()
 {

@@ -12,12 +12,12 @@ cat ndn-squirrel.nut \
   examples/test-encode-decode-interest.nut \
   > bin/test-encode-decode-interest.nut
 cat ndn-squirrel.nut \
-  examples/test-imp-echo-consumer.nut \
-  > bin/test-imp-echo-consumer.nut
+  examples/test-imp-echo-consumer.agent.nut \
+  > bin/test-imp-echo-consumer.agent.nut
 cat ndn-squirrel.nut \
   tools/micro-forwarder.nut \
-  examples/test-imp-publish-async.nut \
-  > bin/test-imp-publish-async.nut
+  examples/test-imp-publish-async.device.nut \
+  > bin/test-imp-publish-async.device.nut
 cat ndn-squirrel.nut \
   tools/micro-forwarder.nut \
   examples/agent-device-stubs.nut \

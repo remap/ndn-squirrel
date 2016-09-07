@@ -30,7 +30,7 @@ function onData(interest, data)
 /**
  * Create a Face to the Imp device and express an Interest with the onData
  * callback which prints the content to the console. You should run this on
- * the Agent, and run test-imp-publish-async.nut on the Imp Device.
+ * the Agent, and run test-imp-publish-async.device.nut on the Imp Device.
  */
 function main()
 {

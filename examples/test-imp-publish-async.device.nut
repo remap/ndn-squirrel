@@ -39,7 +39,7 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
  * Create a MicroForwarder with a route to the agent. Then create an application
  * Face which automatically connects to the MicroForwarder. Register to receive
  * Interests and call onInterest which sends a reply Data packet. You should run
- * this on the Imp Device, and run test-imp-echo-consumer.nut on the Agent.
+ * this on the Imp Device, and run test-imp-echo-consumer.agent.nut on the Agent.
  */
 function main()
 {
