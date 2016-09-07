@@ -89,7 +89,6 @@ function dumpData(data)
        signature.getSignature().toHex() : "<none>"));
     keyLocator = signature.getKeyLocator();
   }
-/*
   else if (signature instanceof HmacWithSha256Signature) {
     local signature = data.getSignature();
     consoleLog("HmacWithSha256 signature.signature: " +
@@ -97,6 +96,7 @@ function dumpData(data)
        signature.getSignature().toHex() : "<none>"));
     keyLocator = signature.getKeyLocator();
   }
+/*
   else if (signature instanceof DigestSha256Signature) {
     local signature = data.getSignature();
     consoleLog("DigestSha256 signature.signature: " +

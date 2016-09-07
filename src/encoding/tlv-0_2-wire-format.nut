@@ -638,7 +638,12 @@ class Tlv0_2WireFormat extends WireFormat {
         (Tlv.SignatureType, Tlv.SignatureType_SignatureSha256WithRsa);
     }
     // TODO: Sha256WithEcdsaSignature.
-    // TODO: HmacWithSha256Signature.
+    else if (signature instanceof HmacWithSha256Signature) {
+      encodeKeyLocator_
+        (Tlv.KeyLocator, signature.getKeyLocator(), encoder);
+      encoder.writeNonNegativeIntegerTlv
+        (Tlv.SignatureType, Tlv.SignatureType_SignatureHmacWithSha256);
+    }
     // TODO: DigestSha256Signature.
     else
       throw "encodeSignatureInfo: Unrecognized Signature object type";

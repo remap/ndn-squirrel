@@ -16,6 +16,7 @@ cat \
   src/interest-filter.nut \
   src/meta-info.nut \
   src/generic-signature.nut \
+  src/hmac-with-sha256-signature.nut \
   src/sha256-with-rsa-signature.nut \
   src/data.nut \
   src/encoding/tlv/tlv.nut \
