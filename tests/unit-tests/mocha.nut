@@ -41,6 +41,17 @@ function describe(testName, test)
                 (message != null ? message : "Assertion values are not equal"));
       }
 
+      function deepEqual(array1, array2, message = null) {
+        if (array1.len() != array2.len())
+          throw(testName + " " + subTestName + ": " +
+                (message != null ? message : "deepEqual arrays are not the same length"));
+        for (local i = 0; i < array1.len(); ++i) {
+          if (array1[i] != array2[i])
+            throw(testName + " " + subTestName + ": deepEqual at index " + i + ": " +
+                  (message != null ? message : "Assertion values are not equal"));
+        }
+      }
+
       function ok(value, message = null) {
         if (!value)
           throw(testName + " " + subTestName + ": " +
