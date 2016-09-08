@@ -31,6 +31,8 @@ cat \
   src/encrypt/algo/aes-algorithm.nut \
   src/encrypt/decrypt-key.nut \
   src/encrypt/encrypt-key.nut \
+  src/security/security-types.nut \
+  src/security/key-params.nut \
   src/impl/interest-filter-table.nut \
   src/impl/pending-interest-table.nut \
   src/transport/transport.nut \
