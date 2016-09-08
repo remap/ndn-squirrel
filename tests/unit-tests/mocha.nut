@@ -48,6 +48,7 @@ function describe(testName, test)
     }
 
     subTest();
+    consoleLog("PASSED: " + testName + " " + subTestName);
   }
 
   test();
