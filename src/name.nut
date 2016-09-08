@@ -388,7 +388,20 @@ class Name {
     return result;
   }
 
-  // TODO: getPrefix.
+  /**
+   * Return a new Name with the first nComponents components of this Name.
+   * @param {integer} nComponents The number of prefix components.  If
+   * nComponents is -N then return the prefix up to name.size() - N. For example
+   * getPrefix(-1) returns the name without the final component.
+   * @return {Name} A new name.
+   */
+  function getPrefix(nComponents)
+  {
+    if (nComponents < 0)
+      return getSubName(0, components_.len() + nComponents);
+    else
+      return getSubName(0, nComponents);
+  }
 
   /**
    * Return the number of name components.
