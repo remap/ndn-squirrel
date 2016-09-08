@@ -1689,8 +1689,8 @@ enum KeyLocatorType {
 }
 
 /**
- * The KeyLocator class represents an NDN KeyLocator which is used in signature
- * objects such as Sha256WithRsaSignature and in Interest selectors.
+ * The KeyLocator class represents an NDN KeyLocator which is used in a
+ * Sha256WithRsaSignature and Interest selectors.
  */
 class KeyLocator {
   type_ = null;
@@ -5270,8 +5270,26 @@ class EncryptParams {
  * @note This class is an experimental feature. The API may change.
  */
 class AesAlgorithm {
-  // TODO: generateKey
-  // TODO: deriveEncryptKey
+  /**
+   * Generate a new random decrypt key for AES based on the given params.
+   * @param {AesKeyParams} params The key params with the key size (in bits).
+   * @return {DecryptKey} The new decrypt key.
+   */
+  static function generateKey(params)
+  {
+    // Convert the key bit size to bytes.
+    local key = blob(params.getKeySize() / 8); 
+    Crypto.generateRandomBytes(key);
+
+    return DecryptKey(Blob(key, false));
+  }
+
+  /**
+   * Derive a new encrypt key from the given decrypt key value.
+   * @param {Blob} keyBits The key value of the decrypt key.
+   * @return {EncryptKey} The new encrypt key.
+   */
+  static function deriveEncryptKey(keyBits) { return EncryptKey(keyBits); }
 
   /**
    * Decrypt the encryptedData using the keyBits according the encrypt params.
@@ -5351,6 +5369,197 @@ class AesAlgorithm {
 
     return Blob(Buffer.from(encrypted), false);
   }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * A DecryptKey supplies the key for decrypt.
+ */
+class DecryptKey {
+  keyBits_ = null;
+
+  /**
+   * Create a DecryptKey with the given key value.
+   * @param {Blob|DecryptKey} value If value is another DecryptKey then copy it.
+   * Otherwise, value is the key value.
+   * @note This class is an experimental feature. The API may change.
+   */
+  constructor(value)
+  {
+    if (value instanceof DecryptKey)
+      // The copy constructor.
+      keyBits_ = value.keyBits_;
+    else {
+      local keyBits = value;
+      keyBits_ = keyBits instanceof Blob ? keyBits : Blob(keyBits, true);
+    }
+  }
+
+  /**
+   * Get the key value.
+   * @return {Blob} The key value.
+   */
+  function getKeyBits() { return keyBits_; }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * An EncryptKey supplies the key for encrypt.
+ */
+class EncryptKey {
+  keyBits_ = null;
+
+  /**
+   * Create an EncryptKey with the given key value.
+   * @param {Blob|EncryptKey} value If value is another EncryptKey then copy it.
+   * Otherwise, value is the key value.
+   * @note This class is an experimental feature. The API may change.
+   */
+  constructor(value)
+  {
+    if (value instanceof EncryptKey)
+      // The copy constructor.
+      keyBits_ = value.keyBits_;
+    else {
+      local keyBits = value;
+      keyBits_ = keyBits instanceof Blob ? keyBits : Blob(keyBits, true);
+    }
+  }
+
+  /**
+   * Get the key value.
+   * @return {Blob} The key value.
+   */
+  function getKeyBits() { return keyBits_; }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * This module defines constants used by the security library.
+ */
+
+/**
+ * The KeyType enum is used by the Sqlite key storage, so don't change them.
+ * Make these the same as ndn-cxx in case the storage file is shared.
+ */
+enum KeyType {
+  RSA = 0,
+  ECDSA = 1,
+  AES = 128
+}
+
+enum KeyClass {
+  PUBLIC = 1,
+  PRIVATE = 2,
+  SYMMETRIC = 3
+}
+
+enum DigestAlgorithm {
+  SHA256 = 1
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * KeyParams is a base class for key parameters. Its subclasses are used to
+ * store parameters for key generation. You should create one of the subclasses,
+ * for example RsaKeyParams.
+ */
+class KeyParams {
+  keyType_ = 0;
+
+  constructor(keyType)
+  {
+    keyType_ = keyType;
+  }
+
+  function getKeyType() { return keyType_; }
+}
+
+class AesKeyParams extends KeyParams {
+  size_ = 0;
+
+  constructor(size = null)
+  {
+    base.constructor(AesKeyParams.getType());
+
+    if (size == null)
+      size = AesKeyParams.getDefaultSize();
+    size_ = size;
+  }
+
+  function getKeySize() { return size_; }
+
+  static function getDefaultSize() { return 64; }
+
+  static function getType() { return KeyType.AES; }
 }
 /**
  * Copyright (C) 2016 Regents of the University of California.

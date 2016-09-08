@@ -25,8 +25,26 @@
  * @note This class is an experimental feature. The API may change.
  */
 class AesAlgorithm {
-  // TODO: generateKey
-  // TODO: deriveEncryptKey
+  /**
+   * Generate a new random decrypt key for AES based on the given params.
+   * @param {AesKeyParams} params The key params with the key size (in bits).
+   * @return {DecryptKey} The new decrypt key.
+   */
+  static function generateKey(params)
+  {
+    // Convert the key bit size to bytes.
+    local key = blob(params.getKeySize() / 8); 
+    Crypto.generateRandomBytes(key);
+
+    return DecryptKey(Blob(key, false));
+  }
+
+  /**
+   * Derive a new encrypt key from the given decrypt key value.
+   * @param {Blob} keyBits The key value of the decrypt key.
+   * @return {EncryptKey} The new encrypt key.
+   */
+  static function deriveEncryptKey(keyBits) { return EncryptKey(keyBits); }
 
   /**
    * Decrypt the encryptedData using the keyBits according the encrypt params.
