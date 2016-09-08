@@ -48,8 +48,6 @@ describe("TestAesAlgorithm", function() {
   ]);
 
   it("EncryptionDecryption", function() {
-    local assert = Assert;
-
     local encryptParams = EncryptParams(EncryptAlgorithmType.AesEcb, 16);
 
     local key = Blob(KEY, false);
@@ -57,20 +55,20 @@ describe("TestAesAlgorithm", function() {
     local encryptKey = AesAlgorithm.deriveEncryptKey(decryptKey.getKeyBits());
 
     // Check key loading and key derivation.
-    assert.ok(encryptKey.getKeyBits().equals(key));
-    assert.ok(decryptKey.getKeyBits().equals(key));
+    Assert.ok(encryptKey.getKeyBits().equals(key));
+    Assert.ok(decryptKey.getKeyBits().equals(key));
 
     local plainBlob = Blob(PLAINTEXT, false);
 
     // Encrypt data in AES_ECB.
     local cipherBlob = AesAlgorithm.encrypt
       (encryptKey.getKeyBits(), plainBlob, encryptParams);
-    assert.ok(cipherBlob.equals(Blob(CIPHERTEXT_ECB, false)));
+    Assert.ok(cipherBlob.equals(Blob(CIPHERTEXT_ECB, false)));
 
     // Decrypt data in AES_ECB.
     local receivedBlob = AesAlgorithm.decrypt
       (decryptKey.getKeyBits(), cipherBlob, encryptParams);
-    assert.ok(receivedBlob.equals(plainBlob));
+    Assert.ok(receivedBlob.equals(plainBlob));
 
     // Encrypt/decrypt data in AES_CBC with auto-generated IV.
     encryptParams.setAlgorithmType(EncryptAlgorithmType.AesCbc);
@@ -78,24 +76,22 @@ describe("TestAesAlgorithm", function() {
       (encryptKey.getKeyBits(), plainBlob, encryptParams);
     receivedBlob = AesAlgorithm.decrypt
       (decryptKey.getKeyBits(), cipherBlob, encryptParams);
-    assert.ok(receivedBlob.equals(plainBlob));
+    Assert.ok(receivedBlob.equals(plainBlob));
 
     // Encrypt data in AES_CBC with specified IV.
     local initialVector = Blob(INITIAL_VECTOR, false);
     encryptParams.setInitialVector(initialVector);
     cipherBlob = AesAlgorithm.encrypt
       (encryptKey.getKeyBits(), plainBlob, encryptParams);
-    assert.ok(cipherBlob.equals(Blob(CIPHERTEXT_CBC_IV, false)));
+    Assert.ok(cipherBlob.equals(Blob(CIPHERTEXT_CBC_IV, false)));
 
     // Decrypt data in AES_CBC with specified IV.
     receivedBlob = AesAlgorithm.decrypt
       (decryptKey.getKeyBits(), cipherBlob, encryptParams);
-    assert.ok(receivedBlob.equals(plainBlob));
+    Assert.ok(receivedBlob.equals(plainBlob));
   });
 
   it("KeyGeneration", function() {
-    local assert = Assert;
-
     local keyParams = AesKeyParams(128);
     local decryptKey = AesAlgorithm.generateKey(keyParams);
     local encryptKey = AesAlgorithm.deriveEncryptKey(decryptKey.getKeyBits());
@@ -108,6 +104,6 @@ describe("TestAesAlgorithm", function() {
       (encryptKey.getKeyBits(), plainBlob, encryptParams);
     local receivedBlob = AesAlgorithm.decrypt
       (decryptKey.getKeyBits(), cipherBlob, encryptParams);
-    assert.ok(receivedBlob.equals(plainBlob));
+    Assert.ok(receivedBlob.equals(plainBlob));
   });
 });
