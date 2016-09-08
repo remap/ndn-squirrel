@@ -134,7 +134,29 @@ class Exclude {
     entries_ = [];
   }
 
-  // TODO: toUri.
+  /**
+   * Return a string with elements separated by "," and Exclude.ANY shown as "*".
+   * @return {string} The URI string.
+   */
+  function toUri()
+  {
+    if (entries_.len() == 0)
+      return "";
+
+    local result = "";
+    for (local i = 0; i < entries_.len(); ++i) {
+      if (i > 0)
+        result += ",";
+
+      if (entries_[i].getType() == ExcludeType.ANY)
+        result += "*";
+      else
+        result += entries_[i].getComponent().toEscapedString();
+    }
+
+    return result;
+  }
+
   // TODO: matches.
 
   /**
