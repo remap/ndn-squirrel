@@ -21,8 +21,7 @@
  * Imitate the JavaScript Mocha unit test framework. This defines "assert" and
  * the "describe" function, and must be included before the unit test files.
  * Note, because Squirrel already defines a global "assert" function, you must
- * use "Assert" instead. (Or you can put "local assert = Assert;" at the start
- * of each test function.) Otherwise if you call "assert.ok" you will get an
+ * use "Assert" instead. Otherwise if you call "assert.ok" you will get an
  * error like "the index 'ok' does not exist".
  */
 
@@ -36,14 +35,16 @@ function describe(testName, test)
   {
     // Define the global Assert functions called by subTest() to get the local context.
     ::Assert = {
-      function equal(value1, value2) {
+      function equal(value1, value2, message = null) {
         if (value1 != value2)
-          throw(testName + " " + subTestName + ": Assertion values are not equal");
+          throw(testName + " " + subTestName + ": " +
+                (message != null ? message : "Assertion values are not equal"));
       }
 
-      function ok(value) {
+      function ok(value, message = null) {
         if (!value)
-          throw(testName + " " + subTestName + ": Assertion is not true");
+          throw(testName + " " + subTestName + ": " +
+                (message != null ? message : "Assertion is not true"));
       }
     }
 
