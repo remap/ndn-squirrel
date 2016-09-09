@@ -67,6 +67,28 @@ function describe(testName, test)
           throw(testName + " " + subTestName + ": " +
                 (message != null ? message : "Assertion is not true"));
       }
+
+      function throws(func, type = null, message = null) {
+        try {
+          func();
+        } catch (ex) {
+          if (type != null) {
+            if (typeof ex == type)
+              // An exception of the expected type was thrown.
+              return;
+            else
+              throw(testName + " " + subTestName + ": " +
+                    (message != null ?
+                     message : "An exception of the expected type was not thrown"));
+          }
+          else
+            // An exception was thrown as expected.
+            return;
+        }
+
+        throw(testName + " " + subTestName + ": " +
+              (message != null ? message : "An expected exception was not thrown"));
+      }
     }
 
     if (beforeEachFunc != null)
