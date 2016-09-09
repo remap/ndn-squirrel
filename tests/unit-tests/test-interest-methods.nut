@@ -130,10 +130,10 @@ function createFreshInterest()
   return freshInterest;
 }
 
-local referenceInterest = Interest();
-referenceInterest.wireDecode(codedInterest);
 
 describe("TestInterestDump", function() {
+  local referenceInterest = null;
+
   local initialDump = ["name: /ndn/abc",
     "minSuffixComponents: 4",
     "maxSuffixComponents: 6",
@@ -143,6 +143,11 @@ describe("TestInterestDump", function() {
     "mustBeFresh: true",
     "nonce: 61626162",
     "lifetimeMilliseconds: 30000"];
+
+  beforeEach(function() {
+    referenceInterest = Interest();
+    referenceInterest.wireDecode(codedInterest);
+  });
 
   it("Dump", function() {
     // See if the dump format is the same as we expect.
@@ -191,6 +196,13 @@ describe("TestInterestDump", function() {
 });
 
 describe("TestInterestMethods", function() {
+  local referenceInterest = null;
+
+  beforeEach(function() {
+    referenceInterest = Interest();
+    referenceInterest.wireDecode(codedInterest);
+  });
+
   it("CopyConstructor", function() {
     local interest = Interest(referenceInterest);
     Assert.ok(interestDumpsEqual(dumpInterest(interest), dumpInterest(referenceInterest)),
