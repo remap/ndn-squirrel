@@ -19,6 +19,7 @@
 
 /**
  * An EncryptKey supplies the key for encrypt.
+ * @note This class is an experimental feature. The API may change.
  */
 class EncryptKey {
   keyBits_ = null;
@@ -27,7 +28,6 @@ class EncryptKey {
    * Create an EncryptKey with the given key value.
    * @param {Blob|EncryptKey} value If value is another EncryptKey then copy it.
    * Otherwise, value is the key value.
-   * @note This class is an experimental feature. The API may change.
    */
   constructor(value)
   {

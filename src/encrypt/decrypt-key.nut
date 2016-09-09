@@ -19,6 +19,7 @@
 
 /**
  * A DecryptKey supplies the key for decrypt.
+ * @note This class is an experimental feature. The API may change.
  */
 class DecryptKey {
   keyBits_ = null;
@@ -27,7 +28,6 @@ class DecryptKey {
    * Create a DecryptKey with the given key value.
    * @param {Blob|DecryptKey} value If value is another DecryptKey then copy it.
    * Otherwise, value is the key value.
-   * @note This class is an experimental feature. The API may change.
    */
   constructor(value)
   {
