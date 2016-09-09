@@ -25,6 +25,8 @@
  * @note This class is an experimental feature. The API may change.
  */
 class AesAlgorithm {
+  static BLOCK_SIZE = 16;
+
   /**
    * Generate a new random decrypt key for AES based on the given params.
    * @param {AesKeyParams} params The key params with the key size (in bits).
@@ -115,6 +117,9 @@ class AesAlgorithm {
       }
     }
     else if (params.getAlgorithmType() == EncryptAlgorithmType.AesCbc) {
+      if (params.getInitialVector().size() != AesAlgorithm.BLOCK_SIZE)
+        throw "Incorrect initial vector size";
+
       local cipher = AES_CBC
         (keyBits.buf().toBlob(), params.getInitialVector().buf().toBlob());
       encrypted = cipher.encrypt(paddedData);
