@@ -35,6 +35,10 @@ function describe(testName, test)
   {
     // Define the global Assert functions called by subTest() to get the local context.
     ::Assert = {
+      function fail(unused1, unused2, message) {
+        throw(testName + " " + subTestName + ": " + message);
+      }
+
       function equal(value1, value2, message = null) {
         if (value1 != value2)
           throw(testName + " " + subTestName + ": " +
