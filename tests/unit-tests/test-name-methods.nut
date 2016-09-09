@@ -29,6 +29,9 @@ describe("TestNameComponentMethods", function() {
 });
 
 describe("TestNameMethods", function() {
+  local expectedURI = null;
+  local comp2 = null;
+
   local TEST_NAME = Buffer([
     0x7,  0x14, // Name
       0x8,  0x5, // NameComponent
@@ -52,8 +55,10 @@ describe("TestNameMethods", function() {
         0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f
   ]);
 
-  local expectedURI = "/entr%C3%A9e/..../%00%01%02%03";
-  local comp2 = NameComponent([0x00, 0x01, 0x02, 0x03]);
+  beforeEach(function() {
+    expectedURI = "/entr%C3%A9e/..../%00%01%02%03";
+    comp2 = NameComponent([0x00, 0x01, 0x02, 0x03]);
+  });
 
   it("UriConstructor", function() {
     local name = Name(expectedURI);
