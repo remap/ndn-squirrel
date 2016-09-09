@@ -29,6 +29,7 @@ cat \
   src/encoding/tlv-wire-format.nut \
   src/encrypt/algo/encrypt-params.nut \
   src/encrypt/algo/aes-algorithm.nut \
+  src/encrypt/algo/encryptor.nut \
   src/encrypt/decrypt-key.nut \
   src/encrypt/encrypt-key.nut \
   src/encrypt/encrypted-content.nut \
