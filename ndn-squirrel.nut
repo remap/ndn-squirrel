@@ -4643,6 +4643,63 @@ class Tlv0_2WireFormat extends WireFormat {
   }
 
   /**
+   * Encode the EncryptedContent in NDN-TLV and return the encoding.
+   * @param {EncryptedContent} encryptedContent The EncryptedContent object to
+   * encode.
+   * @return {Blobl} A Blob containing the encoding.
+   */
+  function encodeEncryptedContent(encryptedContent)
+  {
+    local encoder = TlvEncoder(100);
+    local saveLength = encoder.getLength();
+
+    // Encode backwards.
+    encoder.writeBlobTlv
+      (Tlv.Encrypt_EncryptedPayload, encryptedContent.getPayload().buf());
+    encoder.writeOptionalBlobTlv
+      (Tlv.Encrypt_InitialVector, encryptedContent.getInitialVector().buf());
+    // Assume the algorithmType value is the same as the TLV type.
+    encoder.writeNonNegativeIntegerTlv
+      (Tlv.Encrypt_EncryptionAlgorithm, encryptedContent.getAlgorithmType());
+    Tlv0_2WireFormat.encodeKeyLocator_
+      (Tlv.KeyLocator, encryptedContent.getKeyLocator(), encoder);
+
+    encoder.writeTypeAndLength
+      (Tlv.Encrypt_EncryptedContent, encoder.getLength() - saveLength);
+
+    return encoder.finish();
+  }
+
+  /**
+   * Decode input as an EncryptedContent in NDN-TLV and set the fields of the
+   * encryptedContent object.
+   * @param {EncryptedContent} encryptedContent The EncryptedContent object
+   * whose fields are updated.
+   * @param {Buffer} input The Buffer with the bytes to decode.
+   * @param {bool} copy (optional) If true, copy from the input when making new
+   * Blob values. If false, then Blob values share memory with the input, which
+   * must remain unchanged while the Blob values are used. If omitted, use true.
+   */
+  function decodeEncryptedContent(encryptedContent, input, copy = true)
+  {
+    local decoder = TlvDecoder(input);
+    local endOffset = decoder.
+      readNestedTlvsStart(Tlv.Encrypt_EncryptedContent);
+
+    Tlv0_2WireFormat.decodeKeyLocator_
+      (Tlv.KeyLocator, encryptedContent.getKeyLocator(), decoder, copy);
+    encryptedContent.setAlgorithmType
+      (decoder.readNonNegativeIntegerTlv(Tlv.Encrypt_EncryptionAlgorithm));
+    encryptedContent.setInitialVector
+      (Blob(decoder.readOptionalBlobTlv
+       (Tlv.Encrypt_InitialVector, endOffset), copy));
+    encryptedContent.setPayload
+      (Blob(decoder.readBlobTlv(Tlv.Encrypt_EncryptedPayload), copy));
+
+    decoder.finishNestedTlvs(endOffset);
+  }
+
+  /**
    * Get a singleton instance of a Tlv0_2WireFormat.  To always use the
    * preferred version NDN-TLV, you should use TlvWireFormat.get().
    * @return {Tlv0_2WireFormat} The singleton instance.
@@ -5426,6 +5483,7 @@ class AesAlgorithm {
 
 /**
  * A DecryptKey supplies the key for decrypt.
+ * @note This class is an experimental feature. The API may change.
  */
 class DecryptKey {
   keyBits_ = null;
@@ -5434,7 +5492,6 @@ class DecryptKey {
    * Create a DecryptKey with the given key value.
    * @param {Blob|DecryptKey} value If value is another DecryptKey then copy it.
    * Otherwise, value is the key value.
-   * @note This class is an experimental feature. The API may change.
    */
   constructor(value)
   {
@@ -5474,6 +5531,7 @@ class DecryptKey {
 
 /**
  * An EncryptKey supplies the key for encrypt.
+ * @note This class is an experimental feature. The API may change.
  */
 class EncryptKey {
   keyBits_ = null;
@@ -5482,7 +5540,6 @@ class EncryptKey {
    * Create an EncryptKey with the given key value.
    * @param {Blob|EncryptKey} value If value is another EncryptKey then copy it.
    * Otherwise, value is the key value.
-   * @note This class is an experimental feature. The API may change.
    */
   constructor(value)
   {
@@ -5500,6 +5557,171 @@ class EncryptKey {
    * @return {Blob} The key value.
    */
   function getKeyBits() { return keyBits_; }
+}
+/**
+ * Copyright (C) 2016 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * An EncryptedContent holds an encryption type, a payload and other fields
+ * representing encrypted content.
+ */
+class EncryptedContent {
+  algorithmType_ = null;
+  keyLocator_ = null;
+  initialVector_ = null;
+  payload_ = null;
+
+  /**
+   * Create a new EncryptedContent.
+   * @param {EncryptedContent} value (optional) If value is another
+   * EncryptedContent object, copy its values. Otherwise, create an
+   * EncryptedContent with unspecified values.
+   */
+  constructor(value = null)
+  {
+    if (value instanceof EncryptedContent) {
+      // Make a deep copy.
+      algorithmType_ = value.algorithmType_;
+      keyLocator_ = KeyLocator(value.keyLocator_);
+      initialVector_ = value.initialVector_;
+      payload_ = value.payload_;
+    }
+    else {
+      algorithmType_ = null;
+      keyLocator_ = KeyLocator();
+      initialVector_ = Blob();
+      payload_ = Blob();
+    }
+  }
+
+  /**
+   * Get the algorithm type from EncryptAlgorithmType.
+   * @return {integer} The algorithm type from the EncryptAlgorithmType enum, or
+   * null if not specified.
+   */
+  function getAlgorithmType() { return algorithmType_; }
+
+  /**
+   * Get the key locator.
+   * @return {KeyLocator} The key locator. If not specified, getType() is null.
+   */
+  function getKeyLocator() { return keyLocator_; }
+
+  /**
+   * Get the initial vector.
+   * @return {Blob} The initial vector. If not specified, isNull() is true.
+   */
+  function getInitialVector() { return initialVector_; }
+
+  /**
+   * Get the payload.
+   * @return {Blob} The payload. If not specified, isNull() is true.
+   */
+  function getPayload() { return payload_; }
+
+  /**
+   * Set the algorithm type.
+   * @param {integer} algorithmType The algorithm type from the
+   * EncryptAlgorithmType enum. If not specified, set to null.
+   * @return {EncryptedContent} This EncryptedContent so that you can chain
+   * calls to update values.
+   */
+  function setAlgorithmType(algorithmType)
+  {
+    algorithmType_ = algorithmType;
+    return this;
+  }
+
+  /**
+   * Set the key locator.
+   * @param {KeyLocator} keyLocator The key locator. This makes a copy of the
+   * object. If not specified, set to the default KeyLocator().
+   * @return {EncryptedContent} This EncryptedContent so that you can chain
+   * calls to update values.
+   */
+  function setKeyLocator(keyLocator)
+  {
+    keyLocator_ = keyLocator instanceof KeyLocator ?
+      KeyLocator(keyLocator) : KeyLocator();
+    return this;
+  }
+
+  /**
+   * Set the initial vector.
+   * @param {Blob} initialVector The initial vector. If not specified, set to
+   * the default Blob() where isNull() is true.
+   * @return {EncryptedContent} This EncryptedContent so that you can chain
+   * calls to update values.
+   */
+  function setInitialVector(initialVector)
+  {
+    initialVector_ = initialVector instanceof Blob ?
+      initialVector : Blob(initialVector, true);
+    return this;
+  }
+
+  /**
+   * Set the encrypted payload.
+   * @param {Blob} payload The payload. If not specified, set to the default
+   * Blob() where isNull() is true.
+   * @return {EncryptedContent} This EncryptedContent so that you can chain
+   * calls to update values.
+   */
+  function setPayload(payload)
+  {
+    payload_ = payload instanceof Blob ? payload : Blob(payload, true);
+    return this;
+  }
+
+  /**
+   * Encode this EncryptedContent for a particular wire format.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * encode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
+   * @return {Blob} The encoded buffer in a Blob object.
+   */
+  function wireEncode(wireFormat = null)
+  {
+    if (wireFormat == null)
+        // Don't use a default argument since getDefaultWireFormat can change.
+        wireFormat = WireFormat.getDefaultWireFormat();
+
+    return wireFormat.encodeEncryptedContent(this);
+  }
+
+  /**
+   * Decode the input using a particular wire format and update this
+   * EncryptedContent.
+   * @param {Blob|Buffer} input The buffer with the bytes to decode.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * decode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
+   */
+  function wireDecode(input, wireFormat = null)
+  {
+    if (wireFormat == null)
+        // Don't use a default argument since getDefaultWireFormat can change.
+        wireFormat = WireFormat.getDefaultWireFormat();
+
+    if (input instanceof Blob)
+      wireFormat.decodeEncryptedContent(this, input.buf(), false);
+    else
+      wireFormat.decodeEncryptedContent(this, input, true);
+  }
 }
 /**
  * Copyright (C) 2016 Regents of the University of California.

@@ -297,6 +297,63 @@ class Tlv0_2WireFormat extends WireFormat {
   }
 
   /**
+   * Encode the EncryptedContent in NDN-TLV and return the encoding.
+   * @param {EncryptedContent} encryptedContent The EncryptedContent object to
+   * encode.
+   * @return {Blobl} A Blob containing the encoding.
+   */
+  function encodeEncryptedContent(encryptedContent)
+  {
+    local encoder = TlvEncoder(100);
+    local saveLength = encoder.getLength();
+
+    // Encode backwards.
+    encoder.writeBlobTlv
+      (Tlv.Encrypt_EncryptedPayload, encryptedContent.getPayload().buf());
+    encoder.writeOptionalBlobTlv
+      (Tlv.Encrypt_InitialVector, encryptedContent.getInitialVector().buf());
+    // Assume the algorithmType value is the same as the TLV type.
+    encoder.writeNonNegativeIntegerTlv
+      (Tlv.Encrypt_EncryptionAlgorithm, encryptedContent.getAlgorithmType());
+    Tlv0_2WireFormat.encodeKeyLocator_
+      (Tlv.KeyLocator, encryptedContent.getKeyLocator(), encoder);
+
+    encoder.writeTypeAndLength
+      (Tlv.Encrypt_EncryptedContent, encoder.getLength() - saveLength);
+
+    return encoder.finish();
+  }
+
+  /**
+   * Decode input as an EncryptedContent in NDN-TLV and set the fields of the
+   * encryptedContent object.
+   * @param {EncryptedContent} encryptedContent The EncryptedContent object
+   * whose fields are updated.
+   * @param {Buffer} input The Buffer with the bytes to decode.
+   * @param {bool} copy (optional) If true, copy from the input when making new
+   * Blob values. If false, then Blob values share memory with the input, which
+   * must remain unchanged while the Blob values are used. If omitted, use true.
+   */
+  function decodeEncryptedContent(encryptedContent, input, copy = true)
+  {
+    local decoder = TlvDecoder(input);
+    local endOffset = decoder.
+      readNestedTlvsStart(Tlv.Encrypt_EncryptedContent);
+
+    Tlv0_2WireFormat.decodeKeyLocator_
+      (Tlv.KeyLocator, encryptedContent.getKeyLocator(), decoder, copy);
+    encryptedContent.setAlgorithmType
+      (decoder.readNonNegativeIntegerTlv(Tlv.Encrypt_EncryptionAlgorithm));
+    encryptedContent.setInitialVector
+      (Blob(decoder.readOptionalBlobTlv
+       (Tlv.Encrypt_InitialVector, endOffset), copy));
+    encryptedContent.setPayload
+      (Blob(decoder.readBlobTlv(Tlv.Encrypt_EncryptedPayload), copy));
+
+    decoder.finishNestedTlvs(endOffset);
+  }
+
+  /**
    * Get a singleton instance of a Tlv0_2WireFormat.  To always use the
    * preferred version NDN-TLV, you should use TlvWireFormat.get().
    * @return {Tlv0_2WireFormat} The singleton instance.
