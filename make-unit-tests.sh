@@ -6,5 +6,6 @@ cat ndn-squirrel.nut \
   contrib/aes-squirrel/aes.class.nut \
   tests/unit-tests/mocha.nut \
   tests/unit-tests/test-aes-algorithm.nut \
+  tests/unit-tests/test-interest-methods.nut \
   tests/unit-tests/test-name-methods.nut \
   > bin/unit-tests.app.nut
