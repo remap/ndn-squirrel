@@ -26,6 +26,11 @@ standard Squirrel command line, you can run:
 
     sq bin/test-encode-decode-data.nut
 
+To run the unit tests, in a terminal enter:
+
+    ./make-unit-tests.sh
+    sq bin/unit-tests.app.nut
+
 Files
 =====
 
