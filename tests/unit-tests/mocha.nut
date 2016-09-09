@@ -28,12 +28,18 @@
 Assert <- null;
 it <- null;
 
+beforeEachFunc <- null;
+function beforeEach(func) { beforeEachFunc = func; }
+
+afterEachFunc <- null;
+function afterEach(func) { afterEachFunc = func; }
+
 function describe(testName, test)
 {
-  // Define the global it function called by test() to get the local context.
+  // Define the global it function called by test() so we have the local context.
   ::it = function(subTestName, subTest)
   {
-    // Define the global Assert functions called by subTest() to get the local context.
+    // Define the global Assert functions called by subTest() so we have the local context.
     ::Assert = {
       function fail(unused1, unused2, message) {
         throw(testName + " " + subTestName + ": " + message);
@@ -63,10 +69,19 @@ function describe(testName, test)
       }
     }
 
+    if (beforeEachFunc != null)
+      beforeEachFunc();
     subTest();
+    if (afterEachFunc != null)
+      afterEachFunc();
+
     consoleLog("PASSED: " + testName + " " + subTestName);
   }
 
   test();
+
+  // Clear any beforeEach or afterEach function.
+  beforeEachFunc = null;
+  afterEachFunc = null;
 }
 
