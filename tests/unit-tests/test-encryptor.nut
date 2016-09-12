@@ -107,4 +107,45 @@ describe("TestEncryptor", function() {
 
   // TODO: ContentAsymmetricEncryptSmall
   // TODO: ContentAsymmetricEncryptLarge
+
+  // TODO: Implement DecryptContent in test-consumer.nut.
+  it("SimpleDecryptContent", function() {
+    local DATA_CONTENT = Buffer([
+      0xcb, 0xe5, 0x6a, 0x80, 0x41, 0x24, 0x58, 0x23,
+      0x84, 0x14, 0x15, 0x61, 0x80, 0xb9, 0x5e, 0xbd,
+      0xce, 0x32, 0xb4, 0xbe, 0xbc, 0x91, 0x31, 0xd6,
+      0x19, 0x00, 0x80, 0x8b, 0xfa, 0x00, 0x05, 0x9c
+    ]);
+
+    local AES_KEY = Buffer([
+      0xdd, 0x60, 0x77, 0xec, 0xa9, 0x6b, 0x23, 0x1b,
+      0x40, 0x6b, 0x5a, 0xf8, 0x7d, 0x3d, 0x55, 0x32
+    ]);
+
+    local INITIAL_VECTOR = Buffer([
+      0x73, 0x6f, 0x6d, 0x65, 0x72, 0x61, 0x6e, 0x64,
+      0x6f, 0x6d, 0x76, 0x65, 0x63, 0x74, 0x6f, 0x72
+    ]);
+
+    local cKeyName = Name("/Prefix/SAMPLE/Content/C-KEY/1");
+    local contentName = Name("/Prefix/SAMPLE/Content");
+    local fixtureCKeyBlob = Blob(AES_KEY, false);
+
+    local contentData = Data(contentName);
+    local encryptParams = EncryptParams(EncryptAlgorithmType.AesCbc);
+    encryptParams.setInitialVector(Blob(INITIAL_VECTOR, false));
+    Encryptor.encryptData
+      (contentData, Blob(DATA_CONTENT, false), cKeyName, fixtureCKeyBlob,
+       encryptParams);
+    // For now, add a fake signature.
+    contentData.getSignature().getKeyLocator().setType(KeyLocatorType.KEYNAME);
+    contentData.getSignature().getKeyLocator().setKeyName(Name("/key/name"));
+
+    local consumer = Consumer();
+    // Directly load the C-KEY.
+    consumer.cKeyMap_[cKeyName.toUri()] <- fixtureCKeyBlob;
+    consumer.decryptContent_(contentData, function(result) {
+      Assert.ok(result.equals(Blob(DATA_CONTENT, false)));
+    }, function(errorCode, message) { Assert.fail("", "", message); });
+  });
 });
