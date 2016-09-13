@@ -5435,7 +5435,7 @@ class EncryptParams {
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-// This requires contrib/aes-squirrel/aes.class.nut .
+// This requires contrib/kisi-inc/aes-squirrel/aes.class.nut .
 
 /**
  * The AesAlgorithm class provides static methods to manipulate keys, encrypt

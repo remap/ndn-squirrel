@@ -3,7 +3,7 @@
 mkdir -p bin
 ./make-ndn-squirrel.sh
 cat ndn-squirrel.nut \
-  contrib/aes-squirrel/aes.class.nut \
+  contrib/kisi-inc/aes-squirrel/aes.class.nut \
   tests/unit-tests/mocha.nut \
   tests/unit-tests/test-aes-algorithm.nut \
   tests/unit-tests/test-data-methods.nut \
