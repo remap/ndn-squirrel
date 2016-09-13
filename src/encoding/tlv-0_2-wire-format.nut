@@ -68,7 +68,7 @@ class Tlv0_2WireFormat extends WireFormat {
 /* TODO: Link.
     encoder.writeOptionalNonNegativeIntegerTlv
       (Tlv.SelectedDelegation, interest.getSelectedDelegationIndex());
-    var linkWireEncoding = interest.getLinkWireEncoding(this);
+    local linkWireEncoding = interest.getLinkWireEncoding(this);
     if (!linkWireEncoding.isNull())
       // Encode the entire link as is.
       encoder.writeBuffer(linkWireEncoding.buf());
@@ -294,6 +294,87 @@ class Tlv0_2WireFormat extends WireFormat {
       (Blob(decoder.readBlobTlv(Tlv.SignatureValue), copy));
 
     return signatureHolder.getSignature();
+  }
+
+  /**
+   * Decode input as an NDN-TLV LpPacket and set the fields of the lpPacket
+   * object.
+   * @param {LpPacket} lpPacket The LpPacket object whose fields are updated.
+   * @param {Buffer} input The Buffer with the bytes to decode.
+   * @param {bool} copy (optional) If true, copy from the input when making new
+   * Blob values. If false, then Blob values share memory with the input, which
+   * must remain unchanged while the Blob values are used. If omitted, use true.
+   */
+  function decodeLpPacket(lpPacket, input, copy = true)
+  {
+    lpPacket.clear();
+
+    local decoder = TlvDecoder(input);
+    local endOffset = decoder.readNestedTlvsStart(Tlv.LpPacket_LpPacket);
+
+    while (decoder.getOffset() < endOffset) {
+      // Imitate TlvDecoder.readTypeAndLength.
+      local fieldType = decoder.readVarNumber();
+      local fieldLength = decoder.readVarNumber();
+      local fieldEndOffset = decoder.getOffset() + fieldLength;
+      if (fieldEndOffset > input.length)
+        throw "TLV length exceeds the buffer length";
+
+      if (fieldType == Tlv.LpPacket_Fragment) {
+        // Set the fragment to the bytes of the TLV value.
+        lpPacket.setFragmentWireEncoding
+          (Blob(decoder.getSlice(decoder.getOffset(), fieldEndOffset), copy));
+        decoder.seek(fieldEndOffset);
+
+        // The fragment is supposed to be the last field.
+        break;
+      }
+/**   TODO: Support Nack and IncomingFaceid
+      else if (fieldType == Tlv.LpPacket_Nack) {
+        local networkNack = NetworkNack();
+        local code = decoder.readOptionalNonNegativeIntegerTlv
+          (Tlv.LpPacket_NackReason, fieldEndOffset);
+        local reason;
+        // The enum numeric values are the same as this wire format, so use as is.
+        if (code < 0 || code == NetworkNack.Reason.NONE)
+          // This includes an omitted NackReason.
+          networkNack.setReason(NetworkNack.Reason.NONE);
+        else if (code == NetworkNack.Reason.CONGESTION ||
+                 code == NetworkNack.Reason.DUPLICATE ||
+                 code == NetworkNack.Reason.NO_ROUTE)
+          networkNack.setReason(code);
+        else {
+          // Unrecognized reason.
+          networkNack.setReason(NetworkNack.Reason.OTHER_CODE);
+          networkNack.setOtherReasonCode(code);
+        }
+
+        lpPacket.addHeaderField(networkNack);
+      }
+      else if (fieldType == Tlv.LpPacket_IncomingFaceId) {
+        local incomingFaceId = new IncomingFaceId();
+        incomingFaceId.setFaceId(decoder.readNonNegativeInteger(fieldLength));
+        lpPacket.addHeaderField(incomingFaceId);
+      }
+*/
+      else {
+        // Unrecognized field type. The conditions for ignoring are here:
+        // http://redmine.named-data.net/projects/nfd/wiki/NDNLPv2
+        local canIgnore =
+          (fieldType >= Tlv.LpPacket_IGNORE_MIN &&
+           fieldType <= Tlv.LpPacket_IGNORE_MAX &&
+           (fieldType & 0x01) == 1);
+        if (!canIgnore)
+          throw "Did not get the expected TLV type";
+
+        // Ignore.
+        decoder.seek(fieldEndOffset);
+      }
+
+      decoder.finishNestedTlvs(fieldEndOffset);
+    }
+
+    decoder.finishNestedTlvs(endOffset);
   }
 
   /**
