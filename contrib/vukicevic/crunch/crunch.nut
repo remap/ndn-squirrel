@@ -465,14 +465,6 @@ function Crunch (rawIn = false, rawOut = false) {
   }
 
   function mod (x, y) {
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-    //For negative x, cmp doesn't work and result of div is negative
-    //so take result away from the modulus to get the correct result
-    if (x.negative) {
-      return sub(y, div(x, y, true));
-    }
-*/
-
     switch (cmp(x, y)) {
       case -1:
         return x;
@@ -576,12 +568,6 @@ function Crunch (rawIn = false, rawOut = false) {
 
     z = cut(sub(r1, r2, false));
 
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-    if (z.negative) {
-      z = cut(sub(concat([1], array(k+1, 0)), z, false));
-    }
-*/
-
     while (cmp(z, m) >= 0) {
       z = cut(sub(z, m, false));
     }
@@ -659,9 +645,6 @@ function Crunch (rawIn = false, rawOut = false) {
     if (x[x.len()-1] > 0) {
       z = x.slice(0);
       z[z.len()-1] -= 1;
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-      z.negative = x.negative;
-*/
     } else {
       z = sub(x, [1], false);
     }
