@@ -39,6 +39,6 @@ class Crypto {
       endIndex = value.len();
 
     for (local i = startIndex; i < endIndex; ++i)
-      value[i] = (1.0 * math.rand() / RAND_MAX) * 256;
+      value[i] = ((1.0 * math.rand() / RAND_MAX) * 256).tointeger();
   }
 }
