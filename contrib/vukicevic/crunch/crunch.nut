@@ -738,21 +738,14 @@ function Crunch (rawIn = false, rawOut = false) {
 
   /**
    * Convert byte array to 28 bit array
+   * a[0] must be non-negative.
    */
   function ci (a) {
     local x = [0,0,0,0,0,0].slice((a.len()-1)%7),
           z = [];
 
     if (a[0] < 0) {
-      a[0] *= -1;
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-      z.negative = true;
-*/
-      throw "Crunch: Negative integers not supported";
-    } else {
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-      z.negative = false;
-*/
+      throw "ci: a[0] is negative";
     }
 
     x = concat(x, a);
