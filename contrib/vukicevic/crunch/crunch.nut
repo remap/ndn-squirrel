@@ -269,6 +269,7 @@ function Crunch (rawIn = false, rawOut = false) {
   /**
    *  Karatsuba Multiplication, works faster when numbers gets bigger
    */
+/* Don't support mulk.
   function mulk (x, y) {
     local z, lx, ly, negx, negy, b;
 
@@ -277,12 +278,10 @@ function Crunch (rawIn = false, rawOut = false) {
     }
     lx = x.len();
     ly = y.len();
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
     negx = x.negative,
     negy = y.negative;
     x.negative = false;
     y.negative = false;
-*/
 
     if (lx <= 100) {
       z = mul(x, y);
@@ -308,14 +307,13 @@ function Crunch (rawIn = false, rawOut = false) {
       z = sad(sad(z2, z1), z0);
     }
 
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
     z.negative = (negx ^ negy) ? true : false;
     x.negative = negx;
     y.negative = negy;
-*/
 
     return z;
   }
+*/
 
   /**
    * Squaring - HAC 14.16
@@ -664,6 +662,7 @@ function Crunch (rawIn = false, rawOut = false) {
    * Simple Mod - When n < 2^14
    */
   function mds (x, n) {
+    local z;
     for (local i = 0, z = 0, l = x.len(); i < l; i++) {
       z = ((x[i] >> 14) + (z << 14)) % n;
       z = ((x[i] & 16383) + (z << 14)) % n;
@@ -973,11 +972,13 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} y
      * @return {Array} x * y
      */
+/* Don't support mulk.
     mulk = function (x, y) {
       return transformOut(
         priv.apply(priv.mulk, transformIn([x, y]))
       );
     },
+*/
 
     /**
      * Squaring
