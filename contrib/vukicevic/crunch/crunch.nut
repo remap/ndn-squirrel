@@ -144,6 +144,10 @@ function Crunch (rawIn = false, rawOut = false) {
     return z;
   }
 
+  /**
+   * Effectively does abs(x) - abs(y).
+   * The result is negative if cmp(x, y) < 0.
+   */
   function sub (x, y, internal = false) {
     local n = x.len(),
           t = y.len(),
@@ -170,10 +174,6 @@ function Crunch (rawIn = false, rawOut = false) {
 
     if (c == 1 && !internal) {
       z = sub(array(z.len(), 0), z, true);
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-      z.negative = true;
-*/
-      throw "Crunch: Negative integers not supported";
     }
 
     return z;
@@ -181,46 +181,44 @@ function Crunch (rawIn = false, rawOut = false) {
 
   /**
    * Signed Addition
+   * Inputs and outputs are a table with arr and neg.
    */
   function sad (x, y) {
     local z;
 
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-    if (x.negative) {
-      if (y.negative) {
-        z = add(x, y);
-        z.negative = true;
+    if (x.neg) {
+      if (y.neg) {
+        z = {arr = add(x.arr, y.arr), neg = true};
       } else {
-        z = cut(sub(y, x, false));
+        z = {arr = cut(sub(y.arr, x.arr, false)), neg = cmp(y.arr, x.arr) < 0};
       }
     } else {
-      z = y.negative ? cut(sub(x, y, false)) : add(x, y);
+      z = y.neg
+        ? {arr = cut(sub(x.arr, y.arr, false)), neg = cmp(x.arr, y.arr) < 0}
+        : {arr = add(x.arr, y.arr), neg = false};
     }
-*/
-    z = add(x, y);
 
     return z;
   }
 
   /**
    * Signed Subtraction
+   * Inputs and outputs are a table with arr and neg.
    */
   function ssb (x, y) {
     local z;
 
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-    if (x.negative) {
-      if (y.negative) {
-        z = cut(sub(y, x, false));
+    if (x.neg) {
+      if (y.neg) {
+        z = {arr = cut(sub(y.arr, x.arr, false)), neg = cmp(y.arr, x.arr) < 0};
       } else {
-        z = add(x, y);
-        z.negative = true;
+        z = {arr = add(x.arr, y.arr), neg = true};
       }
     } else {
-      z = y.negative ? add(x, y) : cut(sub(x, y, false));
+      z = y.neg
+        ? {arr = add(x.arr, y.arr), neg = false}
+        : {arr = cut(sub(x.arr, y.arr, false)), neg = cmp(x.arr, y.arr) < 0};
     }
-*/
-    z = cut(sub(x, y, false));
 
     return z;
   }
@@ -366,11 +364,15 @@ function Crunch (rawIn = false, rawOut = false) {
       }
     }
 
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-    z.negative = x.negative;
-*/
-
     return z;
+  }
+
+  /**
+   * Inputs and outputs are a table with arr and neg.
+   * Call rsh, passing through neg.
+   */
+  function rshSigned (x, s) {
+    return {arr = rsh(x.arr, s), neg = x.neg};
   }
 
   function lsh (x, s) {
@@ -450,14 +452,14 @@ function Crunch (rawIn = false, rawOut = false) {
       }
 
       k = concat(mul(v, [q[i]]), array(d-i, 0)); //concat after multiply, save cycles
+      local u_negative = (cmp(u, k) < 0);
       u = sub(u, k, false);
 
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-      if (u.negative) {
+      if (u_negative) {
         u = sub(concat(v, array(d-i, 0)), u, false);
+        // Now, u is non-negative.
         q[i]--;
       }
-  */
     }
 
     if (internal) {
@@ -482,6 +484,7 @@ function Crunch (rawIn = false, rawOut = false) {
 
   /**
    * Greatest Common Divisor - HAC 14.61 - Binary Extended GCD, used to calc inverse, x <= modulo, y <= exponent
+   * Result is a table with arr and neg.
    */
   function gcd (x, y) {
     local min1 = lsb(x[x.len()-1]);
@@ -489,30 +492,33 @@ function Crunch (rawIn = false, rawOut = false) {
     local g = (min1 < min2 ? min1 : min2),
           u = rsh(x, g),
           v = rsh(y, g),
-          a = [1], b = [0], c = [0], d = [1], s;
+          a = {arr = [1], neg = false}, b = {arr = [0], neg = false},
+          c = {arr = [0], neg = false}, d = {arr = [1], neg = false}, s,
+          xSigned = {arr = x, neg = false},
+          ySigned = {arr = y, neg = false};
 
     while (u.len() != 1 || u[0] != 0) {
       s = lsb(u[u.len()-1]);
       u = rsh(u, s);
       while (s--) {
-        if ((a[a.len()-1]&1) == 0 && (b[b.len()-1]&1) == 0) {
-          a = rsh(a, 1);
-          b = rsh(b, 1);
+        if ((a.arr[a.arr.len()-1]&1) == 0 && (b.arr[b.arr.len()-1]&1) == 0) {
+          a = rshSigned(a, 1);
+          b = rshSigned(b, 1);
         } else {
-          a = rsh(sad(a, y), 1);
-          b = rsh(ssb(b, x), 1);
+          a = rshSigned(sad(a, ySigned), 1);
+          b = rshSigned(ssb(b, xSigned), 1);
         }
       }
 
       s = lsb(v[v.len()-1]);
       v = rsh(v, s);
       while (s--) {
-        if ((c[c.len()-1]&1) == 0 && (d[d.len()-1]&1) == 0) {
-          c = rsh(c, 1);
-          d = rsh(d, 1);
+        if ((c.arr[c.arr.len()-1]&1) == 0 && (d.arr[d.arr.len()-1]&1) == 0) {
+          c = rshSigned(c, 1);
+          d = rshSigned(d, 1);
         } else {
-          c = rsh(sad(c, y), 1);
-          d = rsh(ssb(d, x), 1);
+          c = rshSigned(sad(c, ySigned), 1);
+          d = rshSigned(ssb(d, xSigned), 1);
         }
       }
 
@@ -537,10 +543,7 @@ function Crunch (rawIn = false, rawOut = false) {
    */
   function inv (x, y) {
     local z = gcd(y, x);
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-    return (z != null && z.negative) ? sub(y, z, false) : z;
-*/
-    return z;
+    return (z != null && z.neg) ? sub(y, z.arr, false) : z.arr;
   }
 
   /**
@@ -785,12 +788,6 @@ function Crunch (rawIn = false, rawOut = false) {
 
       z = cut(z);
 
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-      if (a.negative) {
-        z[0] *= -1;
-      }
-*/
-
       return z;
     }
   }
@@ -857,7 +854,12 @@ function Crunch (rawIn = false, rawOut = false) {
     else if (args.len() == 2) return func(args[0], args[1]);
     else if (args.len() == 3) return func(args[0], args[1], args[2]);
     else if (args.len() == 4) return func(args[0], args[1], args[2], args[3]);
-    else if (args.len() == 5) return func(args[0], args[1], args[2], args[3], args[4]);
+    else if (args.len() == 5)
+      return func(args[0], args[1], args[2], args[3], args[4]);
+    else if (args.len() == 6)
+      return func(args[0], args[1], args[2], args[3], args[4], args[5]);
+    else if (args.len() == 7)
+      return func(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
   }
 
   }; // End priv.
