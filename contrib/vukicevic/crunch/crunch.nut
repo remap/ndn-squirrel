@@ -52,7 +52,6 @@ function Crunch (rawIn = false, rawOut = false) {
   });
 */
 
-  local zeroes = array(100, 0);
   /* END CONSTANTS */
 
   // Create a scope for the private methods so that they won't call the public
@@ -120,12 +119,12 @@ function Crunch (rawIn = false, rawOut = false) {
           t = y.len(),
           i = (n > t ? n : t),
           c = 0,
-          z = zeroes.slice(0, i);
+          z = array(i, 0);
 
     if (n < t) {
-      x = concat(zeroes.slice(0, t-n), x);
+      x = concat(array(t-n, 0), x);
     } else if (n > t) {
-      y = concat(zeroes.slice(0, n-t), y);
+      y = concat(array(n-t, 0), y);
     }
 
     for (i -= 1; i >= 0; i--) {
@@ -151,12 +150,12 @@ function Crunch (rawIn = false, rawOut = false) {
           t = y.len(),
           i = (n > t ? n : t),
           c = 0,
-          z = zeroes.slice(0, i);
+          z = array(i, 0);
 
     if (n < t) {
-      x = concat(zeroes.slice(0, t-n), x);
+      x = concat(array(t-n, 0), x);
     } else if (n > t) {
-      y = concat(zeroes.slice(0, n-t), y);
+      y = concat(array(n-t, 0), y);
     }
 
     for (i -= 1; i >= 0; i--) {
@@ -171,7 +170,7 @@ function Crunch (rawIn = false, rawOut = false) {
     }
 
     if (c == 1 && !internal) {
-      z = sub(zeroes.slice(0, z.len()), z, true);
+      z = sub(array(z.len(), 0), z, true);
 /* In Squirrel, we can't set .negative on an array. Only support non-negative values.
       z.negative = true;
 */
@@ -234,7 +233,7 @@ function Crunch (rawIn = false, rawOut = false) {
     local yl, yh, c,
           n = x.len(),
           i = y.len(),
-          z = zeroes.slice(0, n+i);
+          z = array(n+i, 0);
 
     while (i--) {
       c = 0;
@@ -324,7 +323,7 @@ function Crunch (rawIn = false, rawOut = false) {
   function sqr (x) {
     local l1, h1, t1, t2, c,
           i = x.len(),
-          z = zeroes.slice(0, 2*i);
+          z = array(2*i, 0);
 
     while (i--) {
       l1 = x[i] & 16383;
@@ -407,7 +406,7 @@ function Crunch (rawIn = false, rawOut = false) {
       z = x;
     }
 
-    return (ls) ? concat(z, zeroes.slice(0, ls)) : z;
+    return (ls) ? concat(z, array(ls, 0)) : z;
   }
 
   /**
@@ -427,7 +426,7 @@ function Crunch (rawIn = false, rawOut = false) {
 
     d  = u.len() - v.len();
     q  = [0];
-    k  = concat(v, zeroes.slice(0, d));
+    k  = concat(v, array(d, 0));
 /* Avoid 64-bit arithmetic.
     yt = v[0]*268435456 + v[1];
 */
@@ -462,12 +461,12 @@ function Crunch (rawIn = false, rawOut = false) {
         q[i]--;
       }
 
-      k = concat(mul(v, [q[i]]), zeroes.slice(0, d-i)); //concat after multiply, save cycles
+      k = concat(mul(v, [q[i]]), array(d-i, 0)); //concat after multiply, save cycles
       u = sub(u, k, false);
 
 /* In Squirrel, we can't set .negative on an array. Only support non-negative values.
       if (u.negative) {
-        u = sub(concat(v, zeroes.slice(0, d-i)), u, false);
+        u = sub(concat(v, array(d-i, 0)), u, false);
         q[i]--;
       }
   */
@@ -578,7 +577,7 @@ function Crunch (rawIn = false, rawOut = false) {
     }
 
     if (mu == null) {
-      mu = div(concat([1], zeroes.slice(0, 2*k)), m, false);
+      mu = div(concat([1], array(2*k, 0)), m, false);
     }
 
     q1 = x.slice(0, x.len()-(k-1));
@@ -599,7 +598,7 @@ function Crunch (rawIn = false, rawOut = false) {
 
 /* In Squirrel, we can't set .negative on an array. Only support non-negative values.
     if (z.negative) {
-      z = cut(sub(concat([1], zeroes.slice(0, k+1)), z, false));
+      z = cut(sub(concat([1], array(k+1, 0)), z, false));
     }
 */
 
@@ -617,7 +616,7 @@ function Crunch (rawIn = false, rawOut = false) {
   function exp (x, e, n) {
     local c = 268435456,
           r = [1],
-          u = div(concat(r, zeroes.slice(0, 2*n.len())), n, false);
+          u = div(concat(r, array(2*n.len(), 0)), n, false);
 
     for (local i = e.len()-1; i >= 0; i--) {
       if (i == 0) {
@@ -921,7 +920,7 @@ function Crunch (rawIn = false, rawOut = false) {
      * @return {Array} 0 length n
      */
     zero = function (n) {
-      return priv.zeroes.slice(0, n);
+      return array(n, 0);
     },
 
     /**
