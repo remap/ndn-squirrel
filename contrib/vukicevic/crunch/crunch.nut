@@ -71,10 +71,9 @@ function Crunch (rawIn = false, rawOut = false) {
     local xl = x.len(),
           yl = y.len(), i; //zero front pad problem
 
-// In Squirrel, we can't set .negative on an array. Only support non-negative values.
-    if (/* x.negative && !y.negative || */ xl < yl) {
+    if (xl < yl) {
       return -1;
-    } else if (/* !x.negative && y.negative || */ xl > yl) {
+    } else if (xl > yl) {
       return 1;
     }
 
