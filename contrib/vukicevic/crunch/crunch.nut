@@ -400,7 +400,7 @@ function Crunch (rawIn = false, rawOut = false) {
   /**
    * Division - HAC 14.20
    */
-  function div (x, y) {
+  function div (x, y, internal) {
     local u, v, xt, yt, d, q, k, i, z,
           s = msb(y[0]) - 1;
 
@@ -460,7 +460,12 @@ function Crunch (rawIn = false, rawOut = false) {
   */
     }
 
-    z = cut(q);
+    if (internal) {
+      z = (s > 0) ? rsh(cut(u), s) : cut(u);
+    } else {
+      z = cut(q);
+    }
+
     return z;
   }
 
@@ -471,7 +476,7 @@ function Crunch (rawIn = false, rawOut = false) {
       case 0:
         return [0];
       default:
-        return div(x, y);
+        return div(x, y, true);
     }
   }
 
@@ -549,7 +554,7 @@ function Crunch (rawIn = false, rawOut = false) {
     }
 
     if (mu == null) {
-      mu = div(concat([1], array(2*k, 0)), m);
+      mu = div(concat([1], array(2*k, 0)), m, false);
     }
 
     q1 = x.slice(0, x.len()-(k-1));
@@ -575,14 +580,13 @@ function Crunch (rawIn = false, rawOut = false) {
     return z;
   }
 
-
   /**
    * Modular Exponentiation - HAC 14.76 Right-to-left binary exp
    */
   function exp (x, e, n) {
     local c = 268435456,
           r = [1],
-          u = div(concat(r, array(2*n.len(), 0)), n);
+          u = div(concat(r, array(2*n.len(), 0)), n, false);
 
     for (local i = e.len()-1; i >= 0; i--) {
       if (i == 0) {
@@ -890,7 +894,7 @@ function Crunch (rawIn = false, rawOut = false) {
      */
     add = function (x, y) {
       return transformOut(
-        priv.apply(priv.sad, transformIn([x, y]))
+        priv.apply(priv.add, transformIn([x, y]))
       );
     },
 
@@ -903,8 +907,11 @@ function Crunch (rawIn = false, rawOut = false) {
      * @return {Array} x - y
      */
     sub = function (x, y) {
+      local args = transformIn([x, y]);
+      if (priv.apply(priv.cmp, args) < 0)
+        throw "Negative result for sub not supported";
       return transformOut(
-        priv.apply(priv.ssb, transformIn([x, y]))
+        priv.apply(priv.sub, args)
       );
     },
 
