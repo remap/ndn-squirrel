@@ -258,10 +258,6 @@ function Crunch (rawIn = false, rawOut = false) {
       z.remove(0);
     }
 
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-    z.negative = (x.negative ^ y.negative) ? true : false;
-*/
-
     return z;
   }
 
@@ -394,11 +390,6 @@ function Crunch (rawIn = false, rawOut = false) {
       if (t != 0) {
         z.insert(0, t);
       }
-
-/* In Squirrel, we can't set .negative on an array. Only support non-negative values.
-      z.negative = x.negative;
-*/
-
     } else {
       z = x;
     }
