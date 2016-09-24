@@ -14,10 +14,9 @@
 function Crunch (rawIn = false, rawOut = false) {
   /**
    * BEGIN CONSTANTS
-   * zeroes, primes and ptests for Miller-Rabin primality
+   * primes and ptests for Miller-Rabin primality
    */
 
-/* Don't load primes, to save memory.
   // sieve of Eratosthenes for first 1900 primes
   local primes = (function(n) {
     local arr  = array(math.ceil((n - 2) / 32).tointeger(), 0),
@@ -50,7 +49,6 @@ function Crunch (rawIn = false, rawOut = false) {
   local ptests = primes.slice(0, 10).map(function (v) {
     return [v];
   });
-*/
 
   /* END CONSTANTS */
 
