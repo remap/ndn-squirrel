@@ -33,6 +33,25 @@ class KeyParams {
   function getKeyType() { return keyType_; }
 }
 
+class RsaKeyParams extends KeyParams {
+  size_ = 0;
+
+  constructor(size = null)
+  {
+    base.constructor(RsaKeyParams.getType());
+
+    if (size == null)
+      size = RsaKeyParams.getDefaultSize();
+    size_ = size;
+  }
+
+  function getKeySize() { return size_; }
+
+  static function getDefaultSize() { return 2048; }
+
+  static function getType() { return KeyType.RSA; }
+}
+
 class AesKeyParams extends KeyParams {
   size_ = 0;
 
