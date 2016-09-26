@@ -868,13 +868,13 @@ function Crunch (rawIn = false, rawOut = false) {
 
   }; // End priv.
 
-  function transformIn (a) {
+  local transformIn = function(a) {
     return rawIn ? a : a.map(function (v) {
       return priv.ci(v.slice(0))
     });
   }
 
-  function transformOut (x) {
+  local transformOut = function(x) {
     return rawOut ? x : priv.co(x);
   }
 
