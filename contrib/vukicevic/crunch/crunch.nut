@@ -17,6 +17,7 @@ function Crunch (rawIn = false, rawOut = false) {
    * primes and ptests for Miller-Rabin primality
    */
 
+/* Remove support for primes until we need it.
   // sieve of Eratosthenes for first 1900 primes
   local primes = (function(n) {
     local arr  = array(math.ceil((n - 2) / 32).tointeger(), 0),
@@ -49,6 +50,7 @@ function Crunch (rawIn = false, rawOut = false) {
   local ptests = primes.slice(0, 10).map(function (v) {
     return [v];
   });
+*/
 
   /* END CONSTANTS */
 
@@ -660,6 +662,7 @@ function Crunch (rawIn = false, rawOut = false) {
   /**
    * Miller-Rabin Primality Test
    */
+/* Remove support for primes until we need it.
   function mrb (x, iterations) {
     local m = dec(x),
           s = lsb(m[x.len()-1]),
@@ -704,10 +707,12 @@ function Crunch (rawIn = false, rawOut = false) {
 
     return mrb(x, 3);
   }
+*/
 
   /**
    * Quick add integer n to arbitrary precision integer x avoiding overflow
    */
+/* Remove support for primes until we need it.
   function qad (x, n) {
     local l = x.len() - 1;
 
@@ -729,6 +734,7 @@ function Crunch (rawIn = false, rawOut = false) {
 
     return x;
   }
+*/
 
   function fct (n) {
     local z = [1],
@@ -1178,11 +1184,13 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} x
      * @return {Array} 1st prime > x
      */
+/* Remove support for primes until we need it.
     nextPrime = function (x) {
       return transformOut(
         priv.apply(priv.npr, transformIn([x]))
       );
     },
+*/
 
     /**
      * Primality Test
@@ -1192,9 +1200,11 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} x
      * @return {boolean} is prime
      */
+/* Remove support for primes until we need it.
     testPrime = function (x) {
       return (x[x.len()-1] % 2 == 0) ? false : priv.apply(priv.tpr, transformIn([x]));
     },
+*/
 
     /**
      * Array base conversion
