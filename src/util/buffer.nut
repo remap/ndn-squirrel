@@ -149,7 +149,8 @@ class Buffer {
   /**
    * Copy bytes from a region of this Buffer to a region in target even if the
    * target region overlaps this Buffer.
-   * @param {Buffer|blob} target The Buffer or Squirrel blob to copy to.
+   * @param {Buffer|blob|array} target The Buffer or Squirrel blob or array of
+   * integers to copy to.
    * @param {integer} targetStart (optional) The start index in target to copy
    * to. If omitted, use 0.
    * @param {integer} sourceStart (optional) The start index in this Buffer to
@@ -172,6 +173,14 @@ class Buffer {
     if (target instanceof ::Buffer) {
       targetBlob = target.blob_;
       iTarget = target.offset_ + targetStart;
+    }
+    else if (typeof target == "array") {
+      // Special case. Just copy bytes to the array and return.
+      iTarget = targetStart;
+      local iEnd = offset_ + sourceEnd;
+      while (iSource < iEnd)
+        target[iTarget++] = blob_[iSource++];
+      return nBytes;
     }
     else {
       targetBlob = target;
