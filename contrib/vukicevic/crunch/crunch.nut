@@ -417,10 +417,7 @@ function Crunch (rawIn = false, rawOut = false) {
     d  = u.len() - v.len();
     q  = [0];
     k  = concat(v, array(d, 0));
-/* Avoid 64-bit arithmetic.
-    yt = v[0]*268435456 + v[1];
-*/
-    yt = Big(v[0]).mul(268435456).plus(v[1]);
+    yt = v.slice(0, 2);
 
     // only cmp as last resort
     while (u[0] > k[0] || (u[0] == k[0] && cmp(u, k) > -1)) {
@@ -440,14 +437,9 @@ function Crunch (rawIn = false, rawOut = false) {
         q[i] = ~~x1;
       }
 
-/* Avoid 64-bit arithmetic.
-      xt = u[i-1]*72057594037927936 + u[i]*268435456 + u[i+1];
-      while (q[i]*yt > xt) { //condition check can fail due to precision problem at 28-bit
-        q[i]--;
-      }
-*/
-      xt = Big(u[i-1]).mul("72057594037927936").plus(Big(u[i]).mul(268435456)).plus(u[i+1]);
-      while (Big(q[i]).mul(yt).cmp(xt) > 0) {
+      xt = u.slice(i-1, i+2);
+
+      while (cmp(mul([q[i]], yt), xt) > 0) {
         q[i]--;
       }
 
