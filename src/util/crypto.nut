@@ -41,4 +41,18 @@ class Crypto {
     for (local i = startIndex; i < endIndex; ++i)
       value[i] = ((1.0 * math.rand() / RAND_MAX) * 256).tointeger();
   }
+
+  /**
+   * Get the Crunch object, creating it if necessary. (To save memory, we don't
+   * want to create it until needed.)
+   * @return {Crunch} The Crunch object.
+   */
+  static function getCrunch()
+  {
+    if (::Crypto_crunch_ == null)
+      ::Crypto_crunch_ = Crunch();
+    return ::Crypto_crunch_;
+  }
 }
+
+Crypto_crunch_ <- null;
