@@ -63,11 +63,14 @@ class DynamicBlobArray {
    * sure there is enough room.
    * @param {Buffer} buffer A Buffer with the bytes to copy.
    * @param {integer} offset The offset in this object's array to copy to.
+   * @return {integer} The new offset which is offset + buffer.length.
    */
   function copy(buffer, offset)
   {
     ensureLength(offset + buffer.len());
     buffer.copy(array_, offset);
+
+    return offset + buffer.len();
   }
 
   /**
