@@ -56,7 +56,12 @@ class Encryptor {
       local content = Encryptor.encryptSymmetric_(payload, key, keyName, params);
       data.setContent(content.wireEncode(TlvWireFormat.get()));
     }
-    // TODO: Support RsaPkcs and RsaOaep.
+    else if (algorithmType == EncryptAlgorithmType.RsaPkcs ||
+             algorithmType == EncryptAlgorithmType.RsaOaep) {
+      // TODO: Support payload larger than the maximum plaintext size.
+      local content = Encryptor.encryptAsymmetric_(payload, key, keyName, params);
+      data.setContent(content.wireEncode(TlvWireFormat.get()));
+    }
     else
       throw "Unsupported encryption method";
   }
@@ -94,5 +99,38 @@ class Encryptor {
       result.setInitialVector(initialVector);
       return result;
     }
+    else
+      throw "Unsupported encryption method";
+  }
+
+  /**
+   * Encrypt the payload using the asymmetric key according to params, and
+   * return an EncryptedContent.
+   * @param {Blob} payload The data to encrypt. The size should be within range
+   * of the key.
+   * @param {Blob} key The key value.
+   * @param {Name} keyName The key name for the EncryptedContent key locator.
+   * @param {EncryptParams} params The parameters for encryption.
+   * @return {EncryptedContent} A new EncryptedContent.
+   */
+  static function encryptAsymmetric_(payload, key, keyName, params)
+  {
+    local algorithmType = params.getAlgorithmType();
+    local keyLocator = KeyLocator();
+    keyLocator.setType(KeyLocatorType.KEYNAME);
+    keyLocator.setKeyName(keyName);
+
+    if (algorithmType == EncryptAlgorithmType.RsaPkcs ||
+        algorithmType == EncryptAlgorithmType.RsaOaep) {
+      local encryptedPayload = RsaAlgorithm.encrypt(key, payload, params);
+
+      local result = EncryptedContent();
+      result.setAlgorithmType(algorithmType);
+      result.setKeyLocator(keyLocator);
+      result.setPayload(encryptedPayload);
+      return result;
+    }
+    else
+      throw "Unsupported encryption method";
   }
 }
