@@ -19,6 +19,8 @@ cat \
   src/hmac-with-sha256-signature.nut \
   src/sha256-with-rsa-signature.nut \
   src/data.nut \
+  src/encoding/der/der-node-type.nut \
+  src/encoding/der/der-node.nut \
   src/encoding/tlv/tlv.nut \
   src/encoding/tlv/tlv-decoder.nut \
   src/encoding/tlv/tlv-encoder.nut \
@@ -35,6 +37,7 @@ cat \
   src/encrypt/encrypt-key.nut \
   src/encrypt/encrypt-error.nut \
   src/encrypt/encrypted-content.nut \
+  src/security/identity/private-key-storage.nut \
   src/security/security-types.nut \
   src/security/key-params.nut \
   src/impl/interest-filter-table.nut \
