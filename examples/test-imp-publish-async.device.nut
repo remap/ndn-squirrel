@@ -41,7 +41,7 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
  * Interests and call onInterest which sends a reply Data packet. You should run
  * this on the Imp Device, and run test-imp-echo-consumer.agent.nut on the Agent.
  */
-function main()
+function testPublish()
 {
   MicroForwarder.get().addFace("internal://agent", agent);
 
@@ -51,4 +51,4 @@ function main()
   face.registerPrefixUsingObject(prefix, onInterest);
 }
 
-main();
+testPublish();
