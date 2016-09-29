@@ -32,7 +32,7 @@ function onData(interest, data)
  * callback which prints the content to the console. You should run this on
  * the Agent, and run test-imp-publish-async.device.nut on the Imp Device.
  */
-function main()
+function testConsume()
 {
   local face = Face
     (SquirrelObjectTransport(), SquirrelObjectTransportConnectionInfo(device));
@@ -45,4 +45,4 @@ function main()
 }
 
 // Use a wakeup delay to let the Agent connect to the Device.
-imp.wakeup(1, function() { main(); });
+imp.wakeup(1, function() { testConsume(); });
