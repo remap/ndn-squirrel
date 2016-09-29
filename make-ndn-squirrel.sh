@@ -32,6 +32,7 @@ cat \
   src/encrypt/algo/encrypt-params.nut \
   src/encrypt/algo/aes-algorithm.nut \
   src/encrypt/algo/encryptor.nut \
+  src/encrypt/algo/rsa-algorithm.nut \
   src/encrypt/consumer.nut \
   src/encrypt/decrypt-key.nut \
   src/encrypt/encrypt-key.nut \
