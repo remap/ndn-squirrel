@@ -98,12 +98,13 @@ class DerNode {
   {
     local idx = startIdx;
 
-    local nodeType = inputBuf[idx] & 0xff;
+    // Use Buffer.get to avoid using the metamethod.
+    local nodeType = inputBuf.get(idx) & 0xff;
     idx += 1;
 
     nodeType_ = nodeType;
 
-    local sizeLen = inputBuf[idx] & 0xff;
+    local sizeLen = inputBuf.get(idx) & 0xff;
     idx += 1;
 
     local header = DynamicBlobArray(10);
@@ -117,7 +118,7 @@ class DerNode {
       local lenCount = sizeLen & ((1<<7) - 1);
       size = 0;
       while (lenCount > 0) {
-        local b = inputBuf[idx];
+        local b = inputBuf.get(idx);
         idx += 1;
         header.ensureLength(headerPosition + 1);
         header.array_[headerPosition++] = b;
@@ -169,6 +170,7 @@ class DerNode {
    */
   static function parse(inputBuf, startIdx = 0)
   {
+    // Use Buffer.get to avoid using the metamethod.
     local nodeType = inputBuf.get(startIdx) & 0xff;
     // Don't increment idx. We're just peeking.
 
@@ -406,7 +408,7 @@ class DerNode_DerInteger extends DerNode {
 
     if (integer != null) {
       if (Buffer.isBuffer(integer)) {
-        if (integer.len() > 0 && integer[0] >= 0x80)
+        if (integer.len() > 0 && integer.get(0) >= 0x80)
           throw "Negative integers are not currently supported";
 
         if (integer.len() == 0)
@@ -425,7 +427,7 @@ class DerNode_DerInteger extends DerNode {
         while (true) {
           ++length;
           temp.ensureLengthFromBack(length);
-          temp.array[temp.array_.len() - length] = integer & 0xff;
+          temp.array_[temp.array_.len() - length] = integer & 0xff;
           integer = integer >> 8;
 
           if (integer <= 0)
@@ -433,11 +435,11 @@ class DerNode_DerInteger extends DerNode {
             break;
         }
 
-        if (temp.array[temp.array_.len() - length] >= 0x80) {
+        if (temp.array_[temp.array_.len() - length] >= 0x80) {
           // Make it a non-negative integer.
           ++length;
           temp.ensureLengthFromBack(length);
-          temp.array[temp.array_.len() - length] = 0;
+          temp.array_[temp.array_.len() - length] = 0;
         }
 
         payloadAppend(Buffer.from(temp.array_, temp.array_.len() - length));
