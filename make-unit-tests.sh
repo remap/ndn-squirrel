@@ -4,7 +4,6 @@ mkdir -p bin
 ./make-ndn-squirrel.sh
 cat ndn-squirrel.nut \
   contrib/kisi-inc/aes-squirrel/aes.class.nut \
-  contrib/deldrid1/big.nut/big.class.nut \
   contrib/vukicevic/crunch/crunch.nut \
   tests/unit-tests/mocha.nut \
   tests/unit-tests/test-aes-algorithm.nut \
