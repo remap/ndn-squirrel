@@ -100,7 +100,23 @@ function Crunch (rawIn = false, rawOut = false) {
   }
 
   /**
-   * Least significant bit, base 28, position from right
+   * Most significant bit, base 14, position from left.
+   * This is only needed for div14.
+   */
+  function msb14 (x) {
+    if (x != 0) {
+      local z = 0;
+      // Start with 2^13.
+      for (local i = 0x2000; i > x; z++) {
+        i /= 2;
+      }
+
+      return z;
+    }
+  }
+
+  /**
+   * Least significant bit, position from right
    */
   function lsb (x) {
     if (x != 0) {
@@ -179,6 +195,40 @@ function Crunch (rawIn = false, rawOut = false) {
     return z;
   }
 
+  // The same as sub(x, y) except x and y are base 14.
+  // This is only needed for div14.
+  function sub14 (x, y, internal = false) {
+    local n = x.len(),
+          t = y.len(),
+          i = (n > t ? n : t),
+          c = 0,
+          z = array(i, 0);
+
+    if (n < t) {
+      x = concat(array(t-n, 0), x);
+    } else if (n > t) {
+      y = concat(array(n-t, 0), y);
+    }
+
+    for (i -= 1; i >= 0; i--) {
+      z[i] = x[i] - y[i] - c;
+
+      if (z[i] < 0) {
+        c = 1;
+        // Add 2^14
+        z[i] += 0x4000;
+      } else {
+        c = 0;
+      }
+    }
+
+    if (c == 1 && !internal) {
+      z = sub14(array(z.len(), 0), z, true);
+    }
+
+    return z;
+  }
+
   /**
    * Signed Addition
    * Inputs and outputs are a table with arr and neg.
@@ -247,6 +297,43 @@ function Crunch (rawIn = false, rawOut = false) {
 
         z[j+i+1] = t2 & 268435455;
         c = yh*xh + (t1 >> 14) + (t2 >> 28);
+      }
+
+      z[i] = c;
+    }
+
+    if (z[0] == 0) {
+      z.remove(0);
+    }
+
+    return z;
+  }
+
+  // Same as mul(x, y) but x and y are base 14.
+  // This is only needed for div14.
+  function mul14 (x, y) {
+    local yl, yh, c,
+          n = x.len(),
+          i = y.len(),
+          z = array(n+i, 0);
+
+    while (i--) {
+      c = 0;
+
+      // Mask with 2^7 - 1
+      yl = y[i] & 0x7f;
+      yh = y[i] >> 7;
+
+      for (local j = n-1, xl, xh, t1, t2; j >= 0; j--) {
+        xl = x[j] & 0x7f;
+        xh = x[j] >> 7;
+
+        t1 = yh*xl + xh*yl;
+        t2 = yl*xl + ((t1 & 0x7f) << 7) + z[j+i+1] + c;
+
+        // Mask with 2^14 - 1
+        z[j+i+1] = t2 & 0x3fff;
+        c = yh*xh + (t1 >> 7) + (t2 >> 14);
       }
 
       z[i] = c;
@@ -399,6 +486,33 @@ function Crunch (rawIn = false, rawOut = false) {
     return (ls) ? concat(z, array(ls, 0)) : z;
   }
 
+  // x is a base 14 array.
+  // This is only needed for div14.
+  function lsh14 (x, s) {
+    local ss = s % 14,
+          ls = math.floor(s/14).tointeger(),
+          l  = x.len(),
+          z  = [],
+          t  = 0;
+
+    if (ss) {
+      z.resize(l);
+      while (l--) {
+        // Mask with 2^14 - 1.
+        z[l] = ((x[l] << ss) + t) & 0x3fff;
+        t    = x[l] >>> (14 - ss);
+      }
+
+      if (t != 0) {
+        z.insert(0, t);
+      }
+    } else {
+      z = x;
+    }
+
+    return (ls) ? concat(z, array(ls, 0)) : z;
+  }
+
   /**
    * Division - HAC 14.20
    */
@@ -433,7 +547,9 @@ function Crunch (rawIn = false, rawOut = false) {
 /* Avoid 64-bit arithmetic.
         local x1 = (u[i-1]*268435456 + u[i])/v[0];
 */
-        local x1 = Big(u[i-1]).mul(268435456).add(u[i]).div(v[0]).tointeger();
+        local t14 = div14(toBase14(u.slice(i-1, i+1)), toBase14([v[0]]));
+        // We expect the result to be less than 28 bits.
+        local x1 = t14.len() == 1 ? t14[0] : t14[0] * 0x4000 + t14[1];
         q[i] = ~~x1;
       }
 
@@ -459,6 +575,94 @@ function Crunch (rawIn = false, rawOut = false) {
     } else {
       z = cut(q);
     }
+
+    return z;
+  }
+
+  // Convert the array from base 28 to base 14.
+  // This is only needed for div14.
+  function toBase14 (x) {
+    local hi = x[0] >>> 14;
+    // Mask with 2^14 - 1.
+    local lo = x[0] & 0x3fff;
+    local j, result;
+
+    if (hi == 0) {
+      result = array(1 + 2 * (x.len() - 1));
+      result[0] = lo;
+      j = 1;
+    }
+    else {
+      result = array(2 + 2 * (x.len() - 1));
+      result[0] = hi;
+      result[1] = lo;
+      j = 2;
+    }
+
+    for (local i = 1; i < x.len(); ++i) {
+      result[j++] = x[i] >>> 14;
+      result[j++] = x[i] & 0x3fff;
+    }
+
+    return result;
+  }
+
+  /**
+   * Division base 14. 
+   * We need this so that we can do 32-bit integer division on the Imp.
+   */
+  function div14 (x, y) {
+    local u, v, xt, yt, d, q, k, i, z,
+          s = msb14(y[0]) - 1;
+
+    if (s > 0) {
+      u = lsh14(x, s);
+      v = lsh14(y, s);
+    } else {
+      u = x.slice(0);
+      v = y.slice(0);
+    }
+
+    d  = u.len() - v.len();
+    q  = [0];
+    k  = concat(v, array(d, 0));
+    yt = v.slice(0, 2);
+
+    // only cmp as last resort
+    while (u[0] > k[0] || (u[0] == k[0] && cmp(u, k) > -1)) {
+      q[0]++;
+      u = sub14(u, k);
+    }
+
+    q.resize(d + 1);
+    for (i = 1; i <= d; i++) {
+      if (u[i-1] == v[0])
+        // Set to 2^14 - 1.
+        q[i] = 0x3fff;
+      else {
+        // This is dividing a 28-bit value by a 14-bit value.
+        local x1 = (u[i-1]*0x4000 + u[i])/v[0];
+        q[i] = ~~x1;
+      }
+
+      xt = u.slice(i-1, i+2);
+
+      while (cmp(mul14([q[i]], yt), xt) > 0) {
+        q[i]--;
+      }
+
+      k = concat(mul14(v, [q[i]]), array(d-i, 0)); //concat after multiply, save cycles
+      local u_negative = (cmp(u, k) < 0);
+      u = sub14(u, k);
+
+      if (u_negative) {
+        u = sub14(concat(v, array(d-i, 0)), u, false);
+        // Now, u is non-negative.
+        q[i]--;
+      }
+    }
+
+    z = cut(q);
 
     return z;
   }
