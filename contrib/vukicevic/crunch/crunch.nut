@@ -832,6 +832,7 @@ function Crunch (rawIn = false, rawOut = false) {
   /**
    * Simple Mod - When n < 2^14
    */
+/* Remove support for primes until we need it.
   function mds (x, n) {
     local z;
     for (local i = 0, z = 0, l = x.len(); i < l; i++) {
@@ -841,6 +842,7 @@ function Crunch (rawIn = false, rawOut = false) {
 
     return z;
   }
+*/
 
   function dec (x) {
     local z;
@@ -930,7 +932,6 @@ function Crunch (rawIn = false, rawOut = false) {
 
     return x;
   }
-*/
 
   function fct (n) {
     local z = [1],
@@ -942,6 +943,7 @@ function Crunch (rawIn = false, rawOut = false) {
 
     return z;
   }
+*/
 
   /**
    * Convert byte array to 28 bit array
@@ -1094,11 +1096,13 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} y
      * @return {Array} x + y
      */
+/* Don't export add until we need it.
     add = function (x, y) {
       return transformOut(
         priv.apply(priv.add, transformIn([x, y]))
       );
     },
+*/
 
     /**
      * Signed Subtraction - Safe for signed MPI
@@ -1108,6 +1112,7 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} y
      * @return {Array} x - y
      */
+/* Don't export sub until we need it.
     sub = function (x, y) {
       local args = transformIn([x, y]);
       if (priv.apply(priv.cmp, args) < 0)
@@ -1125,11 +1130,13 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} y
      * @return {Array} x * y
      */
+/* Don't export mul until we need it.
     mul = function (x, y) {
       return transformOut(
         priv.apply(priv.mul, transformIn([x, y]))
       );
     },
+*/
 
     /**
      * Multiplication, with karatsuba method
@@ -1154,11 +1161,13 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} x
      * @return {Array} x * x
      */
+/* Don't export sqr until we need it.
     sqr = function (x) {
       return transformOut(
         priv.apply(priv.sqr, transformIn([x]))
       );
     },
+*/
 
     /**
      * Modular Exponentiation
@@ -1183,6 +1192,7 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} y
      * @return {Array} x / y || undefined
      */
+/* Don't export div until we need it.
     div = function (x, y) {
       if (y.len() != 1 || y[0] != 0) {
         return transformOut(
@@ -1190,6 +1200,7 @@ function Crunch (rawIn = false, rawOut = false) {
         );
       }
     },
+*/
 
     /**
      * Modulus
@@ -1199,11 +1210,13 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} y
      * @return {Array} x % y
      */
+/* Don't export mod until we need it.
     mod = function (x, y) {
       return transformOut(
         priv.apply(priv.mod, transformIn([x, y]))
       );
     },
+*/
 
     /**
      * Barret Modular Reduction
@@ -1214,11 +1227,13 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} [mu]
      * @return {Array} x % y
      */
+/* Don't export bmr until we need it.
     bmr = function (x, y, mu = null) {
       return transformOut(
         priv.apply(priv.bmr, transformIn([x, y, mu]))
       );
     },
+*/
 
     /**
      * Garner's Algorithm
@@ -1274,11 +1289,13 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Number} n
      * @return {Array} n!
      */
+/* Don't export factorial until we need it.
     factorial = function (n) {
       return transformOut(
         priv.apply(priv.fct, [n%268435456])
       );
     },
+*/
 
     /**
      * Bitwise AND, OR, XOR
@@ -1289,6 +1306,7 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} y
      * @return {Array} x OP y
      */
+/* Don't export bitwise operations until we need them.
     and = function (x, y) {
       if (x.len() == y.len()) {
         for (local i = 0, z = []; i < x.len(); i++) { z[i] = x[i] & y[i] }
@@ -1309,6 +1327,7 @@ function Crunch (rawIn = false, rawOut = false) {
         return z;
       }
     },
+*/
 
     /**
      * Bitwise NOT
@@ -1317,10 +1336,12 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} x
      * @return {Array} NOT x
      */
+/* Don't export bitwise operations until we need them.
     not = function (x) {
       for (local i = 0, z = [], m = rawIn ? 268435455 : 255; i < x.len(); i++) { z[i] = ~x[i] & m }
       return z;
     },
+*/
 
     /**
      * Left Shift
@@ -1330,9 +1351,11 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Integer} s
      * @return {Array} x << s
      */
+/* Don't export bitwise operations until we need them.
     leftShift = function (x, s) {
       return transformOut(priv.lsh(transformIn([x]).pop(), s));
     },
+*/
 
     /**
      * Zero-fill Right Shift
@@ -1342,9 +1365,11 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Integer} s
      * @return {Array} x >>> s
      */
+/* Don't export bitwise operations until we need them.
     rightShift = function (x, s) {
       return transformOut(priv.rsh(transformIn([x]).pop(), s));
     },
+*/
 
     /**
      * Decrement
@@ -1353,11 +1378,13 @@ function Crunch (rawIn = false, rawOut = false) {
      * @param {Array} x
      * @return {Array} x - 1
      */
+/* Don't export decrement until we need it.
     decrement = function (x) {
       return transformOut(
         priv.apply(priv.dec, transformIn([x]))
       );
     },
+*/
 
     /**
      * Compare values of two MPIs - Not safe for signed or leading zero MPI
@@ -1369,9 +1396,11 @@ function Crunch (rawIn = false, rawOut = false) {
      *                  0: x = y
      *                 -1: x < y
      */
+/* Don't export compare until we need it.
     compare = function (x, y) {
       return priv.cmp(x, y);
     },
+*/
 
     /**
      * Find Next Prime
