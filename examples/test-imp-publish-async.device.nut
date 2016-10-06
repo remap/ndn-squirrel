@@ -27,6 +27,13 @@ TEST_RSA_E_KEY <-
   "363c03d55f2481bce26bfc8b24fb8fc5b23e6286b20f82b439c13041b8b6230e0c0fa690bf" +
   "faf75db2be70bb96db0203010001";
 
+// Use a hard-wired secret for testing. In a real application the signer
+// ensures that the verifier knows the shared key and its keyName.
+HMAC_KEY <- Blob(Buffer([
+   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
+  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+]), false);
+
 contentKey <- null;
 contentKeyName <- null;
 contentKeyData <- null;
@@ -49,9 +56,12 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
       (contentKeyData, contentKey, Name("/testecho/D-KEY/1"),
        Blob(Buffer(TEST_RSA_E_KEY, "hex"), false),
        EncryptParams(EncryptAlgorithmType.RsaPkcs));
-    // For now, add a fake signature.
+
+    contentKeyData.setSignature(HmacWithSha256Signature());
+    // Use the signature object in the data object to avoid an extra copy.
     contentKeyData.getSignature().getKeyLocator().setType(KeyLocatorType.KEYNAME);
-    contentKeyData.getSignature().getKeyLocator().setKeyName(Name("/key/name"));
+    contentKeyData.getSignature().getKeyLocator().setKeyName(Name("key1"));
+    KeyChain.signWithHmacWithSha256(contentKeyData, HMAC_KEY);
 
     consoleLog("Generated contentKeyData " + contentKeyData.getName().toUri());
   }
@@ -71,9 +81,11 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
     (data, Blob(content), contentKeyName, contentKey,
      EncryptParams(EncryptAlgorithmType.AesCbc, 16));
 
-  // For now, add a fake signature.
+  data.setSignature(HmacWithSha256Signature());
+  // Use the signature object in the data object to avoid an extra copy.
   data.getSignature().getKeyLocator().setType(KeyLocatorType.KEYNAME);
-  data.getSignature().getKeyLocator().setKeyName(Name("/key/name"));
+  data.getSignature().getKeyLocator().setKeyName(Name("key1"));
+  KeyChain.signWithHmacWithSha256(data, HMAC_KEY);
 
   consoleLog("Sending " + data.getName() + " with content: " + content);
   face.putData(data);

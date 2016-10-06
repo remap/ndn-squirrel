@@ -40,6 +40,13 @@ TEST_RSA_D_KEY <-
   "c5d6729155df6106d8ad83d46b3192e5effdbdea3baed4c71d40af1a7da3c765937e167f30" +
   "29463363868d";
 
+// Use a hard-wired secret for testing. In a real application the signer
+// ensures that the verifier knows the shared key and its keyName.
+HMAC_KEY <- Blob(Buffer([
+   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
+  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+]), false);
+
 /**
  * This is called by the library when a Data packet is received for the
  * expressed Interest. Get the encrypted content value from the Data packet and
@@ -51,6 +58,11 @@ function onData(interest, data, face)
   encryptedContent.wireDecode(data.getContent());
   local contentKeyName = encryptedContent.getKeyLocator().getKeyName();
   consoleLog("Got data packet with name " + data.getName().toUri());
+
+  if (KeyChain.verifyDataWithHmacWithSha256(data, HMAC_KEY))
+    consoleLog("Data signature verification: VERIFIED");
+  else
+    consoleLog("Data signature verification: FAILED");
 
   // Now fetch the encrypted content key.
   consoleLog("Express contentKeyName " + contentKeyName.toUri());
