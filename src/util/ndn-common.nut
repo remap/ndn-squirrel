@@ -29,6 +29,31 @@ class NdnCommon {
    * Face.getMaxNdnPacketSize() which is equivalent.
    */
   MAX_NDN_PACKET_SIZE = 8800;
+
+
+  /**
+   * Compute the HMAC with SHA-256 of data, as defined in
+   * http://tools.ietf.org/html/rfc2104#section-2 .
+   * @param {Buffer} key The key.
+   * @param {Buffer} data The input byte buffer.
+   * @return {Buffer} The HMAC result.
+   */
+  static function computeHmacWithSha256(key, data)
+  {
+    // Debug: Implement HMAC when it is exposed on the Imp Device.
+    // For now, compute a simple int hash and repeat it.
+    local hash = 0;
+    for (local i = 0; i < key.len(); ++i)
+      hash += 37 * key.get(i);
+    for (local i = 0; i < data.len(); ++i)
+      hash += 37 * data.get(i);
+
+    local result = blob(32);
+    // Write the 4-byte integer 8 times.
+    for (local i = 0; i < 8; ++i)
+      result.writen(hash, 'i');
+    return Buffer.from(result);
+  }
 }
 
 /**
