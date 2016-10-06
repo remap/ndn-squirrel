@@ -41,6 +41,7 @@ cat \
   src/security/identity/private-key-storage.nut \
   src/security/security-types.nut \
   src/security/key-params.nut \
+  src/security/key-chain.nut \
   src/impl/interest-filter-table.nut \
   src/impl/pending-interest-table.nut \
   src/lp/lp-packet.nut \
