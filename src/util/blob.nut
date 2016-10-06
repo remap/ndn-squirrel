@@ -136,7 +136,7 @@ class Blob {
 
       // TODO: Does Squirrel have a native buffer compare?
       for (local i = 0; i < buffer_.len(); ++i) {
-        if (buffer_[i] != other.buffer_[i])
+        if (buffer_.get(i) != other.buffer_.get(i))
           return false;
       }
 
