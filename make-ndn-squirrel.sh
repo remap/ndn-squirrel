@@ -44,7 +44,6 @@ cat \
   src/security/key-chain.nut \
   src/impl/interest-filter-table.nut \
   src/impl/pending-interest-table.nut \
-  src/lp/lp-packet.nut \
   src/transport/transport.nut \
   src/transport/squirrel-object-transport.nut \
   src/transport/micro-forwarder-transport.nut \
