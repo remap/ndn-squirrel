@@ -111,7 +111,20 @@ class NameComponent {
   // TODO toVersion.
   // TODO toTimestamp.
   // TODO toSequenceNumber.
-  // TODO fromNumber.
+
+  /**
+   * Create a component whose value is the nonNegativeInteger encoding of the
+   * number.
+   * @param {integer} number
+   * @return {NameComponent}
+   */
+  static function fromNumber(number)
+  {
+    local encoder = TlvEncoder(8);
+    encoder.writeNonNegativeInteger(number);
+    return NameComponent(encoder.finish());
+  };
+
   // TODO fromNumberWithMarker.
   // TODO fromSegment.
   // TODO fromSegmentOffset.
