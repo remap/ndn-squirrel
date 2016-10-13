@@ -221,6 +221,10 @@ class Face {
     }
   }
 
+  // TODO: setCommandSigningInfo
+  // TODO: setCommandCertificateName
+  // TODO: makeCommandInterest
+
   /**
    * Add an entry to the local interest filter table to call the onInterest
    * callback for a matching incoming Interest. This method only modifies the
