@@ -115,7 +115,7 @@ function testConsume()
     (name, function(interest, data) { onData(interest, data, face); });
 }
 
-// You should run this on the Agent, and run test-imp-publish-async.device.app.nut
-// on the Imp Device.
+// You should run this on the Agent, and run test-imp-nac-publish-async.device.app.nut
+// on the Imp Device. ("nac" means "name-based access control".)
 // Use a wakeup delay to let the Agent connect to the Device.
 imp.wakeup(1, function() { testConsume(); });

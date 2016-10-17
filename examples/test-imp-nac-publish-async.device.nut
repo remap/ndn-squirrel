@@ -107,5 +107,6 @@ function testPublish()
 }
 
 // You should run this on the Imp Device, and run
-// test-imp-echo-consumer.agent.app.nut on the Agent.
+// test-imp-nac-echo-consumer.agent.app.nut on the Agent.
+// ("nac" means "name-based access control".)
 testPublish();
