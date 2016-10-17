@@ -48,4 +48,6 @@ bin/test-encode-decode-data.app.nut .
 * bin/test-encode-decode-benchmark.app.nut: Show the benchmarks to encode and decode various kinds of Data packet.
 * bin/test-imp-publish-async.device.app.nut: On the Imp Device connect to a local MicroForwarder which has a route to the Agent, accept interests with prefix /testecho and echo back a data packet. See test-imp-echo-consumer.agent.nut.
 * bin/test-imp-echo-consumer.agent.app.nut: On the Agent, select a word and send the interest /testecho/word to the Imp Device which is echoed by test-imp-publish-async.device.nut.
+* bin/test-imp-nac-publish-async.device.app.nut: Like test-imp-publish-async.device.nut but also encrypt with AES and exchange the encryption key with RSA. See test-imp-nac-echo-consumer.agent.nut.
+* bin/test-imp-nac-echo-consumer.agent.app.nut: Like test-imp-echo-consumer.agent.nut but also recover the encryption key with RSA and decrypt the content with AES. See test-imp-nac-publish-async.device.nut.
 * bin/test-micro-forwarder.app.nut: Simulate the communication of test-imp-publish-async.device.nut and test-imp-echo-consumer.agent.nut in one app using the micro-forwarder and stubs for the agent and device.

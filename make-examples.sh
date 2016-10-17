@@ -12,6 +12,13 @@ cat ndn-squirrel.nut \
   examples/test-encode-decode-interest.nut \
   > bin/test-encode-decode-interest.app.nut
 cat ndn-squirrel.nut \
+  examples/test-imp-echo-consumer.agent.nut \
+  > bin/test-imp-echo-consumer.agent.app.nut
+cat ndn-squirrel.nut \
+  tools/micro-forwarder.nut \
+  examples/test-imp-publish-async.device.nut \
+  > bin/test-imp-publish-async.device.app.nut
+cat ndn-squirrel.nut \
   contrib/kisi-inc/aes-squirrel/aes.class.nut \
   contrib/vukicevic/crunch/crunch.nut \
   examples/test-imp-nac-echo-consumer.agent.nut \
