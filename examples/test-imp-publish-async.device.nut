@@ -17,6 +17,13 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
+// Use a hard-wired secret for testing. In a real application the signer
+// ensures that the verifier knows the shared key and its keyName.
+HMAC_KEY <- Blob(Buffer([
+   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
+  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+]), false);
+
 /**
  * This is called by the library when an Interest is received. Make a Data
  * packet with the same name as the Interest, add a message content to the Data
@@ -27,9 +34,12 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
   local data = Data(interest.getName());
   local content = "Echo " + interest.getName().toUri();
   data.setContent(content);
-  // For now, add a fake signature.
+
+  data.setSignature(HmacWithSha256Signature());
+  // Use the signature object in the data object to avoid an extra copy.
   data.getSignature().getKeyLocator().setType(KeyLocatorType.KEYNAME);
-  data.getSignature().getKeyLocator().setKeyName(Name("/key/name"));
+  data.getSignature().getKeyLocator().setKeyName(Name("key1"));
+  KeyChain.signWithHmacWithSha256(data, HMAC_KEY);
 
   consoleLog("Sending content " + content);
   face.putData(data);
