@@ -18,7 +18,7 @@
  */
 
 /**
- * A MicroForwarderTransport extends Transport to communicate with the a
+ * A MicroForwarderTransport extends Transport to communicate with a
  * MicroForwarder object. This also supports "on" and "send" methods so that
  * this can be used by SquirrelObjectTransport as the connection object (see
  * connect).
@@ -57,7 +57,9 @@ class MicroForwarderTransport extends Transport {
     (connectionInfo, elementListener, onOpenCallback, onClosedCallback = null)
   {
     elementReader_ = ElementReader(elementListener);
-    connectionInfo.getForwarder().addFace("internal://app", this);
+    connectionInfo.getForwarder().addFace
+      ("internal://app", SquirrelObjectTransport(),
+       SquirrelObjectTransportConnectionInfo(this));
 
     if (onOpenCallback != null)
       onOpenCallback();
