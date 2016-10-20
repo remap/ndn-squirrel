@@ -54,24 +54,27 @@ class MicroForwarder {
   }
 
   /**
-   * Add a new face to use a SquirrelObjectTransport, communicating with
-   * connnection.on and connection.send.
+   * Add a new face to use a SquirrelObjectTransport, communicating with the
+   * transport. This immediately connects using the connectionInfo.
    * @param {string} uri The URI to use in the faces/query and faces/list
    * commands.
-   * @param {instance} connection An object which supports "on" and "send"
-   * methods, such as an Imp agent or device object. If running on the Imp
-   * device, this should be the agent object.
+   * @param {Transport} transport An object of a subclass of Transport to use
+   * for communication. If the transport object has a "setOnReceivedObject"
+   * method, then use it to set the onReceivedObject callback.
+   * @param {TransportConnectionInfo} connectionInfo This must be a
+   * ConnectionInfo from the same subclass of Transport as transport.
    */
-  function addFace(uri, connection)
+  function addFace(uri, transport, connectionInfo)
   {
     local face = null;
     local thisForwarder = this;
-    local transport = SquirrelObjectTransport
-      (function(obj) { thisForwarder.onReceivedObject(face, obj); });
+    if ("setOnReceivedObject" in transport)
+      transport.setOnReceivedObject
+        (function(obj) { thisForwarder.onReceivedObject(face, obj); });
     face = ForwarderFace(uri, transport);
 
     transport.connect
-      (SquirrelObjectTransportConnectionInfo(connection),
+      (connectionInfo,
        { onReceivedElement = function(element) {
            thisForwarder.onReceivedElement(face, element); } },
        function(){});
@@ -314,7 +317,7 @@ class ForwarderFace {
    */
   function sendObject(obj)
   {
-    if (transport != null && transport.sendObject != null)
+    if (transport != null && "sendObject" in transport)
       transport.sendObject(obj);
   }
 
