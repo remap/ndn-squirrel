@@ -1113,7 +1113,23 @@ class NameComponent {
     return type_ == NameComponentType.IMPLICIT_SHA256_DIGEST;
   }
 
-  // TODO toNumber.
+  /**
+   * Interpret this name component as a network-ordered number and return an
+   * integer.
+   * @return {integer} The integer number.
+   */
+  function toNumber()
+  {
+    local buf = value_.buf();
+    local result = 0;
+    for (local i = 0; i < buf.len(); ++i) {
+      result = result << 8;
+      result += buf.get(i);
+    }
+  
+    return result;
+  }
+
   // TODO toNumberWithMarker.
   // TODO toSegment.
   // TODO toSegmentOffset.
@@ -8050,6 +8066,10 @@ class Face {
       transport_.send(encoding.buf());
     }
   }
+
+  // TODO: setCommandSigningInfo
+  // TODO: setCommandCertificateName
+  // TODO: makeCommandInterest
 
   /**
    * Add an entry to the local interest filter table to call the onInterest
