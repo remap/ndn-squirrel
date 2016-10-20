@@ -28,11 +28,12 @@ class SquirrelObjectTransport extends Transport {
   connection_ = null;
 
   /**
-   * Create a SquirrelObjectTransport.
-   * @param {function} onReceivedObject (optional) If supplied and the received
-   * object is not a blob then just call onReceivedObject(obj).
+   * Set the onReceivedObject callback, replacing any previous callback.
+   * @param {function} onReceivedObject If the received object is not a blob
+   * then just call onReceivedObject(obj). If this is null, then don't call it.
    */
-  constructor(onReceivedObject = null) {
+  function setOnReceivedObject(onReceivedObject)
+  {
     onReceivedObject_ = onReceivedObject;
   }
 
