@@ -53,7 +53,9 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
  */
 function testPublish()
 {
-  MicroForwarder.get().addFace("internal://agent", agent);
+  MicroForwarder.get().addFace
+    ("internal://agent", SquirrelObjectTransport(),
+     SquirrelObjectTransportConnectionInfo(agent));
 
   local face = Face();
   local prefix = Name("/testecho");
