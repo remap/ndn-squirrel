@@ -77,7 +77,7 @@ class InterestFilter {
    * (e.g., there are implicit heading `^` and trailing `$` symbols in the
    * regular expression).
    * @param {Name} name The name to check against this filter.
-   * @return {boolean} True if name matches this filter, otherwise false.
+   * @return {bool} True if name matches this filter, otherwise false.
    */
   function doesMatch(name)
   {
