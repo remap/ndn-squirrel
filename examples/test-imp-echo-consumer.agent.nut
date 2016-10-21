@@ -49,8 +49,17 @@ function testConsume()
   local face = Face
     (SquirrelObjectTransport(), SquirrelObjectTransportConnectionInfo(device));
 
+  // This should be answered by the publisher application on the device.
   local name = Name("/testecho");
   local word = "hello";
+  name.append(word);
+  consoleLog("Express name " + name.toUri());
+  face.expressInterest(name, onData);
+
+  // The device should forward this over the LoRa to a publisher application on
+  // another device.
+  name = Name("/testecho2");
+  word = "read";
   name.append(word);
   consoleLog("Express name " + name.toUri());
   face.expressInterest(name, onData);
