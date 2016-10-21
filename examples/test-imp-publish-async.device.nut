@@ -17,11 +17,16 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-// Use a hard-wired secret for testing. In a real application the signer
+// Use hard-wired HMAC shared keys for testing. In a real application the signer
 // ensures that the verifier knows the shared key and its keyName.
 HMAC_KEY <- Blob(Buffer([
    0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
+]), false);
+
+HMAC_KEY2 <- Blob(Buffer([
+  32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+  48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63
 ]), false);
 
 /**
@@ -38,7 +43,7 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
   data.setSignature(HmacWithSha256Signature());
   // Use the signature object in the data object to avoid an extra copy.
   data.getSignature().getKeyLocator().setType(KeyLocatorType.KEYNAME);
-  data.getSignature().getKeyLocator().setKeyName(Name("key1"));
+  data.getSignature().getKeyLocator().setKeyName(Name("/key1"));
   KeyChain.signWithHmacWithSha256(data, HMAC_KEY);
 
   consoleLog("Sending content " + content);
@@ -81,8 +86,8 @@ class LoRaUartStub {
     data.setSignature(HmacWithSha256Signature());
     // Use the signature object in the data object to avoid an extra copy.
     data.getSignature().getKeyLocator().setType(KeyLocatorType.KEYNAME);
-    data.getSignature().getKeyLocator().setKeyName(Name("key1"));
-    KeyChain.signWithHmacWithSha256(data, HMAC_KEY);
+    data.getSignature().getKeyLocator().setKeyName(Name("/key2"));
+    KeyChain.signWithHmacWithSha256(data, HMAC_KEY2);
 
     // Simulate returning the Data packet by adding to inputBlob_ so that
     // readBlob returns it.
