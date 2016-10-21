@@ -63,6 +63,7 @@ class MicroForwarder {
    * method, then use it to set the onReceivedObject callback.
    * @param {TransportConnectionInfo} connectionInfo This must be a
    * ConnectionInfo from the same subclass of Transport as transport.
+   * @return {integer} The new face ID.
    */
   function addFace(uri, transport, connectionInfo)
   {
@@ -79,6 +80,8 @@ class MicroForwarder {
            thisForwarder.onReceivedElement(face, element); } },
        function(){});
     faces_.append(face);
+
+    return face.faceId;
   }
 
   /**
@@ -150,7 +153,7 @@ class MicroForwarder {
         for (local i = 0; i < FIB_.len(); ++i) {
           local fibEntry = FIB_[i];
 
-          // TODO: Need to do longest prefix match?
+          // TODO: Need to check all for longest prefix match?
           if (fibEntry.name.match(interest.getName())) {
             for (local j = 0; j < fibEntry.faces.len(); ++j) {
               local outFace = fibEntry.faces[j];
