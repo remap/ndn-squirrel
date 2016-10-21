@@ -46,16 +46,97 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
 }
 
 /**
- * Create a MicroForwarder with a route to the agent. Then create an application
- * Face which automatically connects to the MicroForwarder. Register to receive
- * Interests and call onInterest which sends a reply Data packet. You should run
- * this on the Imp Device, and run test-imp-echo-consumer.agent.nut on the Agent.
+ * Simulate a uart object with another application on the other side of a LoRa
+ * connection. We will remove this when we use the real LoRa.
+ */
+class LoRaUartStub {
+  inputBlob_ = null;
+
+  /**
+   * This is called by the MicroForwarder to send a packet. For the stub,
+   * instead of sending we simulate a remote application responding to an
+   * Interest for /testecho2.
+   * @param {blob} value The bytes to send.
+   */
+  function write(value)
+  {
+    local interest = Interest();
+    try {
+      interest.wireDecode(Blob(value));
+    } catch (ex) {
+      // Ignore non-Interest packets.
+      return;
+    }
+
+    if (!Name("/testecho2").match(interest.getName()))
+      // Ignore an Interest for another prefix.
+      return;
+
+    // Make a Data packet with the same name as the Interest, add a message
+    // content to the Data packet and sign it.
+    local data = Data(interest.getName());
+    local content = "Echo LoRa " + interest.getName().toUri();
+    data.setContent(content);
+
+    data.setSignature(HmacWithSha256Signature());
+    // Use the signature object in the data object to avoid an extra copy.
+    data.getSignature().getKeyLocator().setType(KeyLocatorType.KEYNAME);
+    data.getSignature().getKeyLocator().setKeyName(Name("key1"));
+    KeyChain.signWithHmacWithSha256(data, HMAC_KEY);
+
+    // Simulate returning the Data packet by adding to inputBlob_ so that
+    // readBlob returns it.
+    consoleLog("Simulated other device over LoRa sending content " + content);
+    local response = data.wireEncode().buf().toBlob();
+    if (inputBlob_ == null)
+      inputBlob_ = response;
+    else {
+      // Append.
+      inputBlob_.seek(inputBlob_.len());
+      inputBlob_.writeblob(response);
+    }
+  }
+
+  /**
+   * This is called periodically by the MicroForwarder to receive an incoming
+   * packet. For the stub we return the simulated incoming packet that was
+   * created by write().
+   * @return {blob} The bytes of the receive buffer, or an empty blob if the
+   * receive there is no incoming data.
+   */
+  function readblob()
+  {
+    if (inputBlob_ == null)
+      // Return a new empty blob since we don't know that the caller will do with it.
+      return blob(0);
+    else {
+      local result = inputBlob_;
+      inputBlob_ = null;
+      result.seek(0);
+      return result;
+    }
+  }
+}
+
+/**
+ * Create a MicroForwarder with a route to the agent and another route to the
+ * LoRa radio. Then create an application Face which automatically connects to
+ * the MicroForwarder. Register to receive Interests and call onInterest which
+ * sends a reply Data packet. You should run this on the Imp Device, and run
+ * test-imp-echo-consumer.agent.nut on the Agent.
  */
 function testPublish()
 {
   MicroForwarder.get().addFace
     ("internal://agent", SquirrelObjectTransport(),
      SquirrelObjectTransportConnectionInfo(agent));
+
+  // TODO: Configure the UART settings for the real LoRa.
+  local loRa = LoRaUartStub();
+  local uartTransport = UartTransport();
+  local loRaFaceId = MicroForwarder.get().addFace
+    ("uart://LoRa", uartTransport, UartTransportConnectionInfo(loRa));
+   MicroForwarder.get().registerRoute(Name("/testecho2"), loRaFaceId)
 
   local face = Face();
   local prefix = Name("/testecho");
