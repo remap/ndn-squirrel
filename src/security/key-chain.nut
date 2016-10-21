@@ -56,7 +56,7 @@ class KeyChain {
    * @param {Blob} key The key for the HmacWithSha256.
    * @param {WireFormat} wireFormat (optional) A WireFormat object used to
    * encode the target. If omitted, use WireFormat getDefaultWireFormat().
-   * @return {boolean} True if the signature verifies, otherwise false.
+   * @return {bool} True if the signature verifies, otherwise false.
    */
   static function verifyDataWithHmacWithSha256(data, key, wireFormat = null)
   {
