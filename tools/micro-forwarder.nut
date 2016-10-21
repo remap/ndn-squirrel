@@ -54,8 +54,8 @@ class MicroForwarder {
   }
 
   /**
-   * Add a new face to use a SquirrelObjectTransport, communicating with the
-   * transport. This immediately connects using the connectionInfo.
+   * Add a new face to communicate with the given transport. This immediately
+   * connects using the connectionInfo.
    * @param {string} uri The URI to use in the faces/query and faces/list
    * commands.
    * @param {Transport} transport An object of a subclass of Transport to use
@@ -82,6 +82,48 @@ class MicroForwarder {
     faces_.append(face);
 
     return face.faceId;
+  }
+
+  /**
+   * Find or create the FIB entry with the given name and add the ForwarderFace
+   * with the given faceId.
+   * @param {Name} name The name of the FIB entry.
+   * @param {integer} faceId The face ID of the face for the route.
+   * @return {bool} True for success, or false if can't find the ForwarderFace
+   * with faceId.
+   */
+  function registerRoute(name, faceId)
+  {
+    // Find the face with the faceId.
+    local nexthopFace = null;
+    for (local i = 0; i < faces_.len(); ++i) {
+      if (faces_[i].faceId == faceId) {
+        nexthopFace = faces_[i];
+        break;
+      }
+    }
+
+    if (nexthopFace == null)
+      return false;
+
+    // Check for a FIB entry for the name and add the face.
+    for (local i = 0; i < FIB_.len(); ++i) {
+      local fibEntry = FIB_[i];
+      if (fibEntry.name.equals(name)) {
+        // Make sure the face is not already added.
+        if (fibEntry.faces.indexOf(nexthopFace) < 0)
+          fibEntry.faces.push(nexthopFace);
+
+        return true;
+      }
+    }
+
+    // Make a new FIB entry.
+    local fibEntry = FibEntry(name);
+    fibEntry.faces.push(nexthopFace);
+    FIB_.push(fibEntry);
+
+    return true;
   }
 
   /**
@@ -193,46 +235,16 @@ class MicroForwarder {
       return;
 
     if (obj.type == "rib/register") {
-      local nexthopFace = null;
-      if (!("faceId" in obj) || obj.faceId == null)
+      local faceId;
+      if ("faceId" in obj && obj.faceId != null)
+        faceId = obj.faceId;
+      else
         // Use the requesting face.
-        nexthopFace = face;
-      else {
-        // Find the face with the faceId.
-        for (local i = 0; i < faces_.len(); ++i) {
-          if (faces_[i].faceId == obj.faceId) {
-            nexthopFace = faces_[i];
-            break;
-          }
-        }
+        faceId = face.faceId;
 
-        if (nexthopFace == null) {
-          // TODO: Send error reply.
-          return;
-        }
-      }
-
-      local name = Name(obj.nameUri);
-      // Check for a FIB entry for the name and add the face.
-      local foundFibEntry = false;
-      for (local i = 0; i < FIB_.len(); ++i) {
-        local fibEntry = FIB_[i];
-        if (fibEntry.name.equals(name)) {
-          // Make sure the face is not already added.
-          if (fibEntry.faces.indexOf(nexthopFace) < 0)
-            fibEntry.faces.push(nexthopFace);
-
-          foundFibEntry = true;
-          break;
-        }
-      }
-
-      if (!foundFibEntry) {
-        // Make a new FIB entry.
-        local fibEntry = FibEntry(name);
-        fibEntry.faces.push(nexthopFace);
-        FIB_.push(fibEntry);
-      }
+      if (!registerRoute(Name(obj.nameUri), faceId))
+        // TODO: Send error reply?
+        return;
 
       obj.statusCode <- 200;
       face.sendObject(obj);
