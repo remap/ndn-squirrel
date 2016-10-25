@@ -211,13 +211,14 @@ class MicroForwarder {
       // Send the data packet to the face for each matching PIT entry.
       // Iterate backwards so we can remove the entry and keep iterating.
       for (local i = PIT_.len() - 1; i >= 0; --i) {
-        if (PIT_[i].face != face && PIT_[i].face != null &&
-            PIT_[i].interest.matchesData(data)) {
-          PIT_[i].face.sendBuffer(element);
-          PIT_[i].face = null;
-
-          // Remove the entry.
+        local entry = PIT_[i];
+        if (entry.face != face && entry.face != null &&
+            entry.interest.matchesData(data)) {
+          // Remove the entry before sending.
           PIT_.remove(i);
+
+          entry.face.sendBuffer(element);
+          entry.face = null;
         }
       }
     }
