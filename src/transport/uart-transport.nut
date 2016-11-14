@@ -19,8 +19,8 @@
 
 /**
  * A UartTransport extends Transport to communicate with a connection
- * object which supports "on" and "send" methods, such as an Imp agent or device
- * object. This can send a blob as well as another type of Squirrel object.
+ * object which supports "write" and "readblob" methods, such as an Imp uart
+ * object.
  */
 class UartTransport extends Transport {
   elementReader_ = null;
