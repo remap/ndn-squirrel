@@ -331,6 +331,20 @@ class Buffer {
       return -1;
   }
 
+  /**
+   * Get the value at the index.
+   * @param {integer} i The zero-based index into the buffer array.
+   * @return {integer} The value at the index.
+   */
+  function get(i) { return blob_[offset_ + i]; }
+
+  /**
+   * Set the value at the index.
+   * @param {integer} i The zero-based index into the buffer array.
+   * @param {integer} value The value to set.
+   */
+  function set(i, value) { blob_[offset_ + i] = value; }
+
   function _get(i)
   {
     // Note: In this class, we always reference globals with :: to avoid
@@ -342,13 +356,6 @@ class Buffer {
     else
       throw "Unrecognized type";
   }
-
-  /**
-   * Get the value at the index.
-   * @param {integer} The zero-based index into the buffer array.
-   * @return {integer} The value at the index.
-   */
-  function get(i) { return blob_[offset_ + i]; }
 
   function _set(i, value)
   {
