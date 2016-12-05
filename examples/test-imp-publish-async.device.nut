@@ -51,10 +51,10 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
 }
 
 /**
- * Simulate a uart object with another application on the other side of a LoRa
- * connection. We will remove this when we use the real LoRa.
+ * Simulate a uart object with another application on the other side of a serial
+ * connection. We will remove this when we use the real serial connection.
  */
-class LoRaUartStub {
+class SerialUartStub {
   inputBlob_ = null;
 
   /**
@@ -80,7 +80,7 @@ class LoRaUartStub {
     // Make a Data packet with the same name as the Interest, add a message
     // content to the Data packet and sign it.
     local data = Data(interest.getName());
-    local content = "Echo LoRa " + interest.getName().toUri();
+    local content = "Echo serial " + interest.getName().toUri();
     data.setContent(content);
 
     data.setSignature(HmacWithSha256Signature());
@@ -91,7 +91,8 @@ class LoRaUartStub {
 
     // Simulate returning the Data packet by adding to inputBlob_ so that
     // readBlob returns it.
-    consoleLog("Simulated other device over LoRa sending content " + content);
+    consoleLog
+      ("Simulated other device over serial connection sending content " + content);
     local response = data.wireEncode().buf().toBlob();
     if (inputBlob_ == null)
       inputBlob_ = response;
@@ -124,11 +125,11 @@ class LoRaUartStub {
 }
 
 /**
- * Create a MicroForwarder with a route to the agent and another route to the
- * LoRa radio. Then create an application Face which automatically connects to
- * the MicroForwarder. Register to receive Interests and call onInterest which
- * sends a reply Data packet. You should run this on the Imp Device, and run
- * test-imp-echo-consumer.agent.nut on the Agent.
+ * Create a MicroForwarder with a route to the agent and another route over a
+ * serial connection. Then create an application Face which automatically
+ * connects to the MicroForwarder. Register to receive Interests and call
+ * onInterest which sends a reply Data packet. You should run this on the Imp
+ * Device, and run test-imp-echo-consumer.agent.nut on the Agent.
  */
 function testPublish()
 {
@@ -136,11 +137,11 @@ function testPublish()
     ("internal://agent", SquirrelObjectTransport(),
      SquirrelObjectTransportConnectionInfo(agent));
 
-  // TODO: Configure the UART settings for the real LoRa.
-  local loRa = LoRaUartStub();
+  // TODO: Configure the UART settings for the real serial connection.
+  local loRa = SerialUartStub();
   local uartTransport = UartTransport();
   local loRaFaceId = MicroForwarder.get().addFace
-    ("uart://LoRa", uartTransport, UartTransportConnectionInfo(loRa));
+    ("uart://serial", uartTransport, UartTransportConnectionInfo(loRa));
    MicroForwarder.get().registerRoute(Name("/testecho2"), loRaFaceId)
 
   local face = Face();

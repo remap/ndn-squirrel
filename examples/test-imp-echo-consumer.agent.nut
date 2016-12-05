@@ -70,8 +70,8 @@ function testConsume()
   consoleLog("Express name " + name.toUri());
   face.expressInterest(name, onData);
 
-  // The device should forward this over the LoRa to a publisher application on
-  // another device.
+  // The device should forward this over a serial connection to a publisher
+  // application on another device.
   name = Name("/testecho2");
   word = "read";
   name.append(word);
