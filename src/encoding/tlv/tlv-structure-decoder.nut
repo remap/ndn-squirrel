@@ -66,7 +66,8 @@ class TlvStructureDecoder {
         return false;
 
       if (state_ == TlvStructureDecoder_READ_TYPE) {
-        local firstOctet = input[offset_];
+        // Use Buffer.get to avoid using the metamethod.
+        local firstOctet = input.get(offset_);
         offset_ += 1;
         if (firstOctet < 253)
           // The value is simple, so we can skip straight to reading the length.
@@ -98,7 +99,8 @@ class TlvStructureDecoder {
         state_ = TlvStructureDecoder_READ_LENGTH;
       }
       else if (state_ == TlvStructureDecoder_READ_LENGTH) {
-        local firstOctet = input[offset_];
+        // Use Buffer.get to avoid using the metamethod.
+        local firstOctet = input.get(offset_);
         offset_ += 1;
         if (firstOctet < 253) {
           // The value is simple, so we can skip straight to reading

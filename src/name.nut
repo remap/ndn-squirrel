@@ -194,19 +194,20 @@ class NameComponent {
     if (type_ > other.type_)
       return 1;
 
-    local blob1 = value_.buf();
-    local blob2 = other.value_.buf();
-    if (blob1.len() < blob2.len())
+    local buffer1 = value_.buf();
+    local buffer2 = other.value_.buf();
+    if (buffer1.len() < buffer2.len())
         return -1;
-    if (blob1.len() > blob2.len())
+    if (buffer1.len() > buffer2.len())
         return 1;
 
     // The components are equal length. Just do a byte compare.
     // TODO: Does Squirrel have a native buffer compare?
-    for (local i = 0; i < blob1.len(); ++i) {
-      if (blob1[i] < blob2[i])
+    for (local i = 0; i < buffer1.len(); ++i) {
+      // Use Buffer.get to avoid using the metamethod.
+      if (buffer1.get(i) < buffer2.get(i))
         return -1;
-      if (blob1[i] > blob2[i])
+      if (buffer1.get(i) > buffer2.get(i))
         return 1;
     }
 
@@ -602,7 +603,8 @@ class Name {
     local result = "";
     local gotNonDot = false;
     for (local i = 0; i < value.len(); ++i) {
-      if (value[i] != 0x2e) {
+      // Use Buffer.get to avoid using the metamethod.
+      if (value.get(i) != 0x2e) {
         gotNonDot = true;
         break;
       }
@@ -616,7 +618,7 @@ class Name {
     }
     else {
       for (local i = 0; i < value.len(); ++i) {
-        local x = value[i];
+        local x = value.get(i);
         // Check for 0-9, A-Z, a-z, (+), (-), (.), (_)
         if (x >= 0x30 && x <= 0x39 || x >= 0x41 && x <= 0x5a ||
             x >= 0x61 && x <= 0x7a || x == 0x2b || x == 0x2d ||
@@ -646,7 +648,8 @@ class Name {
     // Check for all dots.
     local gotNonDot = false;
     for (local i = 0; i < value.len(); ++i) {
-      if (value[i] != '.') {
+      // Use Buffer.get to avoid using the metamethod.
+      if (value.get(i) != '.') {
         gotNonDot = true;
         break;
       }

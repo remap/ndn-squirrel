@@ -344,14 +344,15 @@ class Face {
   function onReceivedElement(element)
   {
     local lpPacket = null;
-    if (element[0] == Tlv.LpPacket_LpPacket)
+    // Use Buffer.get to avoid using the metamethod.
+    if (element.get(0) == Tlv.LpPacket_LpPacket)
       // TODO: Support LpPacket.
       throw "not supported";
 
     // First, decode as Interest or Data.
     local interest = null;
     local data = null;
-    if (element[0] == Tlv.Interest || element[0] == Tlv.Data) {
+    if (element.get(0) == Tlv.Interest || element.get(0) == Tlv.Data) {
       local decoder = TlvDecoder (element);
       if (decoder.peekType(Tlv.Interest, element.len())) {
         interest = Interest();

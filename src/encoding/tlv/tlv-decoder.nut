@@ -39,9 +39,7 @@ class TlvDecoder {
    */
   function readVarNumber()
   {
-/* To avoid a bug in the Imp device Squirrel implementation, don't use the metamethod.
-    local firstOctet = input_[offset_];
-*/
+    // Use Buffer.get to avoid using the metamethod.
     local firstOctet = input_.get(offset_);
     offset_ += 1;
     if (firstOctet < 253)
@@ -64,16 +62,17 @@ class TlvDecoder {
     local result;
     // This is a private function so we know firstOctet >= 253.
     if (firstOctet == 253) {
-      result = ((input_[offset_] << 8) +
-                 input_[offset_ + 1]);
+      // Use Buffer.get to avoid using the metamethod.
+      result = ((input_.get(offset_) << 8) +
+                 input_.get(offset_ + 1));
       offset_ += 2;
     }
     else if (firstOctet == 254) {
       // Use abs because << 24 can set the high bit of the 32-bit int making it negative.
-      result = (math.abs(input_[offset_] << 24) +
-                        (input_[offset_ + 1] << 16) +
-                        (input_[offset_ + 2] << 8) +
-                         input_[offset_ + 3]);
+      result = (math.abs(input_.get(offset_) << 24) +
+                        (input_.get(offset_ + 1) << 16) +
+                        (input_.get(offset_ + 2) << 8) +
+                         input_.get(offset_ + 3));
       offset_ += 4;
     }
     else
@@ -190,16 +189,17 @@ class TlvDecoder {
   {
     local result;
     if (length == 1)
-      result = input_[offset_];
+      // Use Buffer.get to avoid using the metamethod.
+      result = input_.get(offset_);
     else if (length == 2)
-      result = ((input_[offset_] << 8) +
-                 input_[offset_ + 1]);
+      result = ((input_.get(offset_) << 8) +
+                 input_.get(offset_ + 1));
     else if (length == 4)
       // Use abs because << 24 can set the high bit of the 32-bit int making it negative.
-      result = (math.abs(input_[offset_] << 24) +
-                        (input_[offset_ + 1] << 16) +
-                        (input_[offset_ + 2] << 8) +
-                         input_[offset_ + 3]);
+      result = (math.abs(input_.get(offset_) << 24) +
+                        (input_.get(offset_ + 1) << 16) +
+                        (input_.get(offset_ + 2) << 8) +
+                         input_.get(offset_ + 3));
     else if (length == 8)
       throw "Decoding a 64-bit VAR-NUMBER is not supported";
     else

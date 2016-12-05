@@ -138,7 +138,8 @@ class MicroForwarder {
   {
     local interest = null;
     local data = null;
-    if (element[0] == Tlv.Interest || element[0] == Tlv.Data) {
+    // Use Buffer.get to avoid using the metamethod.
+    if (element.get(0) == Tlv.Interest || element.get(0) == Tlv.Data) {
       local decoder = TlvDecoder(element);
       if (decoder.peekType(Tlv.Interest, element.len())) {
         interest = Interest();

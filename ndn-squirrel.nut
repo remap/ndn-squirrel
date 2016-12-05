@@ -381,6 +381,7 @@ class Buffer {
     // Note: In this class, we always reference globals with :: to avoid
     // invoking this _get metamethod.
 
+    throw "Debug get";
     if (typeof i == "integer")
       // TODO: Do a bounds check?
       return blob_[offset_ + i];
@@ -1203,19 +1204,20 @@ class NameComponent {
     if (type_ > other.type_)
       return 1;
 
-    local blob1 = value_.buf();
-    local blob2 = other.value_.buf();
-    if (blob1.len() < blob2.len())
+    local buffer1 = value_.buf();
+    local buffer2 = other.value_.buf();
+    if (buffer1.len() < buffer2.len())
         return -1;
-    if (blob1.len() > blob2.len())
+    if (buffer1.len() > buffer2.len())
         return 1;
 
     // The components are equal length. Just do a byte compare.
     // TODO: Does Squirrel have a native buffer compare?
-    for (local i = 0; i < blob1.len(); ++i) {
-      if (blob1[i] < blob2[i])
+    for (local i = 0; i < buffer1.len(); ++i) {
+      // Use Buffer.get to avoid using the metamethod.
+      if (buffer1.get(i) < buffer2.get(i))
         return -1;
-      if (blob1[i] > blob2[i])
+      if (buffer1.get(i) > buffer2.get(i))
         return 1;
     }
 
@@ -1611,7 +1613,8 @@ class Name {
     local result = "";
     local gotNonDot = false;
     for (local i = 0; i < value.len(); ++i) {
-      if (value[i] != 0x2e) {
+      // Use Buffer.get to avoid using the metamethod.
+      if (value.get(i) != 0x2e) {
         gotNonDot = true;
         break;
       }
@@ -1625,7 +1628,7 @@ class Name {
     }
     else {
       for (local i = 0; i < value.len(); ++i) {
-        local x = value[i];
+        local x = value.get(i);
         // Check for 0-9, A-Z, a-z, (+), (-), (.), (_)
         if (x >= 0x30 && x <= 0x39 || x >= 0x41 && x <= 0x5a ||
             x >= 0x61 && x <= 0x7a || x == 0x2b || x == 0x2d ||
@@ -1655,7 +1658,8 @@ class Name {
     // Check for all dots.
     local gotNonDot = false;
     for (local i = 0; i < value.len(); ++i) {
-      if (value[i] != '.') {
+      // Use Buffer.get to avoid using the metamethod.
+      if (value.get(i) != '.') {
         gotNonDot = true;
         break;
       }
@@ -2649,7 +2653,7 @@ class InterestFilter {
    * (e.g., there are implicit heading `^` and trailing `$` symbols in the
    * regular expression).
    * @param {Name} name The name to check against this filter.
-   * @return {boolean} True if name matches this filter, otherwise false.
+   * @return {bool} True if name matches this filter, otherwise false.
    */
   function doesMatch(name)
   {
@@ -4152,9 +4156,7 @@ class TlvDecoder {
    */
   function readVarNumber()
   {
-/* To avoid a bug in the Imp device Squirrel implementation, don't use the metamethod.
-    local firstOctet = input_[offset_];
-*/
+    // Use Buffer.get to avoid using the metamethod.
     local firstOctet = input_.get(offset_);
     offset_ += 1;
     if (firstOctet < 253)
@@ -4177,16 +4179,17 @@ class TlvDecoder {
     local result;
     // This is a private function so we know firstOctet >= 253.
     if (firstOctet == 253) {
-      result = ((input_[offset_] << 8) +
-                 input_[offset_ + 1]);
+      // Use Buffer.get to avoid using the metamethod.
+      result = ((input_.get(offset_) << 8) +
+                 input_.get(offset_ + 1));
       offset_ += 2;
     }
     else if (firstOctet == 254) {
       // Use abs because << 24 can set the high bit of the 32-bit int making it negative.
-      result = (math.abs(input_[offset_] << 24) +
-                        (input_[offset_ + 1] << 16) +
-                        (input_[offset_ + 2] << 8) +
-                         input_[offset_ + 3]);
+      result = (math.abs(input_.get(offset_) << 24) +
+                        (input_.get(offset_ + 1) << 16) +
+                        (input_.get(offset_ + 2) << 8) +
+                         input_.get(offset_ + 3));
       offset_ += 4;
     }
     else
@@ -4303,16 +4306,17 @@ class TlvDecoder {
   {
     local result;
     if (length == 1)
-      result = input_[offset_];
+      // Use Buffer.get to avoid using the metamethod.
+      result = input_.get(offset_);
     else if (length == 2)
-      result = ((input_[offset_] << 8) +
-                 input_[offset_ + 1]);
+      result = ((input_.get(offset_) << 8) +
+                 input_.get(offset_ + 1));
     else if (length == 4)
       // Use abs because << 24 can set the high bit of the 32-bit int making it negative.
-      result = (math.abs(input_[offset_] << 24) +
-                        (input_[offset_ + 1] << 16) +
-                        (input_[offset_ + 2] << 8) +
-                         input_[offset_ + 3]);
+      result = (math.abs(input_.get(offset_) << 24) +
+                        (input_.get(offset_ + 1) << 16) +
+                        (input_.get(offset_ + 2) << 8) +
+                         input_.get(offset_ + 3));
     else if (length == 8)
       throw "Decoding a 64-bit VAR-NUMBER is not supported";
     else
@@ -4743,7 +4747,8 @@ class TlvStructureDecoder {
         return false;
 
       if (state_ == TlvStructureDecoder_READ_TYPE) {
-        local firstOctet = input[offset_];
+        // Use Buffer.get to avoid using the metamethod.
+        local firstOctet = input.get(offset_);
         offset_ += 1;
         if (firstOctet < 253)
           // The value is simple, so we can skip straight to reading the length.
@@ -4775,7 +4780,8 @@ class TlvStructureDecoder {
         state_ = TlvStructureDecoder_READ_LENGTH;
       }
       else if (state_ == TlvStructureDecoder_READ_LENGTH) {
-        local firstOctet = input[offset_];
+        // Use Buffer.get to avoid using the metamethod.
+        local firstOctet = input.get(offset_);
         offset_ += 1;
         if (firstOctet < 253) {
           // The value is simple, so we can skip straight to reading
@@ -4945,7 +4951,7 @@ class ElementReader {
       local gotElementEnd;
       local offset;
 
-      try {
+      //try {
         if (dataParts_.len() == 0) {
           // This is the beginning of an element.
           if (data.len() <= 0)
@@ -4957,13 +4963,13 @@ class ElementReader {
         tlvStructureDecoder_.seek(0);
         gotElementEnd = tlvStructureDecoder_.findElementEnd(data);
         offset = tlvStructureDecoder_.getOffset();
-      } catch (ex) {
-        // Reset to read a new element on the next call.
-        dataParts_ = [];
-        tlvStructureDecoder_ = TlvStructureDecoder();
+      //} catch (ex) {
+      //  // Reset to read a new element on the next call.
+      //  dataParts_ = [];
+      //  tlvStructureDecoder_ = TlvStructureDecoder();
 
-        throw ex;
-      }
+      //  throw ex;
+      //}
 
       if (gotElementEnd) {
         // Got the remainder of an element.  Report to the caller.
@@ -7236,7 +7242,7 @@ class KeyChain {
    * @param {Blob} key The key for the HmacWithSha256.
    * @param {WireFormat} wireFormat (optional) A WireFormat object used to
    * encode the target. If omitted, use WireFormat getDefaultWireFormat().
-   * @return {boolean} True if the signature verifies, otherwise false.
+   * @return {bool} True if the signature verifies, otherwise false.
    */
   static function verifyDataWithHmacWithSha256(data, key, wireFormat = null)
   {
@@ -7620,11 +7626,11 @@ class SquirrelObjectTransport extends Transport {
     local thisTransport = this;
     connection_.on("NDN", function(obj) {
       if (typeof obj == "blob") {
-        try {
+        //try {
           thisTransport.elementReader_.onReceivedData(Buffer.from(obj));
-        } catch (ex) {
-          consoleLog("Error in onReceivedData: " + ex);
-        }
+        //} catch (ex) {
+        //  consoleLog("Error in onReceivedData: " + ex);
+        //}
       }
       else {
         if (thisTransport.onReceivedObject_ != null) {
@@ -7797,11 +7803,11 @@ class MicroForwarderTransport extends Transport {
         return;
 
       if (typeof obj == "blob") {
-        try {
+        //try {
           elementReader_.onReceivedData(Buffer.from(obj));
-        } catch (ex) {
-          consoleLog("Error in onReceivedData: " + ex);
-        }
+        //} catch (ex) {
+        //  consoleLog("Error in onReceivedData: " + ex);
+        //}
       }
       else {
         if (onReceivedObject_ != null) {
@@ -7868,8 +7874,8 @@ class MicroForwarderTransportConnectionInfo extends TransportConnectionInfo {
 
 /**
  * A UartTransport extends Transport to communicate with a connection
- * object which supports "on" and "send" methods, such as an Imp agent or device
- * object. This can send a blob as well as another type of Squirrel object.
+ * object which supports "write" and "readblob" methods, such as an Imp uart
+ * object.
  */
 class UartTransport extends Transport {
   elementReader_ = null;
@@ -8314,14 +8320,15 @@ class Face {
   function onReceivedElement(element)
   {
     local lpPacket = null;
-    if (element[0] == Tlv.LpPacket_LpPacket)
+    // Use Buffer.get to avoid using the metamethod.
+    if (element.get(0) == Tlv.LpPacket_LpPacket)
       // TODO: Support LpPacket.
       throw "not supported";
 
     // First, decode as Interest or Data.
     local interest = null;
     local data = null;
-    if (element[0] == Tlv.Interest || element[0] == Tlv.Data) {
+    if (element.get(0) == Tlv.Interest || element.get(0) == Tlv.Data) {
       local decoder = TlvDecoder (element);
       if (decoder.peekType(Tlv.Interest, element.len())) {
         interest = Interest();
