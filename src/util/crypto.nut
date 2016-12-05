@@ -38,8 +38,15 @@ class Crypto {
     if (endIndex == null)
       endIndex = value.len();
 
-    for (local i = startIndex; i < endIndex; ++i)
-      value[i] = ((1.0 * math.rand() / RAND_MAX) * 256).tointeger();
+    local valueIsBuffer = (value instanceof Buffer);
+    for (local i = startIndex; i < endIndex; ++i) {
+      local x = ((1.0 * math.rand() / RAND_MAX) * 256).tointeger();
+      if (valueIsBuffer)
+        // Use Buffer.set to avoid using the metamethod.
+        value.set(i, x);
+      else
+        value[i] = x;
+    }
   }
 
   /**
