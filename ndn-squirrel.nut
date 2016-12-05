@@ -381,7 +381,6 @@ class Buffer {
     // Note: In this class, we always reference globals with :: to avoid
     // invoking this _get metamethod.
 
-    throw "Debug get";
     if (typeof i == "integer")
       // TODO: Do a bounds check?
       return blob_[offset_ + i];
@@ -4951,7 +4950,7 @@ class ElementReader {
       local gotElementEnd;
       local offset;
 
-      //try {
+      try {
         if (dataParts_.len() == 0) {
           // This is the beginning of an element.
           if (data.len() <= 0)
@@ -4963,13 +4962,13 @@ class ElementReader {
         tlvStructureDecoder_.seek(0);
         gotElementEnd = tlvStructureDecoder_.findElementEnd(data);
         offset = tlvStructureDecoder_.getOffset();
-      //} catch (ex) {
-      //  // Reset to read a new element on the next call.
-      //  dataParts_ = [];
-      //  tlvStructureDecoder_ = TlvStructureDecoder();
+      } catch (ex) {
+        // Reset to read a new element on the next call.
+        dataParts_ = [];
+        tlvStructureDecoder_ = TlvStructureDecoder();
 
-      //  throw ex;
-      //}
+        throw ex;
+      }
 
       if (gotElementEnd) {
         // Got the remainder of an element.  Report to the caller.
@@ -7626,11 +7625,11 @@ class SquirrelObjectTransport extends Transport {
     local thisTransport = this;
     connection_.on("NDN", function(obj) {
       if (typeof obj == "blob") {
-        //try {
+        try {
           thisTransport.elementReader_.onReceivedData(Buffer.from(obj));
-        //} catch (ex) {
-        //  consoleLog("Error in onReceivedData: " + ex);
-        //}
+        } catch (ex) {
+          consoleLog("Error in onReceivedData: " + ex);
+        }
       }
       else {
         if (thisTransport.onReceivedObject_ != null) {
@@ -7803,11 +7802,11 @@ class MicroForwarderTransport extends Transport {
         return;
 
       if (typeof obj == "blob") {
-        //try {
+        try {
           elementReader_.onReceivedData(Buffer.from(obj));
-        //} catch (ex) {
-        //  consoleLog("Error in onReceivedData: " + ex);
-        //}
+        } catch (ex) {
+          consoleLog("Error in onReceivedData: " + ex);
+        }
       }
       else {
         if (onReceivedObject_ != null) {
