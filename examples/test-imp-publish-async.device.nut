@@ -138,11 +138,11 @@ function testPublish()
      SquirrelObjectTransportConnectionInfo(agent));
 
   // TODO: Configure the UART settings for the real serial connection.
-  local loRa = SerialUartStub();
+  local serial = SerialUartStub();
   local uartTransport = UartTransport();
-  local loRaFaceId = MicroForwarder.get().addFace
-    ("uart://serial", uartTransport, UartTransportConnectionInfo(loRa));
-   MicroForwarder.get().registerRoute(Name("/testecho2"), loRaFaceId)
+  local serialFaceId = MicroForwarder.get().addFace
+    ("uart://serial", uartTransport, UartTransportConnectionInfo(serial));
+   MicroForwarder.get().registerRoute(Name("/testecho2"), serialFaceId)
 
   local face = Face();
   local prefix = Name("/testecho");
