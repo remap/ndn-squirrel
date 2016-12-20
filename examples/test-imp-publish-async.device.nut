@@ -142,12 +142,49 @@ function testPublish()
   local uartTransport = UartTransport();
   local serialFaceId = MicroForwarder.get().addFace
     ("uart://serial", uartTransport, UartTransportConnectionInfo(serial));
-   MicroForwarder.get().registerRoute(Name("/testecho2"), serialFaceId)
+  MicroForwarder.get().registerRoute(Name("/testecho2"), serialFaceId)
 
   local face = Face();
   local prefix = Name("/testecho");
   consoleLog("Register prefix " + prefix.toUri());
   face.registerPrefixUsingObject(prefix, onInterest);
+
+  // Set up the forwarding strategy for single-hop broadcast.
+  function canForward(interest, incomingFaceUri, outgoingFaceUri, routePrefix)
+  {
+    if (incomingFaceUri == "internal://agent") {
+      // Coming from the Agent.
+      if (prefix.isPrefixOf(interest.getName())) {
+        // The Interest is for the application, so let it go to the application
+        // but don't forward to other faces.
+        if (outgoingFaceUri == "internal://app")
+          return true;
+        else
+          return false;
+      }
+      else
+        // Not for the application, so broadcast to other faces including serial.
+        return true;
+    }
+    else if (incomingFaceUri == "uart://serial") {
+      // Coming from the serial port.
+      if (prefix.isPrefixOf(interest.getName())) {
+        // The Interest is for the application, so let it go to the application
+        // but don't forward to other faces.
+        if (outgoingFaceUri == "internal://app")
+          return true;
+        else
+          return false;
+      }
+      else
+        // For single-hop, we don't forward packets coming in the serial port.
+        return false;
+    }
+    else
+      // Let other packets pass.
+      return true;
+  }
+  MicroForwarder.get().setCanForward(canForward);
 }
 
 testPublish();
