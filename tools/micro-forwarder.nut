@@ -26,6 +26,7 @@ class MicroForwarder {
   PIT_ = null;   // array of PitEntry
   FIB_ = null;   // array of FibEntry
   faces_ = null; // array of ForwarderFace
+  canForward_ = null; // function
 
   static localhostNamePrefix = Name("/localhost");
   static broadcastNamePrefix = Name("/ndn/broadcast");
@@ -83,6 +84,21 @@ class MicroForwarder {
 
     return face.faceId;
   }
+
+  /**
+   * Set the canForward callback. When the MicroForwarder receives and interest
+   * which matches the routing prefix on a face, it calls canForward as
+   * described below to check if it is OK to forward to the face. This can be
+   * used to implement a simple forwarding strategy.
+   * @param {function} canForward If not null, the MicroForwarder calls
+   * canForward(interest, incomingFaceUri, outgoingFaceUri, routePrefix) where
+   * interest is the incoming Interest object, incomingFaceUri is the URI string
+   * of the incoming face, outgoingFaceUri is the URI string of the outgoing
+   * face, and routePrefix is the prefix Name of the matching outgoing route.
+   * The canForward function should return true if it is OK to forward to the
+   * outgoing face, else false.
+   */
+  function setCanForward(canForward) { canForward_ = canForward; }
 
   /**
    * Find or create the FIB entry with the given name and add the ForwarderFace
@@ -201,8 +217,11 @@ class MicroForwarder {
             for (local j = 0; j < fibEntry.faces.len(); ++j) {
               local outFace = fibEntry.faces[j];
               // Don't send the interest back to where it came from.
-              if (outFace != face)
-                outFace.sendBuffer(element);
+              if (outFace != face) {
+                if (canForward_ == null || canForward_
+                    (interest, face.uri, outFace.uri, fibEntry.name))
+                  outFace.sendBuffer(element);
+              }
             }
           }
         }
