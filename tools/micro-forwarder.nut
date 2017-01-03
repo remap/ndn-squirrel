@@ -167,36 +167,44 @@ class MicroForwarder {
       }
     }
 
+    local nowMillis = clock() * 1000;
+    // Remove timed-out PIT entries
+    // Iterate backwards so we can remove the entry and keep iterating.
+    for (local i = PIT_.len() - 1; i >= 0; --i) {
+      if (nowMillis >= PIT_[i].timeoutEndMillis)
+        PIT_.remove(i);
+    }
+
     // Now process as Interest or Data.
     if (interest != null) {
       if (localhostNamePrefix.match(interest.getName()))
         // Ignore localhost.
         return;
 
+      // Check for a duplicate Interest.
       for (local i = 0; i < PIT_.len(); ++i) {
+        local entry = PIT_[i];
         // TODO: Check interest equality of appropriate selectors.
-        if (PIT_[i].face == face &&
-            PIT_[i].interest.getName().equals(interest.getName())) {
+        if (entry.face == face &&
+            entry.interest.getName().equals(interest.getName())) {
           // Duplicate PIT entry.
-          // TODO: Update the interest timeout?
+          // Update the interest timeout.
+          if (timeoutEndMillis > entry.timeoutEndMillis)
+            entry.timeoutEndMillis = timeoutEndMillis;
+
           return;
         }
       }
 
       // Add to the PIT.
-      local pitEntry = PitEntry(interest, face);
+      local timeoutEndMillis;
+      if (interest.getInterestLifetimeMilliseconds() != null)
+        timeoutEndMillis = nowMillis + interest.getInterestLifetimeMilliseconds();
+      else
+        // Use a default timeout.
+        timeoutEndMillis = nowMillis + 4000.0;
+      local pitEntry = PitEntry(interest, face, timeoutEndMillis);
       PIT_.append(pitEntry);
-/*    TODO: Implement timeout.
-      // Set the interest timeout timer.
-      local timeoutCallback = function() {
-        // Remove the face's entry from the PIT
-        local index = PIT_.find(pitEntry);
-        if (index != null)
-          PIT_.remove(index);
-      };
-      local timeoutMilliseconds = (interest.getInterestLifetimeMilliseconds() || 4000);
-      setTimeout(timeoutCallback, timeoutMilliseconds);
-*/
 
       if (broadcastNamePrefix.match(interest.getName())) {
         // Special case: broadcast to all faces.
@@ -286,11 +294,13 @@ MicroForwarder_instance <- null;
 class PitEntry {
   interest = null;
   face = null;
+  timeoutEndMillis = null;
 
-  constructor(interest, face)
+  constructor(interest, face, timeoutEndMillis)
   {
     this.interest = interest;
     this.face = face;
+    this.timeoutEndMillis = timeoutEndMillis;
   }
 }
 
