@@ -32,9 +32,9 @@ class PendingInterestTable {
   }
 
   /**
-   * Add a new entry to the pending interest table. Also set a timer to call the
-   * timeout. However, if removePendingInterest was already called with the
-   * pendingInterestId, don't add an entry and return null.
+   * Add a new entry to the pending interest table. However, if 
+   * removePendingInterest was already called with the pendingInterestId, don't
+   * add an entry and return null.
    * @param {integer} pendingInterestId
    * @param {Interest} interestCopy
    * @param {function} onData
@@ -56,32 +56,13 @@ class PendingInterestTable {
     local entry = PendingInterestTableEntry
       (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack);
     table_.append(entry);
-
-/*  TODO: Implement timeout.
-    // Set interest timer.
-    var timeoutMilliseconds = (interestCopy.getInterestLifetimeMilliseconds() || 4000);
-    var thisTable = this;
-    var timeoutCallback = function() {
-      if (LOG > 1) console.log("Interest time out: " + interestCopy.getName().toUri());
-
-      // Remove the entry from the table.
-      var index = thisTable.table_.indexOf(entry);
-      if (index >= 0)
-        thisTable.table_.splice(index, 1);
-
-      entry.callTimeout();
-    };
-
-    entry.setTimeout(timeoutCallback, timeoutMilliseconds);
-*/
-
     return entry;
   }
 
   /**
    * Find all entries from the pending interest table where data conforms to
-   * the entry's interest selectors, remove the entries from the table, and add
-   * to the entries list.
+   * the entry's interest selectors, remove the entries from the table, set each
+   * entry's isRemoved flag, and add to the entries list.
    * @param {Data} data The incoming Data packet to find the interest for.
    * @param {Array<PendingInterestTableEntry>} entries Add matching
    * PendingInterestTableEntry from the pending interest table. The caller
@@ -92,18 +73,46 @@ class PendingInterestTable {
     // Go backwards through the list so we can erase entries.
     for (local i = table_.len() - 1; i >= 0; --i) {
       local pendingInterest = table_[i];
+
       if (pendingInterest.getInterest().matchesData(data)) {
-/*  TODO: Implement timeout.
-        pendingInterest.clearTimeout();
-*/
         entries.append(pendingInterest);
         table_.remove(i);
+        // We let the callback from callLater call _processInterestTimeout,
+        // but for efficiency, mark this as removed so that it returns
+        // right away.
+        pendingInterest.setIsRemoved();
       }
     }
   }
 
   // TODO: extractEntriesForNackInterest
   // TODO: removePendingInterest
+
+  /**
+   * Remove the specific pendingInterest entry from the table and set its
+   * isRemoved flag. However, if the pendingInterest isRemoved flag is already
+   * true or the entry is not in the pending interest table then do nothing.
+   * @param {PendingInterestTableEntry} pendingInterest The Entry from the
+   * pending interest table.
+   * @return {bool} True if the entry was removed, false if not.
+   */
+  function removeEntry(pendingInterest)
+  {
+    if (pendingInterest.getIsRemoved())
+      // extractEntriesForExpressedInterest or removePendingInterest has removed
+      // pendingInterest from the table, so we don't need to look for it. Do
+      // nothing.
+      return false;
+
+    local index = table_.find(pendingInterest);
+    if (index == null)
+      // The pending interest has been removed. Do nothing.
+      return false;
+
+    pendingInterest.setIsRemoved();
+    table_.remove(index);
+    return true;
+  }
 }
 
 /**
@@ -116,6 +125,7 @@ class PendingInterestTableEntry {
   onData_ = null;
   onTimeout_ = null;
   onNetworkNack_ = null;
+  isRemoved_ = false;
 
   /*
    * Create a new Entry with the given fields. Note: You should not call this
@@ -155,5 +165,28 @@ class PendingInterestTableEntry {
    */
   function getOnNetworkNack() { return this.onNetworkNack_; }
 
-  // TODO: callTimeout
+  /**
+   * Call onTimeout_ (if defined).  This ignores exceptions from onTimeout_.
+   */
+  function callTimeout()
+  {
+    if (onTimeout_ != null) {
+      try {
+        onTimeout_(interest_);
+      } catch (ex) {
+        consoleLog("Error in onTimeout: " + ex);
+      }
+    }
+  }
+
+  /**
+   * Set the isRemoved flag which is returned by getIsRemoved().
+   */
+  function setIsRemoved() { isRemoved_ = true; }
+
+  /**
+   * Check if setIsRemoved() was called.
+   * @return {bool} True if setIsRemoved() was called.
+   */
+  function getIsRemoved() { return isRemoved_; }
 }
