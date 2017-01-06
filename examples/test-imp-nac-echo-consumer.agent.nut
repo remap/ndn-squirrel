@@ -69,7 +69,17 @@ function onData(interest, data, face)
   face.expressInterest
     (contentKeyName,
      function(interest2, data2) {
-       onContentKeyData(interest2, data2, data, contentKeyName); });
+       onContentKeyData(interest2, data2, data, contentKeyName); },
+     onTimeout);
+}
+
+/**
+ * This is called by the library when the expressed Interest times out. Print
+ * the Interest name to the console.
+ */
+function onTimeout(interest)
+{
+  consoleLog("Time out for interest", interest.getName().toUri());
 }
 
 /**
@@ -112,7 +122,8 @@ function testConsume()
   name.append(word);
   consoleLog("Express name " + name.toUri());
   face.expressInterest
-    (name, function(interest, data) { onData(interest, data, face); });
+    (name, function(interest, data) { onData(interest, data, face); },
+     onTimeout);
 }
 
 // You should run this on the Agent, and run test-imp-nac-publish-async.device.app.nut

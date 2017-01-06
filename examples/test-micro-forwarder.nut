@@ -79,6 +79,15 @@ function onData(interest, data)
 }
 
 /**
+ * This is called by the library when the expressed Interest times out. Print
+ * the Interest name to the console.
+ */
+function onTimeout(interest)
+{
+  consoleLog("Time out for interest", interest.getName().toUri());
+}
+
+/**
  * Create a Face to the simulated device object from agent-device-stubs.nut and
  * express and Interest with the onData callback which prints the content to the
  * console.
@@ -92,7 +101,7 @@ function testConsume()
   local word = "hello";
   name.append(word);
   consoleLog("Express name " + name.toUri());
-  face.expressInterest(name, onData);
+  face.expressInterest(name, onData, onTimeout);
 }
 
 /**
