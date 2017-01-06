@@ -42,6 +42,7 @@ cat \
   src/security/security-types.nut \
   src/security/key-params.nut \
   src/security/key-chain.nut \
+  src/impl/delayed-call-table.nut \
   src/impl/interest-filter-table.nut \
   src/impl/pending-interest-table.nut \
   src/transport/transport.nut \
