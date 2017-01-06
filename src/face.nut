@@ -29,6 +29,7 @@ class Face {
   pendingInterestTable_ = null;
   interestFilterTable_ = null;
   registeredPrefixTable_ = null;
+  delayedCallTable_ = null;
   connectStatus_ = FaceConnectStatus_.UNCONNECTED;
   lastEntryId_ = 0;
   timeoutPrefix_ = Name("/local/timeout");
@@ -60,6 +61,7 @@ class Face {
     pendingInterestTable_ = PendingInterestTable();
     interestFilterTable_ = InterestFilterTable();
 // TODO    registeredPrefixTable_ = RegisteredPrefixTable(interestFilterTable_);
+    delayedCallTable_ = DelayedCallTable()
   }
 
   /**
@@ -205,10 +207,26 @@ class Face {
     (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack,
      wireFormat)
   {
-    if (pendingInterestTable_.add
-        (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack) == null)
+    local pendingInterest = pendingInterestTable_.add
+      (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack);
+    if (pendingInterest == null)
       // removePendingInterest was already called with the pendingInterestId.
       return;
+
+    if (onTimeout != null ||
+        interestCopy.getInterestLifetimeMilliseconds() != null &&
+        interestCopy.getInterestLifetimeMilliseconds() >= 0.0) {
+      // Set up the timeout.
+      local delayMilliseconds = interestCopy.getInterestLifetimeMilliseconds()
+      if (delayMilliseconds == null || delayMilliseconds < 0.0)
+        // Use a default timeout delay.
+        delayMilliseconds = 4000.0;
+
+      local thisFace = this;
+      callLater
+        (delayMilliseconds,
+         function() { thisFace.processInterestTimeout_(pendingInterest); });
+   }
 
     // Special case: For timeoutPrefix we don't actually send the interest.
     if (!Face.timeoutPrefix_.match(interestCopy.getName())) {
@@ -312,6 +330,28 @@ class Face {
    * @return {integer} The maximum NDN packet size.
    */
   static function getMaxNdnPacketSize() { return NdnCommon.MAX_NDN_PACKET_SIZE; }
+
+  /**
+   * Call callback() after the given delay. This is not part of the public API 
+   * of Face.
+   * @param {float} delayMilliseconds The delay in milliseconds.
+   * @param {float} callback This calls callback() after the delay.
+   */
+  function callLater(delayMilliseconds, callback)
+  {
+    delayedCallTable_.callLater(delayMilliseconds, callback);
+  }
+
+  /**
+   * This is used in callLater for when the pending interest expires. If the
+   * pendingInterest is still in the pendingInterestTable_, remove it and call
+   * its onTimeout callback.
+   */
+  function processInterestTimeout_(pendingInterest)
+  {
+    if (pendingInterestTable_.removeEntry(pendingInterest))
+      pendingInterest.callTimeout();
+  }
 
   /**
    * An internal method to get the next unique entry ID for the pending interest
