@@ -32,6 +32,7 @@ class Face {
   delayedCallTable_ = null;
   connectStatus_ = FaceConnectStatus_.UNCONNECTED;
   lastEntryId_ = 0;
+  doingProcessEvents_ = false;
   timeoutPrefix_ = Name("/local/timeout");
   nonceTemplate_ = Blob(Buffer(4), false);
 
@@ -304,7 +305,18 @@ class Face {
    */
   function processEvents()
   {
-    delayedCallTable_.callTimedOut();
+    if (doingProcessEvents_)
+      // Avoid loops where a callback eventually calls processEvents again.
+      return;
+
+    doingProcessEvents_ = true;
+    try {
+      delayedCallTable_.callTimedOut();
+      doingProcessEvents_ = false;
+    } catch (ex) {
+      doingProcessEvents_ = false;
+      throw ex;
+    }
   }
 
   /**
@@ -399,6 +411,9 @@ class Face {
    */
   function onReceivedElement(element)
   {
+    // Clear timed-out Interests in case the application doesn't call processEvents.
+    processEvents();
+
     local lpPacket = null;
     // Use Buffer.get to avoid using the metamethod.
     if (element.get(0) == Tlv.LpPacket_LpPacket)
