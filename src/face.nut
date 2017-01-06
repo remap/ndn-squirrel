@@ -292,6 +292,22 @@ class Face {
   }
 
   /**
+   * Call callbacks such as onTimeout. This returns immediately if there is
+   * nothing to process. This blocks while calling the callbacks. You should
+   * repeatedly call this from an event loop, with calls to sleep as needed so
+   * that the loop doesn't use 100% of the CPU. Since processEvents modifies the
+   * pending interest table, your application should make sure that it calls
+   * processEvents in the same thread as expressInterest (which also modifies
+   * the pending interest table).
+   * If you call this from an main event loop, you may want to catch and
+   * log/disregard all exceptions.
+   */
+  function processEvents()
+  {
+    delayedCallTable_.callTimedOut();
+  }
+
+  /**
    * This is a simple form of registerPrefix to register with a local forwarder
    * where the transport (such as MicroForwarderTransport) supports "sendObject"
    * to communicate using Squirrel objects, avoiding the time and code space

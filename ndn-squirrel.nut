@@ -7269,6 +7269,109 @@ class KeyChain {
   };
 }
 /**
+ * Copyright (C) 2017 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * A DelayedCallTable which is an internal class used by the Face implementation
+ * of callLater to store callbacks and call them when they time out.
+ */
+class DelayedCallTable {
+  table_ = null;          // Array of DelayedCallTableEntry
+
+  constructor()
+  {
+    table_ = [];
+  }
+
+  /*
+   * Call callback() after the given delay. This adds to the delayed call table
+   * which is used by callTimedOut().
+   * @param {float} delayMilliseconds: The delay in milliseconds.
+   * @param {function} callback This calls callback() after the delay.
+   */
+  function callLater(delayMilliseconds, callback)
+  {
+    local entry = DelayedCallTableEntry(delayMilliseconds, callback);
+    // Insert into table_, sorted on getCallTime().
+    // Search from the back since we expect it to go there.
+    local i = table_.len() - 1;
+    while (i >= 0) {
+      if (table_[i].getCallTime() <= entry.getCallTime())
+        break;
+      --i;
+    }
+
+    // Element i is the greatest less than or equal to entry.getCallTime(), so
+    // insert after it.
+    table_.insert(i + 1, entry);
+  }
+
+  /**
+   * Call and remove timed-out callback entries. Since callLater does a sorted
+   * insert into the delayed call table, the check for timed-out entries is
+   * quick and does not require searching the entire table.
+   */
+  function callTimedOut()
+  {
+    local now = clock() * 1000;
+    // table_ is sorted on _callTime, so we only need to process the timed-out
+    // entries at the front, then quit.
+    while (table_.len() > 0 && table_[0].getCallTime() <= now) {
+      local entry = table_[0];
+      table_.remove(0);
+      entry.callCallback();
+    }
+  }
+}
+
+/**
+ * DelayedCallTableEntry holds the callback and other fields for an entry in the
+ * delayed call table.
+ */
+class DelayedCallTableEntry {
+  callback_ = null;
+  callTime_ = 0.0;
+
+  /*
+   * Create a new DelayedCallTableEntry and set the call time based on the
+   * current time and the delayMilliseconds.
+   * @param {float} delayMilliseconds: The delay in milliseconds.
+   * @param {function} callback This calls callback() after the delay.
+   */
+  constructor(delayMilliseconds, callback)
+  {
+    callback_ = callback;
+    callTime_ = clock() * 1000 + delayMilliseconds
+  }
+
+  /**
+   * Get the time at which the callback should be called.
+   * @return {float} The call time in milliseconds, based on clock() * 1000.
+   */
+  function getCallTime() { return callTime_; }
+
+  /**
+   * Call the callback given to the constructor. This does not catch exceptions.
+   */
+  function callCallback() { callback_(); }
+}
+/**
  * Copyright (C) 2016-2017 Regents of the University of California.
  * @author: Jeff Thompson <jefft0@remap.ucla.edu>
  *
@@ -7417,9 +7520,9 @@ class PendingInterestTable {
   }
 
   /**
-   * Add a new entry to the pending interest table. Also set a timer to call the
-   * timeout. However, if removePendingInterest was already called with the
-   * pendingInterestId, don't add an entry and return null.
+   * Add a new entry to the pending interest table. However, if 
+   * removePendingInterest was already called with the pendingInterestId, don't
+   * add an entry and return null.
    * @param {integer} pendingInterestId
    * @param {Interest} interestCopy
    * @param {function} onData
@@ -7441,32 +7544,13 @@ class PendingInterestTable {
     local entry = PendingInterestTableEntry
       (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack);
     table_.append(entry);
-
-/*  TODO: Implement timeout.
-    // Set interest timer.
-    var timeoutMilliseconds = (interestCopy.getInterestLifetimeMilliseconds() || 4000);
-    var thisTable = this;
-    var timeoutCallback = function() {
-      if (LOG > 1) console.log("Interest time out: " + interestCopy.getName().toUri());
-
-      // Remove the entry from the table.
-      var index = thisTable.table_.indexOf(entry);
-      if (index >= 0)
-        thisTable.table_.splice(index, 1);
-
-      entry.callTimeout();
-    };
-
-    entry.setTimeout(timeoutCallback, timeoutMilliseconds);
-*/
-
     return entry;
   }
 
   /**
    * Find all entries from the pending interest table where data conforms to
-   * the entry's interest selectors, remove the entries from the table, and add
-   * to the entries list.
+   * the entry's interest selectors, remove the entries from the table, set each
+   * entry's isRemoved flag, and add to the entries list.
    * @param {Data} data The incoming Data packet to find the interest for.
    * @param {Array<PendingInterestTableEntry>} entries Add matching
    * PendingInterestTableEntry from the pending interest table. The caller
@@ -7477,18 +7561,46 @@ class PendingInterestTable {
     // Go backwards through the list so we can erase entries.
     for (local i = table_.len() - 1; i >= 0; --i) {
       local pendingInterest = table_[i];
+
       if (pendingInterest.getInterest().matchesData(data)) {
-/*  TODO: Implement timeout.
-        pendingInterest.clearTimeout();
-*/
         entries.append(pendingInterest);
         table_.remove(i);
+        // We let the callback from callLater call _processInterestTimeout,
+        // but for efficiency, mark this as removed so that it returns
+        // right away.
+        pendingInterest.setIsRemoved();
       }
     }
   }
 
   // TODO: extractEntriesForNackInterest
   // TODO: removePendingInterest
+
+  /**
+   * Remove the specific pendingInterest entry from the table and set its
+   * isRemoved flag. However, if the pendingInterest isRemoved flag is already
+   * true or the entry is not in the pending interest table then do nothing.
+   * @param {PendingInterestTableEntry} pendingInterest The Entry from the
+   * pending interest table.
+   * @return {bool} True if the entry was removed, false if not.
+   */
+  function removeEntry(pendingInterest)
+  {
+    if (pendingInterest.getIsRemoved())
+      // extractEntriesForExpressedInterest or removePendingInterest has removed
+      // pendingInterest from the table, so we don't need to look for it. Do
+      // nothing.
+      return false;
+
+    local index = table_.find(pendingInterest);
+    if (index == null)
+      // The pending interest has been removed. Do nothing.
+      return false;
+
+    pendingInterest.setIsRemoved();
+    table_.remove(index);
+    return true;
+  }
 }
 
 /**
@@ -7501,6 +7613,7 @@ class PendingInterestTableEntry {
   onData_ = null;
   onTimeout_ = null;
   onNetworkNack_ = null;
+  isRemoved_ = false;
 
   /*
    * Create a new Entry with the given fields. Note: You should not call this
@@ -7540,7 +7653,30 @@ class PendingInterestTableEntry {
    */
   function getOnNetworkNack() { return this.onNetworkNack_; }
 
-  // TODO: callTimeout
+  /**
+   * Call onTimeout_ (if defined).  This ignores exceptions from onTimeout_.
+   */
+  function callTimeout()
+  {
+    if (onTimeout_ != null) {
+      try {
+        onTimeout_(interest_);
+      } catch (ex) {
+        consoleLog("Error in onTimeout: " + ex);
+      }
+    }
+  }
+
+  /**
+   * Set the isRemoved flag which is returned by getIsRemoved().
+   */
+  function setIsRemoved() { isRemoved_ = true; }
+
+  /**
+   * Check if setIsRemoved() was called.
+   * @return {bool} True if setIsRemoved() was called.
+   */
+  function getIsRemoved() { return isRemoved_; }
 }
 /**
  * Copyright (C) 2016-2017 Regents of the University of California.
@@ -8018,6 +8154,7 @@ class Face {
   pendingInterestTable_ = null;
   interestFilterTable_ = null;
   registeredPrefixTable_ = null;
+  delayedCallTable_ = null;
   connectStatus_ = FaceConnectStatus_.UNCONNECTED;
   lastEntryId_ = 0;
   timeoutPrefix_ = Name("/local/timeout");
@@ -8049,6 +8186,7 @@ class Face {
     pendingInterestTable_ = PendingInterestTable();
     interestFilterTable_ = InterestFilterTable();
 // TODO    registeredPrefixTable_ = RegisteredPrefixTable(interestFilterTable_);
+    delayedCallTable_ = DelayedCallTable()
   }
 
   /**
@@ -8194,10 +8332,26 @@ class Face {
     (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack,
      wireFormat)
   {
-    if (pendingInterestTable_.add
-        (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack) == null)
+    local pendingInterest = pendingInterestTable_.add
+      (pendingInterestId, interestCopy, onData, onTimeout, onNetworkNack);
+    if (pendingInterest == null)
       // removePendingInterest was already called with the pendingInterestId.
       return;
+
+    if (onTimeout != null ||
+        interestCopy.getInterestLifetimeMilliseconds() != null &&
+        interestCopy.getInterestLifetimeMilliseconds() >= 0.0) {
+      // Set up the timeout.
+      local delayMilliseconds = interestCopy.getInterestLifetimeMilliseconds()
+      if (delayMilliseconds == null || delayMilliseconds < 0.0)
+        // Use a default timeout delay.
+        delayMilliseconds = 4000.0;
+
+      local thisFace = this;
+      callLater
+        (delayMilliseconds,
+         function() { thisFace.processInterestTimeout_(pendingInterest); });
+   }
 
     // Special case: For timeoutPrefix we don't actually send the interest.
     if (!Face.timeoutPrefix_.match(interestCopy.getName())) {
@@ -8263,6 +8417,22 @@ class Face {
   }
 
   /**
+   * Call callbacks such as onTimeout. This returns immediately if there is
+   * nothing to process. This blocks while calling the callbacks. You should
+   * repeatedly call this from an event loop, with calls to sleep as needed so
+   * that the loop doesn't use 100% of the CPU. Since processEvents modifies the
+   * pending interest table, your application should make sure that it calls
+   * processEvents in the same thread as expressInterest (which also modifies
+   * the pending interest table).
+   * If you call this from an main event loop, you may want to catch and
+   * log/disregard all exceptions.
+   */
+  function processEvents()
+  {
+    delayedCallTable_.callTimedOut();
+  }
+
+  /**
    * This is a simple form of registerPrefix to register with a local forwarder
    * where the transport (such as MicroForwarderTransport) supports "sendObject"
    * to communicate using Squirrel objects, avoiding the time and code space
@@ -8301,6 +8471,28 @@ class Face {
    * @return {integer} The maximum NDN packet size.
    */
   static function getMaxNdnPacketSize() { return NdnCommon.MAX_NDN_PACKET_SIZE; }
+
+  /**
+   * Call callback() after the given delay. This is not part of the public API 
+   * of Face.
+   * @param {float} delayMilliseconds The delay in milliseconds.
+   * @param {float} callback This calls callback() after the delay.
+   */
+  function callLater(delayMilliseconds, callback)
+  {
+    delayedCallTable_.callLater(delayMilliseconds, callback);
+  }
+
+  /**
+   * This is used in callLater for when the pending interest expires. If the
+   * pendingInterest is still in the pendingInterestTable_, remove it and call
+   * its onTimeout callback.
+   */
+  function processInterestTimeout_(pendingInterest)
+  {
+    if (pendingInterestTable_.removeEntry(pendingInterest))
+      pendingInterest.callTimeout();
+  }
 
   /**
    * An internal method to get the next unique entry ID for the pending interest
