@@ -124,6 +124,16 @@ function testConsume()
   face.expressInterest
     (name, function(interest, data) { onData(interest, data, face); },
      onTimeout);
+
+  // Use a wakeup loop to repeatedly call processEvents to check for Interest timeouts.
+  function checkTimeout()
+  {
+    face.processEvents();
+
+    local intervalSeconds = 1;
+    imp.wakeup(intervalSeconds, checkTimeout);
+  }
+  checkTimeout();
 }
 
 // You should run this on the Agent, and run test-imp-nac-publish-async.device.app.nut

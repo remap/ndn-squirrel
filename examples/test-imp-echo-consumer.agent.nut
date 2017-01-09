@@ -86,6 +86,16 @@ function testConsume()
   name.append(word);
   consoleLog("Express name " + name.toUri());
   face.expressInterest(name, onData, onTimeout);
+
+  // Use a wakeup loop to repeatedly call processEvents to check for Interest timeouts.
+  function checkTimeout()
+  {
+    face.processEvents();
+
+    local intervalSeconds = 1;
+    imp.wakeup(intervalSeconds, checkTimeout);
+  }
+  checkTimeout();
 }
 
 // Use a wakeup delay to let the Agent connect to the Device.
