@@ -59,7 +59,7 @@ function onData(interest, data)
  */
 function onTimeout(interest)
 {
-  consoleLog("Time out for interest", interest.getName().toUri());
+  consoleLog("Time out for interest " + interest.getName().toUri());
 }
 
 /**
