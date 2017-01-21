@@ -17,7 +17,7 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-function getNowSeconds() { return clock(); }
+function getNowSeconds() { return NdnCommon.getNowSeconds(); }
 
 /**
  * Loop to encode a data packet nIterations times.
@@ -152,14 +152,14 @@ function benchmarkDecodeDataSeconds(nIterations, useCrypto, encoding)
 function benchmarkEncodeDecodeData(useComplex, useCrypto)
 {
   local format = "TLV";
-  local nIterations = useCrypto ? 1 : 30000;
+  local nIterations = useCrypto ? 1 : 60000;
   local result = benchmarkEncodeDataSeconds(nIterations, useComplex, useCrypto);
   consoleLog("Encode " + (useComplex ? "complex " : "simple  ") +
     format + " data: Crypto " + (useCrypto ? "RSA" : "-  ") +
     ", Duration sec, Hz: " + result.duration + ", " + 
     (nIterations / result.duration));
 
-  nIterations = useCrypto ? 1 : 30000;
+  nIterations = useCrypto ? 1 : 60000;
   local duration = benchmarkDecodeDataSeconds
     (nIterations, useCrypto, result.encoding);
   consoleLog("Decode " + (useComplex ? "complex " : "simple  ") +
