@@ -182,6 +182,12 @@ class MicroForwarder {
         return;
 
       // Check for a duplicate Interest.
+      local timeoutEndSeconds;
+      if (interest.getInterestLifetimeMilliseconds() != null)
+        timeoutEndSeconds = nowSeconds + (interest.getInterestLifetimeMilliseconds() / 1000.0).tointeger();
+      else
+        // Use a default timeout.
+        timeoutEndSeconds = nowSeconds + 4;
       for (local i = 0; i < PIT_.len(); ++i) {
         local entry = PIT_[i];
         // TODO: Check interest equality of appropriate selectors.
@@ -197,12 +203,6 @@ class MicroForwarder {
       }
 
       // Add to the PIT.
-      local timeoutEndSeconds;
-      if (interest.getInterestLifetimeMilliseconds() != null)
-        timeoutEndSeconds = nowSeconds + (interest.getInterestLifetimeMilliseconds() / 1000.0).tointeger();
-      else
-        // Use a default timeout.
-        timeoutEndSeconds = nowSeconds + 4;
       local pitEntry = PitEntry(interest, face, timeoutEndSeconds);
       PIT_.append(pitEntry);
 
