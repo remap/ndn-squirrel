@@ -167,11 +167,11 @@ class MicroForwarder {
       }
     }
 
-    local nowMillis = clock() * 1000;
+    local nowSeconds = NdnCommon.getNowSeconds();
     // Remove timed-out PIT entries
     // Iterate backwards so we can remove the entry and keep iterating.
     for (local i = PIT_.len() - 1; i >= 0; --i) {
-      if (nowMillis >= PIT_[i].timeoutEndMillis)
+      if (nowSeconds >= PIT_[i].timeoutEndSeconds)
         PIT_.remove(i);
     }
 
@@ -189,21 +189,21 @@ class MicroForwarder {
             entry.interest.getName().equals(interest.getName())) {
           // Duplicate PIT entry.
           // Update the interest timeout.
-          if (timeoutEndMillis > entry.timeoutEndMillis)
-            entry.timeoutEndMillis = timeoutEndMillis;
+          if (timeoutEndSeconds > entry.timeoutEndSeconds)
+            entry.timeoutEndSeconds = timeoutEndSeconds;
 
           return;
         }
       }
 
       // Add to the PIT.
-      local timeoutEndMillis;
+      local timeoutEndSeconds;
       if (interest.getInterestLifetimeMilliseconds() != null)
-        timeoutEndMillis = nowMillis + interest.getInterestLifetimeMilliseconds();
+        timeoutEndSeconds = nowSeconds + (interest.getInterestLifetimeMilliseconds() / 1000.0).tointeger();
       else
         // Use a default timeout.
-        timeoutEndMillis = nowMillis + 4000.0;
-      local pitEntry = PitEntry(interest, face, timeoutEndMillis);
+        timeoutEndSeconds = nowSeconds + 4;
+      local pitEntry = PitEntry(interest, face, timeoutEndSeconds);
       PIT_.append(pitEntry);
 
       if (broadcastNamePrefix.match(interest.getName())) {
@@ -294,13 +294,13 @@ MicroForwarder_instance <- null;
 class PitEntry {
   interest = null;
   face = null;
-  timeoutEndMillis = null;
+  timeoutEndSeconds = null;
 
-  constructor(interest, face, timeoutEndMillis)
+  constructor(interest, face, timeoutEndSeconds)
   {
     this.interest = interest;
     this.face = face;
-    this.timeoutEndMillis = timeoutEndMillis;
+    this.timeoutEndSeconds = timeoutEndSeconds;
   }
 }
 
