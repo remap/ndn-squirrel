@@ -879,6 +879,11 @@ class NdnCommon {
    */
   MAX_NDN_PACKET_SIZE = 8800;
 
+  /**
+   * Get the current time in seconds.
+   * @return {integer} The current time in seconds since 1/1/1970 UTC.
+   */
+  static function getNowSeconds() { return time(); }
 
   /**
    * Compute the HMAC with SHA-256 of data, as defined in
@@ -7308,16 +7313,16 @@ class DelayedCallTable {
   function callLater(delayMilliseconds, callback)
   {
     local entry = DelayedCallTableEntry(delayMilliseconds, callback);
-    // Insert into table_, sorted on getCallTime().
+    // Insert into table_, sorted on getCallTimeSeconds().
     // Search from the back since we expect it to go there.
     local i = table_.len() - 1;
     while (i >= 0) {
-      if (table_[i].getCallTime() <= entry.getCallTime())
+      if (table_[i].getCallTimeSeconds() <= entry.getCallTimeSeconds())
         break;
       --i;
     }
 
-    // Element i is the greatest less than or equal to entry.getCallTime(), so
+    // Element i is the greatest less than or equal to entry.getCallTimeSeconds(), so
     // insert after it.
     table_.insert(i + 1, entry);
   }
@@ -7329,10 +7334,10 @@ class DelayedCallTable {
    */
   function callTimedOut()
   {
-    local now = clock() * 1000;
+    local nowSeconds = NdnCommon.getNowSeconds();
     // table_ is sorted on _callTime, so we only need to process the timed-out
     // entries at the front, then quit.
-    while (table_.len() > 0 && table_[0].getCallTime() <= now) {
+    while (table_.len() > 0 && table_[0].getCallTimeSeconds() <= nowSeconds) {
       local entry = table_[0];
       table_.remove(0);
       entry.callCallback();
@@ -7346,7 +7351,7 @@ class DelayedCallTable {
  */
 class DelayedCallTableEntry {
   callback_ = null;
-  callTime_ = 0.0;
+  callTimeSeconds_ = 0.0;
 
   /*
    * Create a new DelayedCallTableEntry and set the call time based on the
@@ -7357,14 +7362,15 @@ class DelayedCallTableEntry {
   constructor(delayMilliseconds, callback)
   {
     callback_ = callback;
-    callTime_ = clock() * 1000 + delayMilliseconds
+    local nowSeconds = NdnCommon.getNowSeconds();
+    callTimeSeconds_ = nowSeconds + (delayMilliseconds / 1000.0).tointeger();
   }
 
   /**
    * Get the time at which the callback should be called.
-   * @return {float} The call time in milliseconds, based on clock() * 1000.
+   * @return {float} The call time in seconds, based on NdnCommon.getNowSeconds().
    */
-  function getCallTime() { return callTime_; }
+  function getCallTimeSeconds() { return callTimeSeconds_; }
 
   /**
    * Call the callback given to the constructor. This does not catch exceptions.
