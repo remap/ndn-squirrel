@@ -30,6 +30,11 @@ class NdnCommon {
    */
   MAX_NDN_PACKET_SIZE = 8800;
 
+  /**
+   * Get the current time in seconds.
+   * @return {integer} The current time in seconds since 1/1/1970 UTC.
+   */
+  static function getNowSeconds() { return time(); }
 
   /**
    * Compute the HMAC with SHA-256 of data, as defined in
