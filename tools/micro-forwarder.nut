@@ -86,7 +86,7 @@ class MicroForwarder {
   }
 
   /**
-   * Set the canForward callback. When the MicroForwarder receives and interest
+   * Set the canForward callback. When the MicroForwarder receives an interest
    * which matches the routing prefix on a face, it calls canForward as
    * described below to check if it is OK to forward to the face. This can be
    * used to implement a simple forwarding strategy.
