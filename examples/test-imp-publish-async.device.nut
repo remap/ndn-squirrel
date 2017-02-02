@@ -133,6 +133,8 @@ class SerialUartStub {
  */
 function testPublish()
 {
+  // Enable logging. (Remove this to silence logging.)
+  MicroForwarder.get().setLogLevel(1);
   MicroForwarder.get().addFace
     ("internal://agent", SquirrelObjectTransport(),
      SquirrelObjectTransportConnectionInfo(agent));
