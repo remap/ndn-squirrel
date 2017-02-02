@@ -27,6 +27,7 @@ class MicroForwarder {
   FIB_ = null;   // array of FibEntry
   faces_ = null; // array of ForwarderFace
   canForward_ = null; // function
+  logLevel_ = 0; // integer
 
   static localhostNamePrefix = Name("/localhost");
   static broadcastNamePrefix = Name("/ndn/broadcast");
@@ -143,6 +144,14 @@ class MicroForwarder {
   }
 
   /**
+   * Set the log level for consoleLog statements.
+   * @param {integer} logLevel The log level value as follows. 0 (default) =
+   * no logging. 1 = log information of incoming and outgoing Interest and Data
+   * packets.
+   */
+  function setLogLevel(logLevel) { logLevel_ = logLevel; }
+
+  /**
    * This is called by the listener when an entire TLV element is received.
    * If it is an Interest, look in the FIB for forwarding. If it is a Data packet,
    * look in the PIT to match an Interest.
@@ -177,6 +186,10 @@ class MicroForwarder {
 
     // Now process as Interest or Data.
     if (interest != null) {
+      if (logLevel_ >= 1)
+        consoleLog("LOG MicroForwarder: Received Interest " +
+          interest.getName().toUri() + ", nonce " + interest.getNonce().toHex() +
+          " on face " + face.uri);
       if (localhostNamePrefix.match(interest.getName()))
         // Ignore localhost.
         return;
@@ -211,8 +224,12 @@ class MicroForwarder {
         for (local i = 0; i < faces_.len(); ++i) {
           local outFace = faces_[i];
           // Don't send the interest back to where it came from.
-          if (outFace != face)
+          if (outFace != face) {
+            if (logLevel_ >= 1)
+              consoleLog("LOG MicroForwarder: -> Sending Interest to broadcast face " +
+                outFace.uri);
             outFace.sendBuffer(element);
+          }
         }
       }
       else {
@@ -227,8 +244,12 @@ class MicroForwarder {
               // Don't send the interest back to where it came from.
               if (outFace != face) {
                 if (canForward_ == null || canForward_
-                    (interest, face.uri, outFace.uri, fibEntry.name))
+                    (interest, face.uri, outFace.uri, fibEntry.name)) {
+                  if (logLevel_ >= 1)
+                    consoleLog("LOG MicroForwarder: -> Sending Interest to face " +
+                      outFace.uri);
                   outFace.sendBuffer(element);
+                }
               }
             }
           }
@@ -236,6 +257,9 @@ class MicroForwarder {
       }
     }
     else if (data != null) {
+      if (logLevel_ >= 1)
+        consoleLog("LOG MicroForwarder: Received Data     " +
+          data.getName().toUri() + " on face " + face.uri);
       // Send the data packet to the face for each matching PIT entry.
       // Iterate backwards so we can remove the entry and keep iterating.
       for (local i = PIT_.len() - 1; i >= 0; --i) {
@@ -245,6 +269,11 @@ class MicroForwarder {
           // Remove the entry before sending.
           PIT_.remove(i);
 
+          if (logLevel_ >= 1)
+            consoleLog("LOG MicroForwarder: -> Sending Data to face " +
+              entry.face.uri + " to satisfy Interest " +
+              entry.interest.getName().toUri() + ", nonce " +
+              entry.interest.getNonce().toHex());
           entry.face.sendBuffer(element);
           entry.face = null;
         }
