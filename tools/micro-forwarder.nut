@@ -207,6 +207,8 @@ class MicroForwarder {
         if (entry.face == face &&
             entry.interest.getName().equals(interest.getName())) {
           // Duplicate PIT entry.
+          if (logLevel_ >= 1)
+            consoleLog("LOG MicroForwarder: -> Aggregating repeat Interest (not forwarding)");
           // Update the interest timeout.
           if (timeoutEndSeconds > entry.timeoutEndSeconds)
             entry.timeoutEndSeconds = timeoutEndSeconds;
