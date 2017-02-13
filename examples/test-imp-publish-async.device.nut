@@ -152,7 +152,9 @@ function testPublish()
   face.registerPrefixUsingObject(prefix, onInterest);
 
   // Set up the forwarding strategy for single-hop broadcast.
-  function canForward(interest, incomingFaceUri, outgoingFaceUri, routePrefix)
+  function canForward
+    (interest, incomingFaceId, incomingFaceUri, outgoingFaceId, outgoingFaceUri,
+     routePrefix)
   {
     if (incomingFaceUri == "internal://agent") {
       // Coming from the Agent.
