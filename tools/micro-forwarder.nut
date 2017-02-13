@@ -92,12 +92,14 @@ class MicroForwarder {
    * described below to check if it is OK to forward to the face. This can be
    * used to implement a simple forwarding strategy.
    * @param {function} canForward If not null, the MicroForwarder calls
-   * canForward(interest, incomingFaceUri, outgoingFaceUri, routePrefix) where
-   * interest is the incoming Interest object, incomingFaceUri is the URI string
-   * of the incoming face, outgoingFaceUri is the URI string of the outgoing
-   * face, and routePrefix is the prefix Name of the matching outgoing route.
-   * The canForward function should return true if it is OK to forward to the
-   * outgoing face, else false.
+   * canForward(interest, incomingFaceId, incomingFaceUri, outgoingFaceId,
+   * outgoingFaceUri, routePrefix) where interest is the incoming Interest
+   * object, incomingFaceId is the ID integer of the incoming face,
+   * incomingFaceUri is the URI string of the incoming face, outgoingFaceId is
+   * the ID integer of the outgoing face, outgoingFaceUri is the URI string of
+   * the outgoing face, and routePrefix is the prefix Name of the matching
+   * outgoing route. The canForward function should return true if it is OK to
+   * forward to the outgoing face, else false.
    */
   function setCanForward(canForward) { canForward_ = canForward; }
 
@@ -246,7 +248,8 @@ class MicroForwarder {
               // Don't send the interest back to where it came from.
               if (outFace != face) {
                 if (canForward_ == null || canForward_
-                    (interest, face.uri, outFace.uri, fibEntry.name)) {
+                    (interest, face.faceId, face.uri, outFace.faceId outFace.uri,
+                     fibEntry.name)) {
                   if (logLevel_ >= 1)
                     consoleLog("LOG MicroForwarder: -> Sending Interest to face " +
                       outFace.uri);
