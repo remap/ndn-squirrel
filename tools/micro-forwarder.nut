@@ -91,15 +91,20 @@ class MicroForwarder {
    * which matches the routing prefix on a face, it calls canForward as
    * described below to check if it is OK to forward to the face. This can be
    * used to implement a simple forwarding strategy.
-   * @param {function} canForward If not null, the MicroForwarder calls
+   * @param {function} canForward If not null, and the interest matches the
+   * routePrefix of the outgoing face, then the MicroForwarder calls
    * canForward(interest, incomingFaceId, incomingFaceUri, outgoingFaceId,
    * outgoingFaceUri, routePrefix) where interest is the incoming Interest
    * object, incomingFaceId is the ID integer of the incoming face,
    * incomingFaceUri is the URI string of the incoming face, outgoingFaceId is
    * the ID integer of the outgoing face, outgoingFaceUri is the URI string of
    * the outgoing face, and routePrefix is the prefix Name of the matching
-   * outgoing route. The canForward function should return true if it is OK to
-   * forward to the outgoing face, else false.
+   * outgoing route. The canForward callback should return true if it is OK to
+   * forward to the outgoing face, else false. IMPORTANT: The canForward
+   * callback is called when the routePrefix matches, even if the outgoing face
+   * is the same as the incoming face. So you must check if incomingFaceId ==
+   * outgoingFaceId and return false if you don't want to forward to the same
+   * face.
    */
   function setCanForward(canForward) { canForward_ = canForward; }
 
@@ -245,8 +250,11 @@ class MicroForwarder {
           if (fibEntry.name.match(interest.getName())) {
             for (local j = 0; j < fibEntry.faces.len(); ++j) {
               local outFace = fibEntry.faces[j];
-              // Don't send the interest back to where it came from.
-              if (outFace != face) {
+              // If canForward_ is not defined, don't send the interest back to
+              // where it came from.
+              if (!(canForward_ == null && outFace == face)) {
+                // Note that is canForward_ is defined, it is called even if
+                // outFace == face.
                 if (canForward_ == null || canForward_
                     (interest, face.faceId, face.uri, outFace.faceId outFace.uri,
                      fibEntry.name)) {
