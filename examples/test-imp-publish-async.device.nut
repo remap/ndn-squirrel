@@ -151,15 +151,19 @@ function testPublish()
   consoleLog("Register prefix " + prefix.toUri());
   face.registerPrefixUsingObject(prefix, onInterest);
 
-  // Set up the forwarding strategy for single-hop broadcast.
+  // Set this to true to use multi-hop forwarding, as opposed to single-hop.
+  local useMultiHop = false;
+  // Set the min and max values for the random delay.
+  local minDelaySeconds = 1.0;
+  local maxDelaySeconds = 2.0;
+
+  // Set up the forwarding strategy for single-hop or multi-hop broadcast
+  // (depending on useMultiHop).
   function canForward
     (interest, incomingFaceId, incomingFaceUri, outgoingFaceId, outgoingFaceUri,
      routePrefix)
   {
     local isForwardingToSameFace = (incomingFaceId == outgoingFaceId);
-    if (isForwardingToSameFace)
-      // For single-hop broadcast, never forward to the same face.
-      return false;
 
     if (incomingFaceUri == "uart://serial") {
       // Coming from the serial port.
@@ -171,9 +175,25 @@ function testPublish()
         else
           return false;
       }
-      else
-        // For single-hop, we don't forward packets coming in the serial port.
-        return false;
+      else {
+        if (useMultiHop) {
+          // For multi-hop, we only forward to the same broadcast serial port
+          // (after a delay).
+          if (outgoingFaceUri != "uart://serial")
+            return false;
+          else {
+            // Forward with a delay.
+            local delayRange = maxDelaySeconds - minDelaySeconds;
+            local delaySeconds = minDelaySeconds + 
+              ((1.0 * math.rand() / RAND_MAX) * delayRange);
+            // Return a float value that the MicroForwarder interprets as a delay.
+            return delaySeconds;
+          }
+        }
+        else
+          // For single-hop, we don't forward packets coming in the serial port.
+          return false;
+      }
     }
 
     if (incomingFaceUri == "internal://agent") {
@@ -187,12 +207,13 @@ function testPublish()
           return false;
       }
       else
-        // Not for the application, so broadcast to other faces including serial.
-        return true;
+        // Not for the application, so forward to other faces including serial,
+        // except don't forward to the same face.
+        return !isForwardingToSameFace;
     }
 
-    // Let other packets pass.
-    return true;
+    // Let other packets pass, except to the same face.
+    return !isForwardingToSameFace;
   }
   MicroForwarder.get().setCanForward(canForward);
 }
