@@ -100,11 +100,13 @@ class MicroForwarder {
    * the ID integer of the outgoing face, outgoingFaceUri is the URI string of
    * the outgoing face, and routePrefix is the prefix Name of the matching
    * outgoing route. The canForward callback should return true if it is OK to
-   * forward to the outgoing face, else false. IMPORTANT: The canForward
-   * callback is called when the routePrefix matches, even if the outgoing face
-   * is the same as the incoming face. So you must check if incomingFaceId ==
-   * outgoingFaceId and return false if you don't want to forward to the same
-   * face.
+   * forward to the outgoing face, else false. Alternatively, if canForward
+   * returns a non-negative float x, then forward after a delay of x seconds
+   * using imp.wakeup (only supported on the Imp).
+   * IMPORTANT: The canForward callback is called when the routePrefix matches,
+   * even if the outgoing face is the same as the incoming face. So you must
+   * check if incomingFaceId == outgoingFaceId and return false if you don't
+   * want to forward to the same face.
    */
   function setCanForward(canForward) { canForward_ = canForward; }
 
@@ -253,15 +255,27 @@ class MicroForwarder {
               // If canForward_ is not defined, don't send the interest back to
               // where it came from.
               if (!(canForward_ == null && outFace == face)) {
-                // Note that is canForward_ is defined, it is called even if
-                // outFace == face.
-                if (canForward_ == null || canForward_
+                local canForwardResult = true;
+                if (canForward_ != null)
+                  // Note that canForward_  is called even if outFace == face.
+                  canForwardResult = canForward_
                     (interest, face.faceId, face.uri, outFace.faceId outFace.uri,
-                     fibEntry.name)) {
+                     fibEntry.name);
+
+                if (canForwardResult == true) {
+                  // Forward now.
                   if (logLevel_ >= 1)
                     consoleLog("LOG MicroForwarder: -> Sending Interest to face " +
                       outFace.uri);
                   outFace.sendBuffer(element);
+                }
+                else if (typeof canForwardResult == "float" && canForwardResult >= 0.0) {
+                  // Forward after a delay.
+                  if (logLevel_ >= 1)
+                    consoleLog("LOG MicroForwarder: -> Sending Interest after " +
+                      canForwardResult + " seconds delay to face " + outFace.uri);
+                  imp.wakeup(canForwardResult, 
+                             function() { outFace.sendBuffer(element); });
                 }
               }
             }
