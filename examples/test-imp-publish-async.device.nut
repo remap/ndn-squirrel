@@ -156,6 +156,11 @@ function testPublish()
     (interest, incomingFaceId, incomingFaceUri, outgoingFaceId, outgoingFaceUri,
      routePrefix)
   {
+    local isForwardingToSameFace = (incomingFaceId == outgoingFaceId);
+    if (isForwardingToSameFace)
+      // For single-hop broadcast, never forward to the same face.
+      return false;
+
     if (incomingFaceUri == "uart://serial") {
       // Coming from the serial port.
       if (prefix.isPrefixOf(interest.getName())) {
