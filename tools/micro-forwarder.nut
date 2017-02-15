@@ -291,8 +291,7 @@ class MicroForwarder {
       // Iterate backwards so we can remove the entry and keep iterating.
       for (local i = PIT_.len() - 1; i >= 0; --i) {
         local entry = PIT_[i];
-        if (entry.face != face && entry.face != null &&
-            entry.interest.matchesData(data)) {
+        if (entry.face != null && entry.interest.matchesData(data)) {
           // Remove the entry before sending.
           PIT_.remove(i);
 
