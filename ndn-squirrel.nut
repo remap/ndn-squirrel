@@ -355,6 +355,9 @@ class Buffer {
    */
   function toBlob()
   {
+    if (len_ <= 0)
+      return ::blob(0);
+
     blob_.seek(offset_);
     return blob_.readblob(len_);
   }
@@ -894,20 +897,28 @@ class NdnCommon {
    */
   static function computeHmacWithSha256(key, data)
   {
-    // Debug: Implement HMAC when it is exposed on the Imp Device.
-    // For now, compute a simple int hash and repeat it.
-    local hash = 0;
-    for (local i = 0; i < key.len(); ++i)
-      hash += 37 * key.get(i);
-    for (local i = 0; i < data.len(); ++i)
-      hash += 37 * data.get(i);
+    if (haveCrypto_)
+      return Buffer.from(crypto.hmacsha256(data.toBlob(), key.toBlob()));
+    else if (haveHttpHash_)
+      return Buffer.from(http.hash.hmacsha256(data.toBlob(), key.toBlob()));
+    else {
+      // For testing, compute a simple int hash and repeat it.
+      local hash = 0;
+      for (local i = 0; i < key.len(); ++i)
+        hash += 37 * key.get(i);
+      for (local i = 0; i < data.len(); ++i)
+        hash += 37 * data.get(i);
 
-    local result = blob(32);
-    // Write the 4-byte integer 8 times.
-    for (local i = 0; i < 8; ++i)
-      result.writen(hash, 'i');
-    return Buffer.from(result);
+      local result = blob(32);
+      // Write the 4-byte integer 8 times.
+      for (local i = 0; i < 8; ++i)
+        result.writen(hash, 'i');
+      return Buffer.from(result);
+    }
   }
+
+  haveCrypto_ = "crypto" in getroottable();
+  haveHttpHash_ = "http" in getroottable() && "hash" in ::http;
 }
 
 /**
