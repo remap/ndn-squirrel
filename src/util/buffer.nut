@@ -310,6 +310,9 @@ class Buffer {
    */
   function toBlob()
   {
+    if (len_ <= 0)
+      return ::blob(0);
+
     blob_.seek(offset_);
     return blob_.readblob(len_);
   }
