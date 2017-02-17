@@ -189,8 +189,17 @@ class MicroForwarder {
     // Remove timed-out PIT entries
     // Iterate backwards so we can remove the entry and keep iterating.
     for (local i = PIT_.len() - 1; i >= 0; --i) {
-      if (nowSeconds >= PIT_[i].timeoutEndSeconds)
+      if (nowSeconds >= PIT_[i].timeoutEndSeconds) {
+        if (logLevel_ >= 1) {
+          local entry = PIT_[i];
+          consoleLog("LOG MicroForwarder: Timeout for Interest " +
+            entry.interest.getName().toUri() + ", nonce " +
+            entry.interest.getNonce().toHex() + ", lifetime " +
+            entry.interest.getInterestLifetimeMilliseconds() + " ms on face " +
+            entry.face.uri);
+        }
         PIT_.remove(i);
+      }
     }
 
     // Now process as Interest or Data.
