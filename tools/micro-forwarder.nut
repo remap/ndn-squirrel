@@ -212,6 +212,16 @@ class MicroForwarder {
         // Ignore localhost.
         return;
 
+      // First check for a duplicate nonce on any face.
+      for (local i = 0; i < PIT_.len(); ++i) {
+        if (PIT_[i].interest.getNonce().equals(interest.getNonce())) {
+          // Drop the duplicate nonce.
+          if (logLevel_ >= 1)
+            consoleLog("LOG MicroForwarder: -> Dropping Interest with duplicate nonce");
+          return;
+        }
+      }
+
       // Check for a duplicate Interest.
       local timeoutEndSeconds;
       if (interest.getInterestLifetimeMilliseconds() != null)
