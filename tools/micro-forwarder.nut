@@ -190,24 +190,12 @@ class MicroForwarder {
     // Iterate backwards so we can remove the entry and keep iterating.
     for (local i = PIT_.len() - 1; i >= 0; --i) {
       if (nowSeconds >= PIT_[i].timeoutEndSeconds) {
-        if (logLevel_ >= 1) {
-          local entry = PIT_[i];
-          consoleLog("LOG MicroForwarder: Timeout for Interest " +
-            entry.interest.getName().toUri() + ", nonce " +
-            entry.interest.getNonce().toHex() + ", lifetime " +
-            entry.interest.getInterestLifetimeMilliseconds() + " ms on face " +
-            entry.face.uri);
-        }
         PIT_.remove(i);
       }
     }
 
     // Now process as Interest or Data.
     if (interest != null) {
-      if (logLevel_ >= 1)
-        consoleLog("LOG MicroForwarder: Received Interest " +
-          interest.getName().toUri() + ", nonce " + interest.getNonce().toHex() +
-          " on face " + face.uri);
       if (localhostNamePrefix.match(interest.getName()))
         // Ignore localhost.
         return;
@@ -216,8 +204,6 @@ class MicroForwarder {
       for (local i = 0; i < PIT_.len(); ++i) {
         if (PIT_[i].interest.getNonce().equals(interest.getNonce())) {
           // Drop the duplicate nonce.
-          if (logLevel_ >= 1)
-            consoleLog("LOG MicroForwarder: -> Dropping Interest with duplicate nonce");
           return;
         }
       }
@@ -235,8 +221,6 @@ class MicroForwarder {
         if (entry.face == face &&
             entry.interest.getName().equals(interest.getName())) {
           // Duplicate PIT entry.
-          if (logLevel_ >= 1)
-            consoleLog("LOG MicroForwarder: -> Aggregating repeat Interest (not forwarding)");
           // Update the interest timeout.
           if (timeoutEndSeconds > entry.timeoutEndSeconds)
             entry.timeoutEndSeconds = timeoutEndSeconds;
@@ -255,9 +239,6 @@ class MicroForwarder {
           local outFace = faces_[i];
           // Don't send the interest back to where it came from.
           if (outFace != face) {
-            if (logLevel_ >= 1)
-              consoleLog("LOG MicroForwarder: -> Sending Interest to broadcast face " +
-                outFace.uri);
             outFace.sendBuffer(element);
           }
         }
@@ -283,16 +264,10 @@ class MicroForwarder {
 
                 if (canForwardResult == true) {
                   // Forward now.
-                  if (logLevel_ >= 1)
-                    consoleLog("LOG MicroForwarder: -> Sending Interest to face " +
-                      outFace.uri);
                   outFace.sendBuffer(element);
                 }
                 else if (typeof canForwardResult == "float" && canForwardResult >= 0.0) {
                   // Forward after a delay.
-                  if (logLevel_ >= 1)
-                    consoleLog("LOG MicroForwarder: -> Sending Interest after " +
-                      canForwardResult + " seconds delay to face " + outFace.uri);
                   imp.wakeup(canForwardResult, 
                              function() { outFace.sendBuffer(element); });
                 }
@@ -303,9 +278,6 @@ class MicroForwarder {
       }
     }
     else if (data != null) {
-      if (logLevel_ >= 1)
-        consoleLog("LOG MicroForwarder: Received Data     " +
-          data.getName().toUri() + " on face " + face.uri);
       // Send the data packet to the face for each matching PIT entry.
       // Iterate backwards so we can remove the entry and keep iterating.
       for (local i = PIT_.len() - 1; i >= 0; --i) {
@@ -314,11 +286,6 @@ class MicroForwarder {
           // Remove the entry before sending.
           PIT_.remove(i);
 
-          if (logLevel_ >= 1)
-            consoleLog("LOG MicroForwarder: -> Sending Data to face " +
-              entry.face.uri + " to satisfy Interest " +
-              entry.interest.getName().toUri() + ", nonce " +
-              entry.interest.getNonce().toHex());
           entry.face.sendBuffer(element);
           entry.face = null;
         }
