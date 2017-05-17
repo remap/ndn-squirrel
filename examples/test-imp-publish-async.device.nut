@@ -55,7 +55,16 @@ function onInterest(prefix, interest, face, interestFilterId, filter)
  * connection. We will remove this when we use the real serial connection.
  */
 class SerialUartStub {
-  inputBlob_ = null;
+  callbacks_ = null;
+
+  /**
+   * This is called (usually by AsyncTransport.connect) to supply the callbacks
+   * object which has the "onDataReceived" method which we call on receiving
+   * incoming data.
+   * @params callbacks The callbacks object with the "onDataReceived" method.
+   * (This is usually an AsyncTransport object.)
+   */
+  function setAsyncCallbacks(callbacks) { callbacks_ = callbacks; }
 
   /**
    * This is called by the MicroForwarder to send a packet. For the stub,
@@ -105,33 +114,9 @@ class SerialUartStub {
    */
   function read(data)
   {
-    if (inputBlob_ == null)
-      inputBlob_ = data;
-    else {
-      // Append.
-      inputBlob_.seek(inputBlob_.len());
-      inputBlob_.writeblob(data);
-    }
-  }
-
-  /**
-   * This is called periodically by the MicroForwarder to receive an incoming
-   * packet. For the stub we return the simulated incoming packet that was
-   * created by write().
-   * @return {blob} The bytes of the receive buffer, or an empty blob if the
-   * receive there is no incoming data.
-   */
-  function readblob()
-  {
-    if (inputBlob_ == null)
-      // Return a new empty blob since we don't know that the caller will do with it.
-      return blob(0);
-    else {
-      local result = inputBlob_;
-      inputBlob_ = null;
-      result.seek(0);
-      return result;
-    }
+    // Supply the received data.
+    if (callbacks_ != null)
+      callbacks_.onDataReceived(data);
   }
 }
 
@@ -152,9 +137,9 @@ function testPublish()
 
   // TODO: Configure the UART settings for the real serial connection.
   local serial = SerialUartStub();
-  local uartTransport = UartTransport();
+  local asyncTransport = AsyncTransport();
   local serialFaceId = MicroForwarder.get().addFace
-    ("uart://serial", uartTransport, UartTransportConnectionInfo(serial));
+    ("uart://serial", asyncTransport, AsyncTransportConnectionInfo(serial));
   MicroForwarder.get().registerRoute(Name("/testecho2"), serialFaceId)
 
   local face = Face();
