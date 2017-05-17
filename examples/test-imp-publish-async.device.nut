@@ -94,12 +94,23 @@ class SerialUartStub {
     consoleLog
       ("Simulated other device over serial connection sending content " + content);
     local response = data.wireEncode().buf().toBlob();
+    read(response);
+  }
+
+  /**
+   * This is an internal method to simulate where a real UART would process
+   * incoming bytes and prepare the Squirrel blob to supply to the transport.
+   * @param data The Squirrel blob that simulates the bytes which would be read
+   * from the UART.
+   */
+  function read(data)
+  {
     if (inputBlob_ == null)
-      inputBlob_ = response;
+      inputBlob_ = data;
     else {
       // Append.
       inputBlob_.seek(inputBlob_.len());
-      inputBlob_.writeblob(response);
+      inputBlob_.writeblob(data);
     }
   }
 
