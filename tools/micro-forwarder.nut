@@ -99,10 +99,11 @@ class MicroForwarder {
    * incomingFaceUri is the URI string of the incoming face, outgoingFaceId is
    * the ID integer of the outgoing face, outgoingFaceUri is the URI string of
    * the outgoing face, and routePrefix is the prefix Name of the matching
-   * outgoing route. The canForward callback should return true if it is OK to
-   * forward to the outgoing face, else false. Alternatively, if canForward
-   * returns a non-negative float x, then forward after a delay of x seconds
-   * using imp.wakeup (only supported on the Imp).
+   * outgoing route. If the canForward callback returns true (or a float 0.0)
+   * then immediately forward to the outgoing face. If it returns false (or a
+   * negative float), then don't forward. If canForward returns a positive float
+   * x, then forward after a delay of x seconds using imp.wakeup (only supported
+   * on the Imp).
    * IMPORTANT: The canForward callback is called when the routePrefix matches,
    * even if the outgoing face is the same as the incoming face. So you must
    * check if incomingFaceId == outgoingFaceId and return false if you don't
@@ -262,11 +263,12 @@ class MicroForwarder {
                     (interest, face.faceId, face.uri, outFace.faceId outFace.uri,
                      fibEntry.name);
 
-                if (canForwardResult == true) {
+                if (canForwardResult == true ||
+                    typeof canForwardResult == "float" && canForwardResult == 0.0) {
                   // Forward now.
                   outFace.sendBuffer(element);
                 }
-                else if (typeof canForwardResult == "float" && canForwardResult >= 0.0) {
+                else if (typeof canForwardResult == "float" && canForwardResult > 0.0) {
                   // Forward after a delay.
                   imp.wakeup(canForwardResult, 
                              function() { outFace.sendBuffer(element); });
