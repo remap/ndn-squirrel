@@ -40,7 +40,6 @@ class ElementReader {
   {
     elementListener_ = elementListener;
     dataParts_ = [];
-    tlvStructureDecoder_ = TlvStructureDecoder();
   }
 
   /**
@@ -59,8 +58,8 @@ class ElementReader {
 
       try {
         local startOffset = 0;
-        if (dataParts_.len() == 0) {
-          // This is the beginning of an element.
+        if (tlvStructureDecoder_ == null) {
+          // We haven't started reading the beginning of an element yet.
           if (data.len() <= 0)
             // Wait for more data.
             return;
@@ -71,13 +70,15 @@ class ElementReader {
         }
 
         // Scan the input to check if a whole TLV element has been read.
+        if (tlvStructureDecoder_ == null)
+          tlvStructureDecoder_ = TlvStructureDecoder();
         tlvStructureDecoder_.seek(startOffset);
         gotElementEnd = tlvStructureDecoder_.findElementEnd(data);
         offset = tlvStructureDecoder_.getOffset();
       } catch (ex) {
         // Reset to read a new element on the next call.
         dataParts_ = [];
-        tlvStructureDecoder_ = TlvStructureDecoder();
+        tlvStructureDecoder_ = null;
 
         throw ex;
       }
@@ -97,7 +98,7 @@ class ElementReader {
         // Reset to read a new element. Do this before calling onReceivedElement
         // in case it throws an exception.
         data = data.slice(offset, data.len());
-        tlvStructureDecoder_ = TlvStructureDecoder();
+        tlvStructureDecoder_ = null;
 
         elementListener_.onReceivedElement(element);
         if (data.len() == 0)
@@ -114,7 +115,7 @@ class ElementReader {
         if (totalLength > NdnCommon.MAX_NDN_PACKET_SIZE) {
           // Reset to read a new element on the next call.
           dataParts_ = [];
-          tlvStructureDecoder_ = TlvStructureDecoder();
+          tlvStructureDecoder_ = null;
 
           throw "The incoming packet exceeds the maximum limit Face.getMaxNdnPacketSize()";
         }
