@@ -30,6 +30,7 @@ class Interest {
   mustBeFresh_ = true;
   interestLifetimeMilliseconds_ = null;
   nonce_ = null;
+  geoTag_ = null;
   getNonceChangeCount_ = 0;
   changeCount_ = 0;
 
@@ -54,16 +55,12 @@ class Interest {
       mustBeFresh_ = interest.mustBeFresh_;
       interestLifetimeMilliseconds_ = interest.interestLifetimeMilliseconds_;
       nonce_ = interest.nonce_;
+      geoTag_ = interest.geoTag_;
     }
     else {
       name_ = ChangeCounter(value instanceof Name ? Name(value) : Name());
-      minSuffixComponents_ = null;
-      maxSuffixComponents_ = null;
       keyLocator_ = ChangeCounter(KeyLocator());
       exclude_ = ChangeCounter(Exclude());
-      childSelector_ = null;
-      mustBeFresh_ = true;
-      interestLifetimeMilliseconds_ = null;
       nonce_ = Blob();
     }
   }
@@ -432,6 +429,29 @@ class Interest {
   }
 
   // TODO: setLpPacket.
+
+  /**
+   * Get the min suffix components.
+   * @return {integer} The geo tag as the integer holding 8 decimal digits, or
+   * null if not specified.
+   * @note This method is experimental. The API may change.
+   */
+  function getGeoTag() { return geoTag_; }
+
+  /**
+   * Set the geo tag packet extension. This does not affect the wire encoding.
+   * @param {integer} geoTag The geo tag as the integer holding 8 decimal
+   * digits. If not specified, set to null.
+   * @return {Interest} This Interest so that you can chain calls to update
+   * values.
+   * @note This method is experimental. The API may change.
+   */
+  function setGeoTag(geoTag)
+  {
+    geoTag_ = geoTag;
+    // Don't update the changeCount_ since the wire encoding doesn't include
+    // packet extensions.
+  }
 
   /**
    * Get the change count, which is incremented each time this object (or a
