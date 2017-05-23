@@ -171,6 +171,14 @@ class MicroForwarder {
    */
   function onReceivedElement(face, element)
   {
+    local geoTag = null;
+    if (PacketExtensions.isExtension(element.get(0))) {
+      geoTag = PacketExtensions.readGeoTag(element);
+
+      // Now strip the packet extensions header so we can decode.
+      element = element.slice(PacketExtensions.getNHeaderBytes(element));
+    }
+
     local interest = null;
     local data = null;
     // Use Buffer.get to avoid using the metamethod.
@@ -179,6 +187,8 @@ class MicroForwarder {
       if (decoder.peekType(Tlv.Interest, element.len())) {
         interest = Interest();
         interest.wireDecode(element, TlvWireFormat.get());
+
+        interest.setGeoTag(geoTag);
       }
       else if (decoder.peekType(Tlv.Data, element.len())) {
         data = Data();
