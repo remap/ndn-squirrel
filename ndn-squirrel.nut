@@ -4986,7 +4986,6 @@ class ElementReader {
   {
     elementListener_ = elementListener;
     dataParts_ = [];
-    tlvStructureDecoder_ = TlvStructureDecoder();
   }
 
   /**
@@ -5005,8 +5004,8 @@ class ElementReader {
 
       try {
         local startOffset = 0;
-        if (dataParts_.len() == 0) {
-          // This is the beginning of an element.
+        if (tlvStructureDecoder_ == null) {
+          // We haven't started reading the beginning of an element yet.
           if (data.len() <= 0)
             // Wait for more data.
             return;
@@ -5014,16 +5013,23 @@ class ElementReader {
           // As a special case, skip the packet extensions header which does not
           // use TLV.
           startOffset = PacketExtensions.getNHeaderBytes(data);
+          if (startOffset > 0 && startOffset >= data.len()) {
+            // The buffer only had extensions. Save a copy to concat later.
+            dataParts_.push(Buffer(data));
+            return;
+          }
         }
 
         // Scan the input to check if a whole TLV element has been read.
+        if (tlvStructureDecoder_ == null)
+          tlvStructureDecoder_ = TlvStructureDecoder();
         tlvStructureDecoder_.seek(startOffset);
         gotElementEnd = tlvStructureDecoder_.findElementEnd(data);
         offset = tlvStructureDecoder_.getOffset();
       } catch (ex) {
         // Reset to read a new element on the next call.
         dataParts_ = [];
-        tlvStructureDecoder_ = TlvStructureDecoder();
+        tlvStructureDecoder_ = null;
 
         throw ex;
       }
@@ -5043,7 +5049,7 @@ class ElementReader {
         // Reset to read a new element. Do this before calling onReceivedElement
         // in case it throws an exception.
         data = data.slice(offset, data.len());
-        tlvStructureDecoder_ = TlvStructureDecoder();
+        tlvStructureDecoder_ = null;
 
         elementListener_.onReceivedElement(element);
         if (data.len() == 0)
@@ -5060,7 +5066,7 @@ class ElementReader {
         if (totalLength > NdnCommon.MAX_NDN_PACKET_SIZE) {
           // Reset to read a new element on the next call.
           dataParts_ = [];
-          tlvStructureDecoder_ = TlvStructureDecoder();
+          tlvStructureDecoder_ = null;
 
           throw "The incoming packet exceeds the maximum limit Face.getMaxNdnPacketSize()";
         }
@@ -7778,7 +7784,7 @@ class PacketExtensions {
    */
   static function isExtension(firstByte)
   {
-    return (firstByte & 0x80) != 0 || (firstByte & 0xf8) == GEO_TAG;
+    return (firstByte & 0x80) != 0 || (firstByte & 0xf8) == GEO_TAG_CODE;
   }
 
   /**
@@ -7793,33 +7799,50 @@ class PacketExtensions {
   static function getPayload(packet, offset)
   {
     return ((packet.get(offset) & 0x07) << 24) +
-           (packet.get(offset + 1) << 16) +
-           (packet.get(offset + 2) << 8) +
-            packet.get(offset + 3);
+            (packet.get(offset + 1) << 16) +
+            (packet.get(offset + 2) << 8) +
+             packet.get(offset + 3);
   }
 
   /**
    * Scan the packet extensions header and return the integer payload of the
-   * first get tag packet extension.
-   * @param {Buffer} The Buffer with the packet, starting with possible headers.
-   * @return {integer} The geo tag payload interpreted as an unsigned big-endian
-   * integer, or null if no geo tag extension is found.
+   * first packet extension with the given code. The payload is the 27 least
+   * significant bits of the 32-bit extension.
+   * @param {Buffer} buffer The Buffer with the packet, starting with possible
+   * headers.
+   * @param {integer} code The extension code byte value where the 5 bits of the
+   * code are in the most-significant bits of the byte. For example,
+   * PacketExtensions.GEO_TAG_CODE .
+   * @return {integer} The payload interpreted as an unsigned big-endian
+   * integer, or null if there is no extension with the code.
    */
-  static function readGeoTag(packet)
+  static function readFirst(packet, code)
   {
     for (local i = 0; i < packet.len() && isExtension(packet.get(i)); i += 4) {
-      if ((packet.get(i) & 0xf8) == GEO_TAG)
+      if ((packet.get(i) & 0xf8) == GEO_TAG_CODE)
         return getPayload(packet, i);
     }
 
     return null;
   }
 
+  static function makeExtension(code, payload)
+  {
+    local value = ((code & 0xf8) << 24) + (payload & 0x07ffffff);
+    return Buffer([(value >> 24) & 0xff,
+                   (value >> 16) & 0xff,
+                   (value >> 8) & 0xff,
+                   value & 0xff]);
+  }
+
   // A code is represented by its 5 bits in the most-significant bits of the
   // first byte.
-  static GEO_TAG = 0x28;
-  static ERROR_REPORTING = 0xA8;
+  static GEO_TAG_CODE = 0x28;
+  static ERROR_REPORTING_CODE = 0xA8;
 }
+
+NACK_PACKET_EXTENSION <- PacketExtensions.makeExtension
+  (PacketExtensions.ERROR_REPORTING_CODE, 1);
 /**
  * Copyright (C) 2016-2017 Regents of the University of California.
  * @author: Jeff Thompson <jefft0@remap.ucla.edu>
@@ -8608,7 +8631,10 @@ class Face {
         throw
           "The encoded interest size exceeds the maximum limit getMaxNdnPacketSize()";
 
-      transport_.send(encoding.buf());
+      transport_.send(Blob([0x28, 0, 0, 100]).buf());
+      transport_.send(NACK_PACKET_EXTENSION);
+      consoleLog("Debug " + Blob(NACK_PACKET_EXTENSION).toHex());
+      transport_.send(Buffer.concat([Blob([]).buf(), encoding.buf()]));
     }
   }
 
