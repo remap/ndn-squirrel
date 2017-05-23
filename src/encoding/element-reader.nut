@@ -67,6 +67,11 @@ class ElementReader {
           // As a special case, skip the packet extensions header which does not
           // use TLV.
           startOffset = PacketExtensions.getNHeaderBytes(data);
+          if (startOffset > 0 && startOffset >= data.len()) {
+            // The buffer only had extensions. Save a copy to concat later.
+            dataParts_.push(Buffer(data));
+            return;
+          }
         }
 
         // Scan the input to check if a whole TLV element has been read.
