@@ -20,8 +20,11 @@
 /**
  * An ElementReader lets you call onReceivedData multiple times which uses a
  * TlvStructureDecoder to detect the end of a TLV element and calls
- * elementListener.onReceivedElement(element) with the element.  This handles
- * the case where a single call to onReceivedData may contain multiple elements.
+ * elementListener.onReceivedElement(element) with the element. If the packet 
+ * contains a packet extensions header, it is included in the element (even 
+ * though it is not TLV); you can use PacketExtensions.getNHeaderBytes to skip
+ * it. This handles the case where a single call to onReceivedData may contain
+ * multiple elements.
  */
 class ElementReader {
   elementListener_ = null;
@@ -55,15 +58,20 @@ class ElementReader {
       local offset;
 
       try {
+        local startOffset = 0;
         if (dataParts_.len() == 0) {
           // This is the beginning of an element.
           if (data.len() <= 0)
             // Wait for more data.
             return;
+
+          // As a special case, skip the packet extensions header which does not
+          // use TLV.
+          startOffset = PacketExtensions.getNHeaderBytes(data);
         }
 
         // Scan the input to check if a whole TLV element has been read.
-        tlvStructureDecoder_.seek(0);
+        tlvStructureDecoder_.seek(startOffset);
         gotElementEnd = tlvStructureDecoder_.findElementEnd(data);
         offset = tlvStructureDecoder_.getOffset();
       } catch (ex) {
@@ -76,6 +84,7 @@ class ElementReader {
 
       if (gotElementEnd) {
         // Got the remainder of an element.  Report to the caller.
+        // Note: The element buffer includes any packet extensions header.
         local element;
         if (dataParts_.len() == 0)
           element = data.slice(0, offset);
