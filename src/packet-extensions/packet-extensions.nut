@@ -18,9 +18,12 @@
  */
 
 /**
- * A PacketExtensions holds the packet extensions that are prepended to a packet
- * as defined here:
+ * A PacketExtensions holds the packet extensions that are prepended to a packet.
+ * Each packet extension is a 4-byte value, and there can be multiple
+ * extensions in the header prepended to the normal TLV packet.
+ * Details are here:
  * https://docs.google.com/document/d/1jfi-3iExOlXjyF6BEIvAbnJa5jKM_rsisB70Jy8QtB0
+ * @note This class is an experimental feature. The API may change.
  */
 class PacketExtensions {
   /**
@@ -32,12 +35,12 @@ class PacketExtensions {
    */
   static function getNHeaderBytes(packet)
   {
-    local nBytes = 0;
-    while (PacketExtensions.isExtension(packet.get(nBytes)))
+    local i = 0;
+    while (i < packet.len() && isExtension(packet.get(i)))
       // Skip this header and try the next.
-      nBytes += 4;
+      i += 4;
 
-    return nBytes;
+    return i;
   }
 
   /**
@@ -50,6 +53,40 @@ class PacketExtensions {
   static function isExtension(firstByte)
   {
     return (firstByte & 0x80) != 0 || (firstByte & 0xf8) == GEO_TAG;
+  }
+
+  /**
+   * Get the packet extension payload as follows. Get the 4 bytes in the packet
+   * beginning at offset, mask off the most-significant 5 bits of the first
+   * byte, and interpret the remainder as a 4-byte big-endian unsigned integer.
+   * @param {Buffer} packet The Buffer with the extensions header.
+   * @param {integer} offset The offset in the packet of the first byte of the
+   * packet extension.
+   * @return {integer} The payload as an integer as described above.
+   */
+  static function getPayload(packet, offset)
+  {
+    return ((packet.get(offset) & 0x07) << 24) +
+           (packet.get(offset + 1) << 16) +
+           (packet.get(offset + 2) << 8) +
+            packet.get(offset + 3);
+  }
+
+  /**
+   * Scan the packet extensions header and return the integer payload of the
+   * first get tag packet extension.
+   * @param {Buffer} The Buffer with the packet, starting with possible headers.
+   * @return {integer} The geo tag payload interpreted as an unsigned big-endian
+   * integer, or null if no geo tag extension is found.
+   */
+  static function readGeoTag(packet)
+  {
+    for (local i = 0; i < packet.len() && isExtension(packet.get(i)); i += 4) {
+      if ((packet.get(i) & 0xf8) == GEO_TAG)
+        return getPayload(packet, i);
+    }
+
+    return null;
   }
 
   // A code is represented by its 5 bits in the most-significant bits of the
