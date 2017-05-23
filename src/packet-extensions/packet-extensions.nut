@@ -94,8 +94,30 @@ class PacketExtensions {
     return null;
   }
 
+  /**
+   * Make a 4-byte packet extension from the given code and payload, suitable
+   * for sending on the wire.
+   * @param {integer} code The extension code byte value where the 5 bits of the
+   * code are in the most-significant bits of the byte. For example,
+   * PacketExtensions.GEO_TAG_CODE .
+   * @param {integer} payload The 27-bit extension payload which is put
+   * big-endian in the returned buffer.
+   * @return A new Buffer with the 4-byte extension.
+   */
+  static function makeExtension(code, payload)
+  {
+    local value = ((code & 0xf8) << 24) + (payload & 0x07ffffff);
+    return Buffer([(value >> 24) & 0xff,
+                   (value >> 16) & 0xff,
+                   (value >> 8) & 0xff,
+                   value & 0xff]);
+  }
+
   // A code is represented by its 5 bits in the most-significant bits of the
   // first byte.
   static GEO_TAG_CODE = 0x28;
-  static ERROR_REPORTING_CODE = 0xA8;
+  static ERROR_REPORTING_CODE = 0xa8;
 }
+
+NACK_PACKET_EXTENSION <- PacketExtensions.makeExtension
+  (PacketExtensions.ERROR_REPORTING_CODE, 1);
