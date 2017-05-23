@@ -74,12 +74,17 @@ class PacketExtensions {
 
   /**
    * Scan the packet extensions header and return the integer payload of the
-   * first geo tag packet extension.
-   * @param {Buffer} The Buffer with the packet, starting with possible headers.
-   * @return {integer} The geo tag payload interpreted as an unsigned big-endian
-   * integer, or null if no geo tag extension is found.
+   * first packet extension with the given code. The payload is the 27 least
+   * significant bits of the 32-bit extension.
+   * @param {Buffer} buffer The Buffer with the packet, starting with possible
+   * headers.
+   * @param {integer} code The extension code byte value where the 5 bits of the
+   * code are in the most-significant bits of the byte. For example,
+   * PacketExtensions.GEO_TAG_CODE .
+   * @return {integer} The payload interpreted as an unsigned big-endian
+   * integer, or null if there is no extension with the code.
    */
-  static function readGeoTag(packet)
+  static function readFirst(packet, code)
   {
     for (local i = 0; i < packet.len() && isExtension(packet.get(i)); i += 4) {
       if ((packet.get(i) & 0xf8) == GEO_TAG_CODE)

@@ -173,7 +173,7 @@ class MicroForwarder {
   {
     local geoTag = null;
     if (PacketExtensions.isExtension(element.get(0))) {
-      geoTag = PacketExtensions.readGeoTag(element);
+      geoTag = PacketExtensions.readFirst(element, PacketExtensions.GEO_TAG_CODE);
 
       // Now strip the packet extensions header so we can decode.
       element = element.slice(PacketExtensions.getNHeaderBytes(element));
