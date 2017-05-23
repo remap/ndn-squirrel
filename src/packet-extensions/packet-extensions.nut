@@ -52,7 +52,7 @@ class PacketExtensions {
    */
   static function isExtension(firstByte)
   {
-    return (firstByte & 0x80) != 0 || (firstByte & 0xf8) == GEO_TAG;
+    return (firstByte & 0x80) != 0 || (firstByte & 0xf8) == GEO_TAG_CODE;
   }
 
   /**
@@ -67,14 +67,14 @@ class PacketExtensions {
   static function getPayload(packet, offset)
   {
     return ((packet.get(offset) & 0x07) << 24) +
-           (packet.get(offset + 1) << 16) +
-           (packet.get(offset + 2) << 8) +
-            packet.get(offset + 3);
+            (packet.get(offset + 1) << 16) +
+            (packet.get(offset + 2) << 8) +
+             packet.get(offset + 3);
   }
 
   /**
    * Scan the packet extensions header and return the integer payload of the
-   * first get tag packet extension.
+   * first geo tag packet extension.
    * @param {Buffer} The Buffer with the packet, starting with possible headers.
    * @return {integer} The geo tag payload interpreted as an unsigned big-endian
    * integer, or null if no geo tag extension is found.
@@ -82,7 +82,7 @@ class PacketExtensions {
   static function readGeoTag(packet)
   {
     for (local i = 0; i < packet.len() && isExtension(packet.get(i)); i += 4) {
-      if ((packet.get(i) & 0xf8) == GEO_TAG)
+      if ((packet.get(i) & 0xf8) == GEO_TAG_CODE)
         return getPayload(packet, i);
     }
 
@@ -91,6 +91,6 @@ class PacketExtensions {
 
   // A code is represented by its 5 bits in the most-significant bits of the
   // first byte.
-  static GEO_TAG = 0x28;
-  static ERROR_REPORTING = 0xA8;
+  static GEO_TAG_CODE = 0x28;
+  static ERROR_REPORTING_CODE = 0xA8;
 }
