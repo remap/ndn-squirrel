@@ -102,15 +102,16 @@ class PacketExtensions {
    * PacketExtensions.GEO_TAG_CODE .
    * @param {integer} payload The 27-bit extension payload which is put
    * big-endian in the returned buffer.
-   * @return A new Buffer with the 4-byte extension.
+   * @return {Blob} A Blob with the 4-byte extension.
    */
   static function makeExtension(code, payload)
   {
+    // Use the high 5 bits of code and the low 27 bits of payload.
     local value = ((code & 0xf8) << 24) + (payload & 0x07ffffff);
-    return Buffer([(value >> 24) & 0xff,
-                   (value >> 16) & 0xff,
-                   (value >> 8) & 0xff,
-                   value & 0xff]);
+    return Blob([(value >> 24) & 0xff,
+                 (value >> 16) & 0xff,
+                 (value >> 8) & 0xff,
+                  value & 0xff]);
   }
 
   // A code is represented by its 5 bits in the most-significant bits of the

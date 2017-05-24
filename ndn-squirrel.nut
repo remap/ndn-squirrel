@@ -7826,19 +7826,30 @@ class PacketExtensions {
     return null;
   }
 
+  /**
+   * Make a 4-byte packet extension from the given code and payload, suitable
+   * for sending on the wire.
+   * @param {integer} code The extension code byte value where the 5 bits of the
+   * code are in the most-significant bits of the byte. For example,
+   * PacketExtensions.GEO_TAG_CODE .
+   * @param {integer} payload The 27-bit extension payload which is put
+   * big-endian in the returned buffer.
+   * @return {Blob} A Blob with the 4-byte extension.
+   */
   static function makeExtension(code, payload)
   {
+    // Use the high 5 bits of code and the low 27 bits of payload.
     local value = ((code & 0xf8) << 24) + (payload & 0x07ffffff);
-    return Buffer([(value >> 24) & 0xff,
-                   (value >> 16) & 0xff,
-                   (value >> 8) & 0xff,
-                   value & 0xff]);
+    return Blob([(value >> 24) & 0xff,
+                 (value >> 16) & 0xff,
+                 (value >> 8) & 0xff,
+                  value & 0xff]);
   }
 
   // A code is represented by its 5 bits in the most-significant bits of the
   // first byte.
   static GEO_TAG_CODE = 0x28;
-  static ERROR_REPORTING_CODE = 0xA8;
+  static ERROR_REPORTING_CODE = 0xa8;
 }
 
 NACK_PACKET_EXTENSION <- PacketExtensions.makeExtension
@@ -8631,10 +8642,7 @@ class Face {
         throw
           "The encoded interest size exceeds the maximum limit getMaxNdnPacketSize()";
 
-      transport_.send(Blob([0x28, 0, 0, 100]).buf());
-      transport_.send(NACK_PACKET_EXTENSION);
-      consoleLog("Debug " + Blob(NACK_PACKET_EXTENSION).toHex());
-      transport_.send(Buffer.concat([Blob([]).buf(), encoding.buf()]));
+      transport_.send(encoding.buf());
     }
   }
 
