@@ -414,6 +414,11 @@ class Face {
     // Clear timed-out Interests in case the application doesn't call processEvents.
     processEvents();
 
+    // We don't expect packets with extensions to arrive at the client, but
+    // strip the extensions header anyway. (Buffer.slice does nothing if
+    // nHeaderBytes is zero.)
+    element = element.slice(PacketExtensions.getNHeaderBytes(element));
+
     local lpPacket = null;
     // Use Buffer.get to avoid using the metamethod.
     if (element.get(0) == Tlv.LpPacket_LpPacket)
