@@ -121,15 +121,7 @@ class MicroForwarder {
    */
   function registerRoute(name, faceId)
   {
-    // Find the face with the faceId.
-    local nexthopFace = null;
-    for (local i = 0; i < faces_.len(); ++i) {
-      if (faces_[i].faceId == faceId) {
-        nexthopFace = faces_[i];
-        break;
-      }
-    }
-
+    local nexthopFace = findFace_(faceId);
     if (nexthopFace == null)
       return false;
 
@@ -151,6 +143,24 @@ class MicroForwarder {
     FIB_.push(fibEntry);
 
     return true;
+  }
+
+  /**
+   * Use PacketExtensions.makeExtension to prepend the extension to the
+   * extensions header that is prepended to each outgoing Interest on the given
+   * face. You can call this multiple times to prepend multiple extensions.
+   * @param {integer} faceId The face ID of the face for outgoing Interests. If
+   * there is not face with the faceId, do nothing.
+   * @param {integer} code The extension code byte value where the 5 bits of the
+   * code are in the most-significant bits of the byte. For example,
+   * PacketExtensions.GEO_TAG_CODE .
+   * @param {integer} payload The 27-bit extension payload.
+   */
+  function prependInterestExtension(faceId, code, payload)
+  {
+    local face = findFace_(faceId);
+    if (face != null)
+      face.prependInterestExtension(code, payload)
   }
 
   /**
@@ -250,6 +260,7 @@ class MicroForwarder {
           local outFace = faces_[i];
           // Don't send the interest back to where it came from.
           if (outFace != face) {
+            // For now, don't add an extensions header to broadcast Interests.
             outFace.sendBuffer(element);
           }
         }
@@ -266,6 +277,12 @@ class MicroForwarder {
               // If canForward_ is not defined, don't send the interest back to
               // where it came from.
               if (!(canForward_ == null && outFace == face)) {
+                local outBuffer = element;
+                if (outFace.interestExtensionsHeader != null)
+                  // Prepend the extensions header.
+                  outBuffer = Buffer.concat
+                    ([outFace.interestExtensionsHeader.buf(), outBuffer]);
+
                 local canForwardResult = true;
                 if (canForward_ != null)
                   // Note that canForward_  is called even if outFace == face.
@@ -276,12 +293,12 @@ class MicroForwarder {
                 if (canForwardResult == true ||
                     typeof canForwardResult == "float" && canForwardResult == 0.0) {
                   // Forward now.
-                  outFace.sendBuffer(element);
+                  outFace.sendBuffer(outBuffer);
                 }
                 else if (typeof canForwardResult == "float" && canForwardResult > 0.0) {
                   // Forward after a delay.
                   imp.wakeup(canForwardResult, 
-                             function() { outFace.sendBuffer(element); });
+                             function() { outFace.sendBuffer(outBuffer); });
                 }
               }
             }
@@ -332,6 +349,21 @@ class MicroForwarder {
       face.sendObject(obj);
     }
   }
+
+  /**
+   * A private method to find the face in faces_ with the faceId.
+   * @param {integer} The faceId.
+   * @return {ForwarderFace} The ForwarderFace, or null if not found.
+   */
+  function findFace_(faceId) {
+    local nexthopFace = null;
+    for (local i = 0; i < faces_.len(); ++i) {
+      if (faces_[i].faceId == faceId)
+        return faces_[i];
+    }
+
+    return null;
+  }
 }
 
 // We use a global variable because static member variables are immutable.
@@ -380,6 +412,8 @@ class ForwarderFace {
   uri = null;
   transport = null;
   faceId = null;
+  // extensionsHeader is a Blob with the encoded header, or null if none.
+  interestExtensionsHeader = null;
 
   /**
    * Create a ForwarderFace and set the faceId to a unique value.
@@ -428,6 +462,29 @@ class ForwarderFace {
   {
     if (this.transport != null)
       this.transport.send(buffer);
+  }
+
+  /**
+   * Use PacketExtensions.makeExtension to prepend the extension to the
+   * extensions header that is prepended to each outgoing Interest. You can call
+   * this multiple times to prepend multiple extensions.
+   * @param {integer} code The extension code byte value where the 5 bits of the
+   * code are in the most-significant bits of the byte. For example,
+   * PacketExtensions.GEO_TAG_CODE .
+   * @param {integer} payload The 27-bit extension payload.
+   */
+  function prependInterestExtension(code, payload)
+  {
+    local extension = PacketExtensions.makeExtension(code, payload);
+
+    if (interestExtensionsHeader == null)
+      // Set the first extension.
+      interestExtensionsHeader = extension;
+    else
+      // Prepend the extension.
+      interestExtensionsHeader = Blob
+        (Buffer.concat([extension.buf(), interestExtensionsHeader.buf()]),
+         false)
   }
 }
 
