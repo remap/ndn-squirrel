@@ -134,6 +134,9 @@ class SerialUartStub {
  */
 function testPublish()
 {
+  // The GeoSelf for this device, representing grid coordinate (1000, 2000).
+  local geoSelfPayload = 10002000;
+
   // Enable logging. (Remove this to silence logging.)
   MicroForwarder.get().setLogLevel(1);
   MicroForwarder.get().addFace
@@ -145,6 +148,9 @@ function testPublish()
   local asyncTransport = AsyncTransport();
   local serialFaceId = MicroForwarder.get().addFace
     ("uart://serial", asyncTransport, AsyncTransportConnectionInfo(serial));
+  // Prepend the GeoTag extension to all outgoing Interests on this face.
+  MicroForwarder.get().prependInterestExtension
+    (serialFaceId, PacketExtensionCode.GeoTag, geoSelfPayload);
   MicroForwarder.get().registerRoute(Name("/testecho2"), serialFaceId)
 
   local face = Face();
