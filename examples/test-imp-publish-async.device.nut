@@ -74,6 +74,11 @@ class SerialUartStub {
    */
   function write(value)
   {
+    local nHeaderBytes = PacketExtensions.getNHeaderBytes(Buffer.from(value));
+    if (nHeaderBytes > 0)
+      // Strip off the extensions header. A real forwarder would process them.
+      value = Buffer.from(value, nHeaderBytes).toBlob();
+
     local interest = Interest();
     try {
       interest.wireDecode(Blob(value));
