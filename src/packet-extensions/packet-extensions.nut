@@ -17,6 +17,18 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
+// A packet extensilno code is represented by its 5 bits in the most-significant
+// bits of the first byte.
+enum PacketExtensionCode {
+  GeoTag = 0x28,
+  // For the payoad of ErrorReporting, see ErrorReportingPayoad.
+  ErrorReporting = 0xa8
+}
+
+enum ErrorReportingPayoad {
+  TransmitFaied = 1
+}
+
 /**
  * A PacketExtensions holds the packet extensions that are prepended to a packet.
  * Each packet extension is a 4-byte value, and there can be multiple
@@ -52,7 +64,8 @@ class PacketExtensions {
    */
   static function isExtension(firstByte)
   {
-    return (firstByte & 0x80) != 0 || (firstByte & 0xf8) == GEO_TAG_CODE;
+    return (firstByte & 0x80) != 0 || 
+            (firstByte & 0xf8) == PacketExtensionCode.GeoTag;
   }
 
   /**
@@ -80,14 +93,14 @@ class PacketExtensions {
    * headers.
    * @param {integer} code The extension code byte value where the 5 bits of the
    * code are in the most-significant bits of the byte. For example,
-   * PacketExtensions.GEO_TAG_CODE .
+   * PacketExtensionCode.GeoTag .
    * @return {integer} The payload interpreted as an unsigned big-endian
    * integer, or null if there is no extension with the code.
    */
   static function readFirst(packet, code)
   {
     for (local i = 0; i < packet.len() && isExtension(packet.get(i)); i += 4) {
-      if ((packet.get(i) & 0xf8) == GEO_TAG_CODE)
+      if ((packet.get(i) & 0xf8) == code)
         return getPayload(packet, i);
     }
 
@@ -99,7 +112,7 @@ class PacketExtensions {
    * for sending on the wire.
    * @param {integer} code The extension code byte value where the 5 bits of the
    * code are in the most-significant bits of the byte. For example,
-   * PacketExtensions.GEO_TAG_CODE .
+   * PacketExtensionCode.GeoTag .
    * @param {integer} payload The 27-bit extension payload which is put
    * big-endian in the returned buffer.
    * @return {Blob} A Blob with the 4-byte extension.
@@ -113,12 +126,4 @@ class PacketExtensions {
                  (value >> 8) & 0xff,
                   value & 0xff]);
   }
-
-  // A code is represented by its 5 bits in the most-significant bits of the
-  // first byte.
-  static GEO_TAG_CODE = 0x28;
-  static ERROR_REPORTING_CODE = 0xa8;
 }
-
-NACK_PACKET_EXTENSION <- PacketExtensions.makeExtension
-  (PacketExtensions.ERROR_REPORTING_CODE, 1);

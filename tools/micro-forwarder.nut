@@ -153,7 +153,7 @@ class MicroForwarder {
    * there is not face with the faceId, do nothing.
    * @param {integer} code The extension code byte value where the 5 bits of the
    * code are in the most-significant bits of the byte. For example,
-   * PacketExtensions.GEO_TAG_CODE .
+   * PacketExtensionCode.GeoTag .
    * @param {integer} payload The 27-bit extension payload.
    */
   function prependInterestExtension(faceId, code, payload)
@@ -183,7 +183,7 @@ class MicroForwarder {
   {
     local geoTag = null;
     if (PacketExtensions.isExtension(element.get(0))) {
-      geoTag = PacketExtensions.readFirst(element, PacketExtensions.GEO_TAG_CODE);
+      geoTag = PacketExtensions.readFirst(element, PacketExtensionCode.GeoTag);
 
       // Now strip the packet extensions header so we can decode.
       element = element.slice(PacketExtensions.getNHeaderBytes(element));
@@ -470,7 +470,7 @@ class ForwarderFace {
    * this multiple times to prepend multiple extensions.
    * @param {integer} code The extension code byte value where the 5 bits of the
    * code are in the most-significant bits of the byte. For example,
-   * PacketExtensions.GEO_TAG_CODE .
+   * PacketExtensionCode.GeoTag .
    * @param {integer} payload The 27-bit extension payload.
    */
   function prependInterestExtension(code, payload)
