@@ -182,11 +182,39 @@ class MicroForwarder {
   function onReceivedElement(face, element)
   {
     local geoTag = null;
+    local transmitFailed = false;
+
     if (PacketExtensions.isExtension(element.get(0))) {
-      geoTag = PacketExtensions.readFirst(element, PacketExtensionCode.GeoTag);
+      local i = 0;
+      for (;
+           i < element.len() && PacketExtensions.isExtension(element.get(i));
+           i += 4) {
+        local code = (element.get(i) & 0xf8);
+        local payload = PacketExtensions.getPayload(element, i);
+
+        if ((code & 0x80) != 0) {
+          // We are required to process this extension.
+          if (code == PacketExtensionCode.ErrorReporting) {
+            if (payload == ErrorReportingPayoad.TransmitFaied)
+              transmitFailed = true;
+          }
+          else {
+            // Error: Unrecognized required header. Drop the packet.
+            return;
+          }
+        }
+        else {
+          // This extension is optional.
+          if (code == PacketExtensionCode.GeoTag) {
+            if (geoTag == null)
+              // Get the first GeoTag.
+              geoTag = payload;
+          }
+        }
+      }
 
       // Now strip the packet extensions header so we can decode.
-      element = element.slice(PacketExtensions.getNHeaderBytes(element));
+      element = element.slice(i);
     }
 
     local interest = null;
