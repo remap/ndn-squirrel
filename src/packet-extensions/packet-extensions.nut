@@ -26,7 +26,7 @@ enum PacketExtensionCode {
 }
 
 enum ErrorReportingPayoad {
-  TransmitFaied = 1
+  TransmitFailed = 1
 }
 
 /**
