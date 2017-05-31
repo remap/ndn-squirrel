@@ -198,7 +198,7 @@ class MicroForwarder {
         if ((code & 0x80) != 0) {
           // We are required to process this extension.
           if (code == PacketExtensionCode.ErrorReporting) {
-            if (payload == ErrorReportingPayoad.TransmitFailed)
+            if (payload == ErrorReportingPayload.TransmitFailed)
               transmitFailed = true;
             else {
               // Error: Unrecognized error payload. Drop the packet.

@@ -7753,12 +7753,12 @@ class PendingInterestTableEntry {
 // bits of the first byte.
 enum PacketExtensionCode {
   GeoTag = 0x28,
-  // For the payoad of ErrorReporting, see ErrorReportingPayoad.
+  // For the payload of ErrorReporting, see ErrorReportingPayload.
   ErrorReporting = 0xa8
 }
 
-enum ErrorReportingPayoad {
-  TransmitFaied = 1
+enum ErrorReportingPayload {
+  TransmitFailed = 1
 }
 
 /**
