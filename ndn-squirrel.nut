@@ -7818,28 +7818,6 @@ class PacketExtensions {
   }
 
   /**
-   * Scan the packet extensions header and return the integer payload of the
-   * first packet extension with the given code. The payload is the 27 least
-   * significant bits of the 32-bit extension.
-   * @param {Buffer} buffer The Buffer with the packet, starting with possible
-   * headers.
-   * @param {integer} code The extension code byte value where the 5 bits of the
-   * code are in the most-significant bits of the byte. For example,
-   * PacketExtensionCode.GeoTag .
-   * @return {integer} The payload interpreted as an unsigned big-endian
-   * integer, or null if there is no extension with the code.
-   */
-  static function readFirst(packet, code)
-  {
-    for (local i = 0; i < packet.len() && isExtension(packet.get(i)); i += 4) {
-      if ((packet.get(i) & 0xf8) == code)
-        return getPayload(packet, i);
-    }
-
-    return null;
-  }
-
-  /**
    * Make a 4-byte packet extension from the given code and payload, suitable
    * for sending on the wire.
    * @param {integer} code The extension code byte value where the 5 bits of the
