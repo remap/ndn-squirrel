@@ -46,7 +46,6 @@ cat \
   src/impl/interest-filter-table.nut \
   src/impl/pending-interest-table.nut \
   src/packet-extensions/packet-extensions.nut \
-  src/packet-extensions/geo-tag.nut \
   src/transport/transport.nut \
   src/transport/async-transport.nut \
   src/transport/squirrel-object-transport.nut \
