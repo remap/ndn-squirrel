@@ -20,22 +20,68 @@
 /**
  * GeoTag has static methods that work with PacketExtensions to manipulate
  * GeoTag packet extensions.
+ * Note: This is not normally included in ndn-squirrel.nut. You must explicitly
+ * include it in your application.
  * Details are here:
  * https://docs.google.com/document/d/1HJUO5PWjbjElbC1rpQ037m__Z3v6sQe90RdlqG_z5l8/edit
  * @note This class is an experimental feature. The API may change.
  */
 class GeoTag {
   /**
-   * Make the payload value for a GeoTag packet extension which can be combined
-   * with PacketExtensionCode.GeoTag to make the extension.
-   * @param {integer} The X coordinate in meters. This is divided by 10 to get
-   * the grid value.
-   * @param {integer} The Y coordinate in meters. This is divided by 10 to get
-   * the grid value.
-   * @param {integer} The payload value, effectively an 8-digit decimal value.
+   * Compute the figure of merit for the three geo tags.
+   * @param {integer} geoSelf The geo tag of the self node which is
+   * X * 10000 + Y where X and Y are in geo coordinate grid units.
+   * @param {integer} geoSource The geo tag of the source node which is
+   * X * 10000 + Y where X and Y are in geo coordinate grid units.
+   * @param {integer} geoDest The geo tag of the destination node which is
+   * X * 10000 + Y where X and Y are in geo coordinate grid units.
+   * @return {float} The figure of merit which is -1.0 if
+   * distance(geoSelf, geoDest) >= distance(geoSource, geoDest), otherwise a
+   * value ranging from -0.99 to 1.0.
    */
-  static function makePayload(xMeters, yMeters)
+  static function figureOfMerit(geoSelf, geoSource, geoDest)
   {
-    return (xMeters / 10) * 10000 + (yMeters / 10);
+    local dSelfDest = distance(geoSelf, geoDest);
+    local dSourceDest = distance(geoSource, geoDest);
+
+    if (dSelfDest < dSourceDest) {
+          // Case A: This forwarder is moving the packet closer.
+      local dSourceSelf = distance(geoSource, geoSelf);
+
+      // sd = [ d(source, self)^2 +  d(source, dest)^2 - d(self, dest)^2 ]
+      //      / ( 2 * d(source, dest) )
+      local sdProjection =
+        (dSourceSelf * dSourceSelf + dSourceDest * dSourceDest - dSelfDest * dSelfDest)
+        / (2 * dSourceDest);
+
+      return 1.0 - sdProjection / dSourceDest;
+    }
+    else
+      // Case B: This forwarder is moving the packet farther, or not moving it.
+      // (In this case, there is no need to compute dSourceSelf.)
+      return -1.0;
+  }
+
+  /**
+   * Compute the distance between two geo tags.
+   * @param {integer} geoTag1 The first geo tag which is X * 10000 + Y where
+   * X and Y are in geo coordinate grid units.
+   * @param {integer} geoTag2 The second geo tag which is X * 10000 + Y where
+   * X and Y are in geo coordinate grid units.
+   * @return {float} The distance in meters.
+   */
+  static function distance(geoTag1, geoTag2)
+  {
+    // Coord X and Y are integers.
+    // Don't multiply by 10 to get meters. Keep grid units which are smaller.
+    local coord1X = ((geoTag1 / 10000) % 10000);
+    local coord2X = ((geoTag2 / 10000) % 10000);
+    local coord1Y =  (geoTag1 % 10000);
+    local coord2Y =  (geoTag2 % 10000);
+
+    // The squares of up to 9999 still fit in a 32-bit integer.
+    // Mutiply the final float by 10 to convert grid units to meters.
+    return 10.0 * math.sqrt((coord1X - coord2X) * (coord1X - coord2X) +
+                            (coord1Y - coord2Y) * (coord1Y - coord2Y));
   }
 }
