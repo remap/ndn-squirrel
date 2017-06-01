@@ -45,6 +45,7 @@ cat \
   src/impl/delayed-call-table.nut \
   src/impl/interest-filter-table.nut \
   src/impl/pending-interest-table.nut \
+  src/impl/wakeup-delayed-call-table.nut \
   src/packet-extensions/packet-extensions.nut \
   src/transport/transport.nut \
   src/transport/async-transport.nut \
