@@ -258,7 +258,7 @@ class MicroForwarder {
           local entry = PIT_[i];
           if (entry.interest.getNonce().equals(interest.getNonce()) &&
               entry.interest.getName().equals(interest.getName())) {
-            if (entry.retransmitTimeSeconds_ == null) {
+            if (!entry.isRetransmitScheduled()) {
               // Not already scheduled for retransmission, so schedule it.
               entry.nRetransmitRetries_ = maxRetransmitRetries_;
               scheduleRetransmit(entry);
@@ -280,7 +280,7 @@ class MicroForwarder {
       for (local i = 0; i < PIT_.len(); ++i) {
         local entry = PIT_[i];
         if (entry.interest.getNonce().equals(interest.getNonce())) {
-          if (entry.retransmitTimeSeconds_ != null &&
+          if (entry.isRetransmitScheduled() &&
               entry.interest.getName().equals(interest.getName())) {
             // The Interest had a transmitFailed and was scheduled for
             // retransmission, but another forwarder has transmitted it, so
@@ -497,6 +497,12 @@ class PitEntry {
     this.face = face;
     this.timeoutEndSeconds = timeoutEndSeconds;
   }
+
+  /**
+   * Check if the interest in this entry is scheduled for retransmission.
+   * @return {boolean} True if scheduled for retransmission.
+   */
+  function isRetransmitScheduled() { return nRetransmitRetries_ > 0; }
 }
 
 /**
