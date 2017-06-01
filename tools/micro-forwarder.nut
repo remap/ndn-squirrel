@@ -26,6 +26,7 @@ class MicroForwarder {
   PIT_ = null;   // array of PitEntry
   FIB_ = null;   // array of FibEntry
   faces_ = null; // array of ForwarderFace
+  delayedCallTable_ = null; // WakeupDelayedCallTable
   canForward_ = null; // function
   logLevel_ = 0; // integer
   maxRetransmitRetries_ = 3;
@@ -45,6 +46,7 @@ class MicroForwarder {
     PIT_ = [];
     FIB_ = [];
     faces_ = [];
+    delayedCallTable_ = WakeupDelayedCallTable();
   }
 
   /**
@@ -260,9 +262,7 @@ class MicroForwarder {
               entry.interest.getName().equals(interest.getName())) {
             if (!entry.isRetransmitScheduled()) {
               // Not already scheduled for retransmission, so schedule it.
-              entry.nRetransmitRetries_ = maxRetransmitRetries_;
-              scheduleRetransmit(entry);
-              // TODO: Make this part of the retransmit timer.
+              entry.scheduleRetransmit(face, maxRetransmitRetries_);
             }
 
             return;
@@ -285,6 +285,8 @@ class MicroForwarder {
             // The Interest had a transmitFailed and was scheduled for
             // retransmission, but another forwarder has transmitted it, so
             // remove this PIT entry and drop this Interest.
+            // Note that removePitEntry_ sets entry.isRemoved_ true so that
+            // future retransmissions are also cancelled.
             // TODO: What if face != entry.retransmitFace_?
             // TODO: What if retransmission is scheduled on multiple faces?
             removePitEntry_(i);
@@ -318,7 +320,7 @@ class MicroForwarder {
       }
 
       // Add to the PIT.
-      local pitEntry = PitEntry(interest, face, timeoutEndSeconds);
+      local pitEntry = PitEntry(interest, face, timeoutEndSeconds, this);
       PIT_.append(pitEntry);
 
       if (broadcastNamePrefix.match(interest.getName())) {
@@ -447,28 +449,6 @@ class MicroForwarder {
     PIT_[i].isRemoved_ = true;
     PIT_.remove(i);
   }
-
-  /**
-   * Decrement entry.nRetransmitRetries_, and if it is still greater than zero
-   * then set entry.retransmitTimeSeconds_ based on
-   * minRetransmitDelayMilliseconds_ and maxRetransmitDelayMilliseconds_.
-   */
-  function scheduleRetransmit(entry)
-  {
-    entry.nRetransmitRetries_ -= 1;
-    if (entry.nRetransmitRetries_ <= 0) {
-      entry.retransmitTimeSeconds_ = null;
-      return;
-    }
-
-    local delayRangeMilliseconds =
-      maxRetransmitDelayMilliseconds_ - minRetransmitDelayMilliseconds_;
-    local delayMilliseconds = minRetransmitDelayMilliseconds_ +
-      (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
-
-    entry.retransmitTimeSeconds_ =
-      NdnCommon.getNowSeconds() + (delayMilliseconds / 1000.0).tointeger();
-  }
 }
 
 // We use a global variable because static member variables are immutable.
@@ -478,24 +458,34 @@ MicroForwarder_instance <- null;
  * A PitEntry is used in the PIT to record the face on which an Interest came 
  * in. (This is not to be confused with the entry object used by the application
  * library's PendingInterestTable class.)
- * @param {Interest} interest
- * @param {ForwarderFace} face
  */
 class PitEntry {
   interest = null;
   face = null;
   timeoutEndSeconds = null;
+  parentForwarder_ = null;
   isRemoved_ = false;
   // TODO: This should be a list for retries on multiple faces.
-  retransmitTimeSeconds_ = null;
   nRetransmitRetries_ = 0;
   retransmitFace_ = null;
 
-  constructor(interest, face, timeoutEndSeconds)
+  /**
+   * Create a PitEntry for the interest and incoming face.
+   * @param {Interest} The pending Interest.
+   * @param {ForwarderFace} The Interest's incoming face (and where the matching
+   * Data packet will be sent).
+   * @param {integer} timeoutEndSeconds The time in seconds (based on
+   * NdnCommon.getNowSeconds()) when the interest times out.
+   * @param {MicroForwarder} parentForwarder The parent MicroForwarder that
+   * created this entry. (This is used to get forwarder parameters and use its
+   * delayedCallTable_ .)
+   */
+  constructor(interest, face, timeoutEndSeconds, parentForwarder)
   {
     this.interest = interest;
     this.face = face;
     this.timeoutEndSeconds = timeoutEndSeconds;
+    this.parentForwarder_ = parentForwarder;
   }
 
   /**
@@ -503,6 +493,84 @@ class PitEntry {
    * @return {boolean} True if scheduled for retransmission.
    */
   function isRetransmitScheduled() { return nRetransmitRetries_ > 0; }
+
+  /**
+   * Schedule to retransmit this interest nRetransmitRetries times after a
+   * random delay between minRetransmitDelayMilliseconds_ and
+   * maxRetransmitDelayMilliseconds_. If isRemoved_ becomes true while waiting
+   * to retransmit, don't retransmit.
+   * @param {ForwarderFace} The face on which to retransmit the interest.
+   * @param {integer} The number of retransmission retries.
+   */
+  function scheduleRetransmit(retransmitFace, nRetransmitRetries)
+  {
+    if (nRetransmitRetries_ > 0) {
+      // We don't expect this, but we have already created a delayed call. Only
+      // update the number of retries.
+      nRetransmitRetries_ = nRetransmitRetries;
+      return;
+    }
+
+    retransmitFace_ = retransmitFace;
+    nRetransmitRetries_ = nRetransmitRetries;
+    delayedRetransmit_();
+  }
+
+  /**
+   * If nRetransmitRetries_ is still greater than zero, get the random delay
+   * between minRetransmitDelayMilliseconds_ and
+   * maxRetransmitDelayMilliseconds_, and use 
+   * parentForwarder_.delayedCallTable_.callLater to call onRetransmit_() after
+   * the delay.
+   */
+  function delayedRetransmit_()
+  {
+    if (nRetransmitRetries_ <= 0)
+      return;
+
+    local delayRangeMilliseconds = 
+      parentForwarder_.maxRetransmitDelayMilliseconds_ -
+      parentForwarder_.minRetransmitDelayMilliseconds_;
+    local delayMilliseconds =
+      parentForwarder_.minRetransmitDelayMilliseconds_ +
+      (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
+
+    // Set the delayed call.
+    local thisEntry = this;
+    parentForwarder_.delayedCallTable_.callLater
+      (delayMilliseconds, function() { thisEntry.onRetransmit_(); });
+  }
+
+  /**
+   * This is the callback from delayedCallTable_.callLater. Decrement
+   * nRetransmitRetries_ and retransmit the Interest on retransmitFace_,
+   * including retransmitFace_.interestExtensionsHeader (if any). Then
+   * call delayedRetransmit_() to do another retransmission (if
+   * nRetransmitRetries_ is still greater than zero). If isRemoved_, do nothing.
+   */
+  function onRetransmit_()
+  {
+    if (isRemoved_)
+      // This PitEntry was removed while waiting to retransmit.
+      return;
+  
+    if (nRetransmitRetries_ <= 0)
+      // We don't really expect this.
+      return;
+
+    nRetransmitRetries_ -= 1;
+
+    // Retransmit.
+    local outBuffer = interest.wireEncode().buf();
+    if (retransmitFace_.interestExtensionsHeader != null)
+      // Prepend the extensions header.
+      outBuffer = Buffer.concat
+        ([retransmitFace_.interestExtensionsHeader.buf(), outBuffer]);
+    retransmitFace_.sendBuffer(outBuffer);
+
+    // delayedRetransmit_() will do nothing if nRetransmitRetries_ is zero.
+    delayedRetransmit_();
+  }
 }
 
 /**
