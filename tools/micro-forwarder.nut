@@ -29,8 +29,8 @@ class MicroForwarder {
   canForward_ = null; // function
   logLevel_ = 0; // integer
   maxRetransmitRetries_ = 3;
-  minRetransmitDelayMilliseconds = 1000;
-  maxRetransmitDelayMilliseconds = 3000;
+  minRetransmitDelayMilliseconds_ = 1000;
+  maxRetransmitDelayMilliseconds_ = 3000;
 
   static localhostNamePrefix = Name("/localhost");
   static broadcastNamePrefix = Name("/ndn/broadcast");
