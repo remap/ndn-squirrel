@@ -258,9 +258,9 @@ class MicroForwarder {
           local entry = PIT_[i];
           if (entry.interest.getNonce().equals(interest.getNonce()) &&
               entry.interest.getName().equals(interest.getName())) {
-            if (entry.retransmitTimeSeconds == null) {
+            if (entry.retransmitTimeSeconds_ == null) {
               // Not already scheduled for retransmission, so schedule it.
-              entry.nRetransmitRetries = maxRetransmitRetries_;
+              entry.nRetransmitRetries_ = maxRetransmitRetries_;
               scheduleRetransmit(entry);
               // TODO: Make this part of the retransmit timer.
             }
@@ -280,12 +280,12 @@ class MicroForwarder {
       for (local i = 0; i < PIT_.len(); ++i) {
         local entry = PIT_[i];
         if (entry.interest.getNonce().equals(interest.getNonce())) {
-          if (entry.retransmitTimeSeconds != null &&
+          if (entry.retransmitTimeSeconds_ != null &&
               entry.interest.getName().equals(interest.getName())) {
             // The Interest had a transmitFailed and was scheduled for
             // retransmission, but another forwarder has transmitted it, so
             // remove this PIT entry and drop this Interest.
-            // TODO: What if face != entry.retransmitFace?
+            // TODO: What if face != entry.retransmitFace_?
             // TODO: What if retransmission is scheduled on multiple faces?
             removePitEntry_(i);
             return;
@@ -449,15 +449,15 @@ class MicroForwarder {
   }
 
   /**
-   * Decrement entry.nRetransmitRetries, and if it is still greater than zero
-   * then set entry.retransmitTimeSeconds based on
+   * Decrement entry.nRetransmitRetries_, and if it is still greater than zero
+   * then set entry.retransmitTimeSeconds_ based on
    * minRetransmitDelayMilliseconds_ and maxRetransmitDelayMilliseconds_.
    */
   function scheduleRetransmit(entry)
   {
-    entry.nRetransmitRetries -= 1;
-    if (entry.nRetransmitRetries <= 0) {
-      entry.retransmitTimeSeconds = null;
+    entry.nRetransmitRetries_ -= 1;
+    if (entry.nRetransmitRetries_ <= 0) {
+      entry.retransmitTimeSeconds_ = null;
       return;
     }
 
@@ -466,7 +466,7 @@ class MicroForwarder {
     local delayMilliseconds = minRetransmitDelayMilliseconds_ +
       (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
 
-    entry.retransmitTimeSeconds =
+    entry.retransmitTimeSeconds_ =
       NdnCommon.getNowSeconds() + (delayMilliseconds / 1000.0).tointeger();
   }
 }
@@ -487,9 +487,9 @@ class PitEntry {
   timeoutEndSeconds = null;
   isRemoved_ = false;
   // TODO: This should be a list for retries on multiple faces.
-  retransmitTimeSeconds = null;
-  nRetransmitRetries = 0;
-  retransmitFace = null;
+  retransmitTimeSeconds_ = null;
+  nRetransmitRetries_ = 0;
+  retransmitFace_ = null;
 
   constructor(interest, face, timeoutEndSeconds)
   {
