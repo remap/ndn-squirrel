@@ -246,7 +246,7 @@ class MicroForwarder {
     // Iterate backwards so we can remove the entry and keep iterating.
     for (local i = PIT_.len() - 1; i >= 0; --i) {
       if (nowSeconds >= PIT_[i].timeoutEndSeconds) {
-        PIT_.remove(i);
+        removePitEntry_(i);
       }
     }
 
@@ -287,7 +287,7 @@ class MicroForwarder {
             // remove this PIT entry and drop this Interest.
             // TODO: What if face != entry.retransmitFace?
             // TODO: What if retransmission is scheduled on multiple faces?
-            PIT_.remove(i);
+            removePitEntry_(i);
             return;
           }
 
@@ -385,7 +385,7 @@ class MicroForwarder {
         local entry = PIT_[i];
         if (entry.face != null && entry.interest.matchesData(data)) {
           // Remove the entry before sending.
-          PIT_.remove(i);
+          removePitEntry_(i);
 
           entry.face.sendBuffer(element);
           entry.face = null;
@@ -439,6 +439,16 @@ class MicroForwarder {
   }
 
   /**
+   * Mark the PitEntry at PIT_[i] as removed (in case something references it)
+   * and remove it.
+   */
+  function removePitEntry_(i)
+  {
+    PIT_[i].isRemoved_ = true;
+    PIT_.remove(i);
+  }
+
+  /**
    * Decrement entry.nRetransmitRetries, and if it is still greater than zero
    * then set entry.retransmitTimeSeconds based on
    * minRetransmitDelayMilliseconds_ and maxRetransmitDelayMilliseconds_.
@@ -475,6 +485,7 @@ class PitEntry {
   interest = null;
   face = null;
   timeoutEndSeconds = null;
+  isRemoved_ = false;
   // TODO: This should be a list for retries on multiple faces.
   retransmitTimeSeconds = null;
   nRetransmitRetries = 0;
