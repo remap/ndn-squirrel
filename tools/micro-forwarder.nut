@@ -30,11 +30,11 @@ class MicroForwarder {
   canForward_ = null; // function
   logLevel_ = 0; // integer
   maxRetransmitRetries_ = 3;
-  minRetransmitDelayMilliseconds_ = 1000;
-  maxRetransmitDelayMilliseconds_ = 3000;
+  minRetransmitDelayMilliseconds_ = 6000;
+  maxRetransmitDelayMilliseconds_ = 7000;
 
   debugEnable_ = true; // operant
-  logEnable_ = true; // operant
+  logEnable_ = false; // operant
 
   static localhostNamePrefix = Name("/localhost");
   static broadcastNamePrefix = Name("/ndn/broadcast");
@@ -153,7 +153,7 @@ class MicroForwarder {
     return true;
   }
 
-  * Enable consoleLog statements, called from Operant code
+  // Enable consoleLog statements, called from Operant code
   function enableDebug() { debugEnable_ = true; }
   function enableLog() { logEnable_ = true; }
 
@@ -195,7 +195,7 @@ class MicroForwarder {
   {
     local geoTag = null;
     local transmitFailed = false;
-
+    if (debugEnable_) consoleLog("<DBUG> onReceivedElement </DBUG>");  // operant
     if (PacketExtensions.isExtension(element.get(0))) {
       local i = 0;
       for (;
@@ -206,9 +206,13 @@ class MicroForwarder {
 
         if ((code & 0x80) != 0) {
           // We are required to process this extension.
+
           if (code == PacketExtensionCode.ErrorReporting) {
             if (payload == ErrorReportingPayload.TransmitFailed)
+            {
+              if (debugEnable_) consoleLog("<DBUG> Transmit failed </DBUG>");  // operant
               transmitFailed = true;
+            }
             else {
               // Error: Unrecognized error payload. Drop the packet.
               return;
@@ -260,18 +264,27 @@ class MicroForwarder {
     }
 
     // Now process as Interest or Data.
-    if (interest != null) {
-      if (transmitFailed) {
+    if (interest != null) 
+    {
+      if (debugEnable_) consoleLog("<DBUG> Processing Interest " + interest.getName() + " </DBUG>");  // operant
+      if (transmitFailed) 
+      {
         // Find the PIT entry of the failed transmission.
+        if (debugEnable_) consoleLog("<DBUG> Interest TX failed </DBUG>");  // operant
         for (local i = 0; i < PIT_.len(); ++i) {
           local entry = PIT_[i];
           if (entry.interest.getNonce().equals(interest.getNonce()) &&
               entry.interest.getName().equals(interest.getName())) {
-            if (!entry.isRetransmitScheduled()) {
+            if (!entry.isRetransmitScheduled()) 
+            {
               // Not already scheduled for retransmission, so schedule it.
+              if (debugEnable_) consoleLog("<DBUG> Scheduling Interest retransmission </DBUG>");  // operant
               entry.scheduleRetransmit(face, maxRetransmitRetries_);
             }
-
+            else 
+            {
+              if (debugEnable_) consoleLog("<DBUG> Interest already scheduled for retransmission </DBUG>");  // operant
+            }
             return;
           }
         }
@@ -280,32 +293,38 @@ class MicroForwarder {
       }
 
       if (localhostNamePrefix.match(interest.getName()))
+      {
         // Ignore localhost.
-
-        if (logEnable) consoleLog("</MFWD></LOG>");  // operant
-
+        if (debugEnable_) consoleLog("<DBUG> Ignoring localhost </DBUG>");  // operant
+        if (logEnable_) consoleLog("</MFWD></LOG>");  // operant
         return;
+      }
+        
 
       // First check for a duplicate nonce on any face.
-      for (local i = 0; i < PIT_.len(); ++i) {
+      for (local i = 0; i < PIT_.len(); ++i) 
+      {
+        if (debugEnable_) consoleLog("<DBUG> Checking for duplicate nonce </DBUG>");  // operant
         local entry = PIT_[i];
         if (entry.interest.getNonce().equals(interest.getNonce())) {
           if (entry.isRetransmitScheduled() &&
-              entry.interest.getName().equals(interest.getName())) {
-            // The Interest had a transmitFailed and was scheduled for
-            // retransmission, but another forwarder has transmitted it, so
-            // remove this PIT entry and drop this Interest.
-            // Note that removePitEntry_ sets entry.isRemoved_ true so that
-            // future retransmissions are also cancelled.
-            // TODO: What if face != entry.retransmitFace_?
-            // TODO: What if retransmission is scheduled on multiple faces?
-            removePitEntry_(i);
-            return;
+              entry.interest.getName().equals(interest.getName())) 
+              {
+              // The Interest had a transmitFailed and was scheduled for
+              // retransmission, but another forwarder has transmitted it, so
+              // remove this PIT entry and drop this Interest.
+              // Note that removePitEntry_ sets entry.isRemoved_ true so that
+              // future retransmissions are also cancelled.
+              // TODO: What if face != entry.retransmitFace_?
+              // TODO: What if retransmission is scheduled on multiple faces?
+              if (debugEnable_) consoleLog("<DBUG> PIT entry for Interest scheduled for retransmission removed </DBUG>");  // operant
+              removePitEntry_(i);
+              return;
           }
 
           // Drop the duplicate nonce.
-
-          if (logEnable) {  // operant
+          if (debugEnable_) consoleLog("<DBUG> Interest already in PIT was dropped </DBUG>");  // operant
+          if (logEnable_) {  // operant
       	    consoleLog("<DROP><INT> " +
               interest.getName().toUri() + "</INT><NONC>" + interest.getNonce().toHex() +
 		          "</NONC><FACE>" + face.uri + "</FACE></DROP>");
@@ -325,12 +344,13 @@ class MicroForwarder {
         local entry = PIT_[i];
         // TODO: Check interest equality of appropriate selectors.
         if (entry.face == face &&
-            entry.interest.getName().equals(interest.getName())) {
-          // Duplicate PIT entry.
-          // Update the interest timeout.
-          if (timeoutEndSeconds > entry.timeoutEndSeconds)
+            entry.interest.getName().equals(interest.getName())) 
+            {
+            // Duplicate PIT entry.
+            if (debugEnable_) consoleLog("<DBUG> Duplicate Interest in PIT </DBUG>");  // operant
+            // Update the interest timeout.
+            if (timeoutEndSeconds > entry.timeoutEndSeconds)
             entry.timeoutEndSeconds = timeoutEndSeconds;
-
           return;
         }
       }
@@ -376,18 +396,19 @@ class MicroForwarder {
                      fibEntry.name);
 
                 if (canForwardResult == true ||
-                    typeof canForwardResult == "float" && canForwardResult == 0.0) {
-                  // Forward now.
-                  outFace.sendBuffer(outBuffer);
-                }
-                else if (typeof canForwardResult == "float" && canForwardResult > 0.0) {
-                  // Forward after a delay.
-
-                  if (logEnable) {  // operant
-                    consoleLog("</MFWD></LOG>");
+                    typeof canForwardResult == "float" && canForwardResult == 0.0) 
+                  {
+                    // Forward now.
+                    if (debugEnable_) consoleLog("<DBUG> Forwarding Interest immediately </DBUG>");  // operant
+                    outFace.sendBuffer(outBuffer);
                   }
-
-                  imp.wakeup(canForwardResult, 
+                  else if (typeof canForwardResult == "float" && canForwardResult > 0.0) {
+                    // Forward after a delay.
+                    if (debugEnable_) consoleLog("<DBUG> Forwarding Interest after delay of " + canForwardResult + "seconds </DBUG>");  // operant
+                    if (logEnable_) {  // operant
+                      consoleLog("</MFWD></LOG>");
+                    }
+                    imp.wakeup(canForwardResult, 
                              function() { outFace.sendBuffer(outBuffer); });
                 }
               }
@@ -397,33 +418,42 @@ class MicroForwarder {
       }
     }
     else if (data != null) {
-      if (transmitFailed) {
+      if (transmitFailed) 
+      {
         // TODO: Handle transmitFailed for a Data packet.
+        if (debugEnable_) consoleLog("<DBUG> Data transmission failed --- To Do item </DBUG>");  // operant
         return;
       }
 
       // Send the data packet to the face for each matching PIT entry.
       // Iterate backwards so we can remove the entry and keep iterating.
+      
+      local foundMatchingPITEntry = false; // operant
+      
       for (local i = PIT_.len() - 1; i >= 0; --i) {
         local entry = PIT_[i];
         if (entry.face != null && entry.interest.matchesData(data)) {
+
+          foundMatchingPITEntry = true; // operant
+          
           // Remove the entry before sending.
           removePitEntry_(i);
 
-         if (logEnable) { // operant
+         if (logEnable_) { // operant
             consoleLog("<FACE>" +
               entry.face.uri + "</FACE><INT>" +
               entry.interest.getName().toUri() + "</INT><NONCE>" +
               entry.interest.getNonce().toHex() + "</NONCE>");
          }
 
+          if (debugEnable_) consoleLog("<DBUG> Forwarding Data & removing PIT entry </DBUG>");  // operant
+
           entry.face.sendBuffer(element);
           entry.face = null;
         }
       }
-
-      if ( logEnable) {  // operant
-        if (foundOne != true )
+      if (debugEnable_ == true && foundMatchingPITEntry == false) consoleLog("<DBUG> No matching PIT entry; Data dropped </DBUG>");  // operant
+      if ( logEnable_) {  // operant
 	        consoleLog("<DROP><DATA> " + data.getName().toUri() + "</DATA><FACE>" + face.uri + "</FACE></DROP>");
 	        consoleLog("</MFWD></LOG>");
       }
@@ -503,6 +533,10 @@ class PitEntry {
   nRetransmitRetries_ = 0;
   retransmitFace_ = null;
 
+  debugEnable_ = true; // operant
+  logEnable_ = false; // operant
+
+
   /**
    * Create a PitEntry for the interest and incoming face.
    * @param {Interest} The pending Interest.
@@ -570,6 +604,7 @@ class PitEntry {
       (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
 
     // Set the delayed call.
+    if (debugEnable_) consoleLog("<DBUG> Interest retransmission scheduled in " + delayMilliseconds + " ms </DBUG>");  // operant
     local thisEntry = this;
     parentForwarder_.delayedCallTable_.callLater
       (delayMilliseconds, function() { thisEntry.onRetransmit_(); });
