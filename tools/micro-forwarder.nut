@@ -566,7 +566,12 @@ class PitEntry {
       // Prepend the extensions header.
       outBuffer = Buffer.concat
         ([retransmitFace_.interestExtensionsHeader.buf(), outBuffer]);
-    retransmitFace_.sendBuffer(outBuffer);
+    try {
+      retransmitFace_.sendBuffer(outBuffer);
+    } catch (ex) {
+      // Log and ignore the exception so that we continue and try again.
+      consoleLog("Error in sendBuffer: " + ex);
+    }
 
     // delayedRetransmit_() will do nothing if nRetransmitRetries_ is zero.
     delayedRetransmit_();
