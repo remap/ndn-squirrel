@@ -33,6 +33,9 @@ class MicroForwarder {
   minRetransmitDelayMilliseconds_ = 1000;
   maxRetransmitDelayMilliseconds_ = 3000;
 
+  debugEnable_ = true; // operant
+  logEnable_ = true; // operant
+
   static localhostNamePrefix = Name("/localhost");
   static broadcastNamePrefix = Name("/ndn/broadcast");
 
@@ -149,6 +152,10 @@ class MicroForwarder {
 
     return true;
   }
+
+  * Enable consoleLog statements, called from Operant code
+  function enableDebug() { debugEnable_ = true; }
+  function enableLog() { logEnable_ = true; }
 
   /**
    * Use PacketExtensions.makeExtension to prepend the extension to the
@@ -274,6 +281,9 @@ class MicroForwarder {
 
       if (localhostNamePrefix.match(interest.getName()))
         // Ignore localhost.
+
+        if (logEnable) consoleLog("</MFWD></LOG>");  // operant
+
         return;
 
       // First check for a duplicate nonce on any face.
@@ -294,6 +304,12 @@ class MicroForwarder {
           }
 
           // Drop the duplicate nonce.
+
+          if (logEnable) {  // operant
+      	    consoleLog("<DROP><INT> " +
+              interest.getName().toUri() + "</INT><NONC>" + interest.getNonce().toHex() +
+		          "</NONC><FACE>" + face.uri + "</FACE></DROP>");
+          }
           return;
         }
       }
@@ -366,6 +382,11 @@ class MicroForwarder {
                 }
                 else if (typeof canForwardResult == "float" && canForwardResult > 0.0) {
                   // Forward after a delay.
+
+                  if (logEnable) {  // operant
+                    consoleLog("</MFWD></LOG>");
+                  }
+
                   imp.wakeup(canForwardResult, 
                              function() { outFace.sendBuffer(outBuffer); });
                 }
@@ -389,9 +410,22 @@ class MicroForwarder {
           // Remove the entry before sending.
           removePitEntry_(i);
 
+         if (logEnable) { // operant
+            consoleLog("<FACE>" +
+              entry.face.uri + "</FACE><INT>" +
+              entry.interest.getName().toUri() + "</INT><NONCE>" +
+              entry.interest.getNonce().toHex() + "</NONCE>");
+         }
+
           entry.face.sendBuffer(element);
           entry.face = null;
         }
+      }
+
+      if ( logEnable) {  // operant
+        if (foundOne != true )
+	        consoleLog("<DROP><DATA> " + data.getName().toUri() + "</DATA><FACE>" + face.uri + "</FACE></DROP>");
+	        consoleLog("</MFWD></LOG>");
       }
     }
   }
