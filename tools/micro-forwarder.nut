@@ -26,6 +26,7 @@ class MicroForwarder {
   PIT_ = null;   // array of PitEntry
   FIB_ = null;   // array of FibEntry
   faces_ = null; // array of ForwarderFace
+  dataRetransmitQueue_ = null; // array of DataRetransmitEntry
   delayedCallTable_ = null; // WakeupDelayedCallTable
   canForward_ = null; // function
   logLevel_ = 0; // integer
@@ -46,6 +47,7 @@ class MicroForwarder {
     PIT_ = [];
     FIB_ = [];
     faces_ = [];
+    dataRetransmitQueue_ = [];
     delayedCallTable_ = WakeupDelayedCallTable();
   }
 
@@ -261,6 +263,9 @@ class MicroForwarder {
           if (entry.interest.getNonce().equals(interest.getNonce()) &&
               entry.interest.getName().equals(interest.getName())) {
             if (!entry.isRetransmitScheduled()) {
+              // TODO: If isRetransmitScheduled() is false because we already
+              // retransmitted maxRetransmitRetries_ times, this will actually
+              // restart the retransmissions, which is not what we want.
               // Not already scheduled for retransmission, so schedule it.
               entry.scheduleRetransmit(face, maxRetransmitRetries_);
             }
@@ -377,7 +382,25 @@ class MicroForwarder {
     }
     else if (data != null) {
       if (transmitFailed) {
-        // TODO: Handle transmitFailed for a Data packet.
+        // Find the queue entry of the failed transmission.
+        for (local i = 0; i < dataRetransmitQueue_.len(); ++i) {
+          local entry = dataRetransmitQueue_[i];
+          if (entry.data.getName().equals(data.getName())) {
+            if (!entry.isRetransmitScheduled()) {
+              // Not scheduled for retransmit. Assume this a Nack from the final
+              // attempt to retransmit, so delete the entry.
+              entry.isRemoved_ = true;
+              dataRetransmitQueue_.remove(i);
+            }
+
+            return;
+          }
+        }
+
+        // This data packet was not scheduled for retransmit, so schedule it.
+        local entry = DataRetransmitEntry(data, this);
+        dataRetransmitQueue_.append(entry);
+        entry.scheduleRetransmit(face, maxRetransmitRetries_);
         return;
       }
 
@@ -673,6 +696,89 @@ class ForwarderFace {
       interestExtensionsHeader = Blob
         (Buffer.concat([extension.buf(), interestExtensionsHeader.buf()]),
          false)
+  }
+}
+
+/**
+ * A DataRetransmitEntry is created to track the retransmission of a Data
+ * packet.
+ */
+class DataRetransmitEntry {
+  data = null;
+  parentForwarder_ = null;
+  isRemoved_ = false;
+  // TODO: This should be a list for retries on multiple faces.
+  nRetransmitRetries_ = 0;
+  retransmitFace_ = null;
+
+  /**
+   * Create a DataRetransmitEntry for the Data packet. Then you should call
+   * scheduleRetransmit.
+   * @param {Data} The Data packet to retransmit.
+   * @param {MicroForwarder} parentForwarder The parent MicroForwarder that
+   * created this entry. (This is used to get forwarder parameters and use its
+   * delayedCallTable_ .)
+   */
+  constructor(data, parentForwarder)
+  {
+    this.data = data;
+    this.parentForwarder_ = parentForwarder;
+  }
+
+  /**
+   * Check if the data in this entry is scheduled for retransmission.
+   * @return {boolean} True if scheduled for retransmission.
+   */
+  function isRetransmitScheduled() { return nRetransmitRetries_ > 0; }
+
+  /**
+   * Schedule to retransmit the Data packet nRetransmitRetries times after a
+   * random delay between minRetransmitDelayMilliseconds_ and
+   * maxRetransmitDelayMilliseconds_. If already scheduled for retransmit,
+   * do nothing. If isRemoved_ becomes true while waiting to retransmit, don't
+   * retransmit.
+   * @param {ForwarderFace} The face on which to retransmit the Data packet.
+   * @param {integer} The number of retransmission retries.
+   */
+  function scheduleRetransmit(retransmitFace, nRetransmitRetries)
+  {
+    if (nRetransmitRetries_ > 0) {
+      // We have already created a delayed call.
+      return;
+    }
+
+    retransmitFace_ = retransmitFace;
+    nRetransmitRetries_ = nRetransmitRetries;
+    parentForwarder_.delayedRetransmit(this);
+  }
+
+  /**
+   * This is the callback from delayedCallTable_.callLater. Decrement
+   * nRetransmitRetries_ and retransmit the Data on retransmitFace_. Then
+   * call parentForwarder_.delayedRetransmit() to do another retransmission (if
+   * nRetransmitRetries_ is still greater than zero). If isRemoved_, do nothing.
+   */
+  function onRetransmit_()
+  {
+    if (isRemoved_)
+      // This entry was removed while waiting to retransmit.
+      return;
+
+    if (nRetransmitRetries_ <= 0)
+      // We don't really expect this.
+      return;
+
+    nRetransmitRetries_ -= 1;
+
+    try {
+      retransmitFace_.sendBuffer(data.wireEncode().buf());
+    } catch (ex) {
+      // Log and ignore the exception so that we continue and try again.
+      consoleLog("Error in sendBuffer: " + ex);
+    }
+
+    // delayedRetransmit() will do nothing if nRetransmitRetries_ is zero.
+    parentForwarder_.delayedRetransmit(this);
   }
 }
 
