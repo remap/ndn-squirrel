@@ -425,6 +425,31 @@ class MicroForwarder {
   }
 
   /**
+   * If entry.nRetransmitRetries_ is still greater than zero, get the random
+   * delay between minRetransmitDelayMilliseconds_ and
+   * maxRetransmitDelayMilliseconds_, and use
+   * delayedCallTable_.callLater to call entry.onRetransmit_() after the delay.
+   * (This is an internal method, for example called by PitEntry.
+   * @param {object} The object with integer nRetransmitRetries_ and the method
+   * of no arguments onRetransmit_().
+   */
+  function delayedRetransmit(entry)
+  {
+    if (entry.nRetransmitRetries_ <= 0)
+      return;
+
+    local delayRangeMilliseconds =
+      maxRetransmitDelayMilliseconds_ - minRetransmitDelayMilliseconds_;
+    local delayMilliseconds =
+      minRetransmitDelayMilliseconds_ +
+      (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
+
+    // Set the delayed call.
+    delayedCallTable_.callLater
+      (delayMilliseconds, function() { entry.onRetransmit_(); });
+  }
+
+  /**
    * A private method to find the face in faces_ with the faceId.
    * @param {integer} The faceId.
    * @return {ForwarderFace} The ForwarderFace, or null if not found.
@@ -513,39 +538,14 @@ class PitEntry {
 
     retransmitFace_ = retransmitFace;
     nRetransmitRetries_ = nRetransmitRetries;
-    delayedRetransmit_();
-  }
-
-  /**
-   * If nRetransmitRetries_ is still greater than zero, get the random delay
-   * between minRetransmitDelayMilliseconds_ and
-   * maxRetransmitDelayMilliseconds_, and use 
-   * parentForwarder_.delayedCallTable_.callLater to call onRetransmit_() after
-   * the delay.
-   */
-  function delayedRetransmit_()
-  {
-    if (nRetransmitRetries_ <= 0)
-      return;
-
-    local delayRangeMilliseconds = 
-      parentForwarder_.maxRetransmitDelayMilliseconds_ -
-      parentForwarder_.minRetransmitDelayMilliseconds_;
-    local delayMilliseconds =
-      parentForwarder_.minRetransmitDelayMilliseconds_ +
-      (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
-
-    // Set the delayed call.
-    local thisEntry = this;
-    parentForwarder_.delayedCallTable_.callLater
-      (delayMilliseconds, function() { thisEntry.onRetransmit_(); });
+    parentForwarder_.delayedRetransmit(this);
   }
 
   /**
    * This is the callback from delayedCallTable_.callLater. Decrement
    * nRetransmitRetries_ and retransmit the Interest on retransmitFace_,
    * including retransmitFace_.interestExtensionsHeader (if any). Then
-   * call delayedRetransmit_() to do another retransmission (if
+   * call parentForwarder_.delayedRetransmit() to do another retransmission (if
    * nRetransmitRetries_ is still greater than zero). If isRemoved_, do nothing.
    */
   function onRetransmit_()
@@ -573,8 +573,8 @@ class PitEntry {
       consoleLog("Error in sendBuffer: " + ex);
     }
 
-    // delayedRetransmit_() will do nothing if nRetransmitRetries_ is zero.
-    delayedRetransmit_();
+    // delayedRetransmit() will do nothing if nRetransmitRetries_ is zero.
+    parentForwarder_.delayedRetransmit(this);
   }
 }
 
