@@ -37,25 +37,16 @@ class GeoTag {
    * X * 10000 + Y where X and Y are in geo coordinate grid units.
    * @return {float} The figure of merit which is -1.0 if
    * distance(geoSelf, geoDest) >= distance(geoSource, geoDest), otherwise a
-   * value ranging from -0.99 to 1.0.
+   * value ranging from 0.0 to 1.0.
    */
   static function figureOfMerit(geoSelf, geoSource, geoDest)
   {
     local dSelfDest = distance(geoSelf, geoDest);
     local dSourceDest = distance(geoSource, geoDest);
 
-    if (dSelfDest < dSourceDest) {
-          // Case A: This forwarder is moving the packet closer.
-      local dSourceSelf = distance(geoSource, geoSelf);
-
-      // sd = [ d(source, self)^2 +  d(source, dest)^2 - d(self, dest)^2 ]
-      //      / ( 2 * d(source, dest) )
-      local sdProjection =
-        (dSourceSelf * dSourceSelf + dSourceDest * dSourceDest - dSelfDest * dSelfDest)
-        / (2 * dSourceDest);
-
-      return 1.0 - sdProjection / dSourceDest;
-    }
+    if (dSelfDest < dSourceDest)
+      // Case A: This forwarder is moving the packet closer.
+      return math.fabs(dSelfDest / dSourceDest - 1.0);
     else
       // Case B: This forwarder is moving the packet farther, or not moving it.
       // (In this case, there is no need to compute dSourceSelf.)
