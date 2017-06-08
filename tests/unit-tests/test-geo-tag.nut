@@ -65,16 +65,20 @@ describe("TestGeoTag", function() {
   it("FigureOfMerit", function() {
     // Case A.
     // Self, Source and Dest are on a line.
-    Assert.equal(GeoTag.figureOfMerit(1,   0, 100), 0.99)
-    Assert.equal(GeoTag.figureOfMerit(50,  0, 100), 0.5)
-    Assert.equal(GeoTag.figureOfMerit(100, 0, 100), 0.0)
-    Assert.equal(GeoTag.figureOfMerit(150, 0, 100), -0.5)
-    // The projection of Self is half way from Source to Dest.
-    Assert.equal(GeoTag.figureOfMerit(0, 1000000, 100), 0.5)
+    local actual, expected;
+    actual = GeoTag.figureOfMerit(1,  0, 100);
+    expected = 0.01;
+    Assert.ok((actual - expected) / expected < 0.0001);
+    Assert.equal(GeoTag.figureOfMerit(50,  0, 100), 0.5);
+    Assert.equal(GeoTag.figureOfMerit(100, 0, 100), 1.0);
+    Assert.equal(GeoTag.figureOfMerit(150, 0, 100), 0.5);
+    actual = GeoTag.figureOfMerit(0, 1000000, 100);
+    expected = 1 - 0.70710678;
+    Assert.ok((actual - expected) / expected < 0.0001);
 
     // Case B.
-    Assert.equal(GeoTag.figureOfMerit(0,   0, 100), -1.0)
-    Assert.equal(GeoTag.figureOfMerit(200, 0, 100), -1.0)
-    Assert.equal(GeoTag.figureOfMerit(0,  50, 100), -1.0)
+    Assert.equal(GeoTag.figureOfMerit(0,   0, 100), -1.0);
+    Assert.equal(GeoTag.figureOfMerit(200, 0, 100), -1.0);
+    Assert.equal(GeoTag.figureOfMerit(0,  50, 100), -1.0);
   });
 });
