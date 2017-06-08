@@ -522,17 +522,16 @@ class PitEntry {
   /**
    * Schedule to retransmit this interest nRetransmitRetries times after a
    * random delay between minRetransmitDelayMilliseconds_ and
-   * maxRetransmitDelayMilliseconds_. If isRemoved_ becomes true while waiting
-   * to retransmit, don't retransmit.
+   * maxRetransmitDelayMilliseconds_. If isRetransmitScheduled() is already true,
+   * do nothing. If isRemoved_ becomes true while waiting to retransmit, don't
+   * retransmit.
    * @param {ForwarderFace} The face on which to retransmit the interest.
    * @param {integer} The number of retransmission retries.
    */
   function scheduleRetransmit(retransmitFace, nRetransmitRetries)
   {
     if (nRetransmitRetries_ > 0) {
-      // We don't expect this, but we have already created a delayed call. Only
-      // update the number of retries.
-      nRetransmitRetries_ = nRetransmitRetries;
+      // We have already created a delayed call.
       return;
     }
 
