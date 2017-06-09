@@ -320,7 +320,7 @@ class MicroForwarder {
       for (local i = 0; i < PIT_.len(); ++i) {
         local entry = PIT_[i];
         // TODO: Check interest equality of appropriate selectors.
-        if (entry.face == face &&
+        if (entry.inFace_ == face &&
             entry.interest.getName().equals(interest.getName())) {
           // Duplicate PIT entry.
           // Update the interest timeout.
@@ -410,12 +410,12 @@ class MicroForwarder {
       // Iterate backwards so we can remove the entry and keep iterating.
       for (local i = PIT_.len() - 1; i >= 0; --i) {
         local entry = PIT_[i];
-        if (entry.face != null && entry.interest.matchesData(data)) {
+        if (entry.inFace_ != null && entry.interest.matchesData(data)) {
           // Remove the entry before sending.
           removePitEntry_(i);
 
-          entry.face.sendBuffer(element);
-          entry.face = null;
+          entry.inFace_.sendBuffer(element);
+          entry.inFace_ = null;
         }
       }
     }
@@ -511,7 +511,7 @@ MicroForwarder_instance <- null;
  */
 class PitEntry {
   interest = null;
-  face = null;
+  inFace_ = null;
   timeoutEndSeconds = null;
   parentForwarder_ = null;
   isRemoved_ = false;
@@ -521,19 +521,19 @@ class PitEntry {
 
   /**
    * Create a PitEntry for the interest and incoming face.
-   * @param {Interest} The pending Interest.
-   * @param {ForwarderFace} The Interest's incoming face (and where the matching
-   * Data packet will be sent).
+   * @param {Interest} interest The pending Interest.
+   * @param {ForwarderFace} inFace The Interest's incoming face (and where the
+   * matching Data packet will be sent).
    * @param {integer} timeoutEndSeconds The time in seconds (based on
    * NdnCommon.getNowSeconds()) when the interest times out.
    * @param {MicroForwarder} parentForwarder The parent MicroForwarder that
    * created this entry. (This is used to get forwarder parameters and use its
    * delayedCallTable_ .)
    */
-  constructor(interest, face, timeoutEndSeconds, parentForwarder)
+  constructor(interest, inFace, timeoutEndSeconds, parentForwarder)
   {
     this.interest = interest;
-    this.face = face;
+    this.inFace_ = inFace;
     this.timeoutEndSeconds = timeoutEndSeconds;
     this.parentForwarder_ = parentForwarder;
   }
