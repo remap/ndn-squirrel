@@ -407,7 +407,10 @@ class MicroForwarder {
       // Iterate backwards so we can remove the entry and keep iterating.
       for (local i = PIT_.len() - 1; i >= 0; --i) {
         local entry = PIT_[i];
-        if (entry.inFace_ != null && entry.interest.matchesData(data)) {
+        // Note: entry.outFace_ is null when waiting to retransmit after a
+        // failed transmission, so ignore the PIT entry.
+        if (entry.inFace_ != null && entry.outFace_ != null &&
+            entry.interest.matchesData(data)) {
           // Remove the entry before sending.
           removePitEntry_(i);
 
