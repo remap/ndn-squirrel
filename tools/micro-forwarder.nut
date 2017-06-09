@@ -253,6 +253,13 @@ class MicroForwarder {
         removePitEntry_(i);
       }
     }
+    // Remove timed-out Data retransmit queue entries.
+    for (local i = dataRetransmitQueue_.len() - 1; i >= 0; --i) {
+      if (nowSeconds >= dataRetransmitQueue_[i].timeoutEndSeconds_) {
+        dataRetransmitQueue_[i].isRemoved_ = true;
+        dataRetransmitQueue_.remove(i);
+      }
+    }
 
     // Now process as Interest or Data.
     if (interest != null) {
@@ -385,22 +392,17 @@ class MicroForwarder {
         // Find the queue entry of the failed transmission.
         for (local i = 0; i < dataRetransmitQueue_.len(); ++i) {
           local entry = dataRetransmitQueue_[i];
-          if (entry.data.getName().equals(data.getName())) {
-            if (!entry.isRetransmitScheduled()) {
-              // Not scheduled for retransmit. Assume this a Nack from the final
-              // attempt to retransmit, so delete the entry.
-              entry.isRemoved_ = true;
-              dataRetransmitQueue_.remove(i);
-            }
-
+          if (entry.data_.getName().equals(data.getName())) {
+            // This will only schedule if there are more retransmit tries.
+            entry.scheduleRetransmit(face, this);
             return;
           }
         }
 
         // This data packet was not scheduled for retransmit, so schedule it.
-        local entry = DataRetransmitEntry(data, this);
+        local entry = DataRetransmitEntry(data, maxRetransmitRetries_);
         dataRetransmitQueue_.append(entry);
-        entry.scheduleRetransmit(face, maxRetransmitRetries_);
+        entry.scheduleRetransmit(face, this);
         return;
       }
 
@@ -704,59 +706,63 @@ class ForwarderFace {
  * packet.
  */
 class DataRetransmitEntry {
-  data = null;
-  parentForwarder_ = null;
+  data_ = null;
   isRemoved_ = false;
   // TODO: This should be a list for retries on multiple faces.
   nRetransmitRetries_ = 0;
   retransmitFace_ = null;
+  outFace_ = null;
+  timeoutEndSeconds_ = 0;
+  // TIMEOUT_SECONDS is enough time to get a transmit nack.
+  static TIMEOUT_SECONDS = 4;
 
   /**
    * Create a DataRetransmitEntry for the Data packet. Then you should call
    * scheduleRetransmit.
    * @param {Data} The Data packet to retransmit.
-   * @param {MicroForwarder} parentForwarder The parent MicroForwarder that
-   * created this entry. (This is used to get forwarder parameters and use its
-   * delayedCallTable_ .)
+   * @param {integer} nRetransmitRetries The initial number of retransmit
+   * retries.
    */
-  constructor(data, parentForwarder)
+  constructor(data, nRetransmitRetries)
   {
-    this.data = data;
-    this.parentForwarder_ = parentForwarder;
+    data_ = data;
+    nRetransmitRetries_ = nRetransmitRetries;
+    timeoutEndSeconds_ = NdnCommon.getNowSeconds() + TIMEOUT_SECONDS;
   }
 
   /**
-   * Check if the data in this entry is scheduled for retransmission.
-   * @return {boolean} True if scheduled for retransmission.
+   * Schedule to retransmit the Data packet after a random delay between
+   * minRetransmitDelayMilliseconds_ and maxRetransmitDelayMilliseconds_. Since
+   * we are scheduling a retransmit, assume the send to outFace_ failed and set
+   * it to null. If already scheduled for retransmit, don't retransmit. If
+   * nRetransmitRetries_ is zero, don't retransmit. If isRemoved_ becomes true
+   * while waiting to retransmit, don't retransmit.
+   * @param {ForwarderFace} retransmitFace The face on which to retransmit the
+   * Data packet.
+   * @param {MicroForwarder} forwarder This calls forwarder.delayedRetransmit().
    */
-  function isRetransmitScheduled() { return nRetransmitRetries_ > 0; }
-
-  /**
-   * Schedule to retransmit the Data packet nRetransmitRetries times after a
-   * random delay between minRetransmitDelayMilliseconds_ and
-   * maxRetransmitDelayMilliseconds_. If already scheduled for retransmit,
-   * do nothing. If isRemoved_ becomes true while waiting to retransmit, don't
-   * retransmit.
-   * @param {ForwarderFace} The face on which to retransmit the Data packet.
-   * @param {integer} The number of retransmission retries.
-   */
-  function scheduleRetransmit(retransmitFace, nRetransmitRetries)
+  function scheduleRetransmit(retransmitFace, forwarder)
   {
-    if (nRetransmitRetries_ > 0) {
-      // We have already created a delayed call.
+    outFace_ = null;
+  
+    if (retransmitFace_ != null)
+      // Already scheduled for retransmit.
       return;
-    }
+
+    if (nRetransmitRetries_ <= 0)
+      return;
 
     retransmitFace_ = retransmitFace;
-    nRetransmitRetries_ = nRetransmitRetries;
-    parentForwarder_.delayedRetransmit(this);
+    forwarder.delayedRetransmit(this);
   }
 
   /**
    * This is the callback from delayedCallTable_.callLater. Decrement
-   * nRetransmitRetries_ and retransmit the Data on retransmitFace_. Then
-   * call parentForwarder_.delayedRetransmit() to do another retransmission (if
-   * nRetransmitRetries_ is still greater than zero). If isRemoved_, do nothing.
+   * nRetransmitRetries_ and retransmit the Data on retransmitFace_. Set
+   * outFace_ to retransmitFace_ to indicate that the packet is under
+   * transmission, then set retransmitFace_ to null since we are no longer
+   * waiting to transmit. Also reset timeoutEndSeconds_. If isRemoved_, do
+   * nothing.
    */
   function onRetransmit_()
   {
@@ -764,21 +770,21 @@ class DataRetransmitEntry {
       // This entry was removed while waiting to retransmit.
       return;
 
-    if (nRetransmitRetries_ <= 0)
+    if (nRetransmitRetries_ <= 0 || retransmitFace_ == null)
       // We don't really expect this.
       return;
 
     nRetransmitRetries_ -= 1;
 
+    outFace_ = retransmitFace_;
+    retransmitFace_ = null;
+    timeoutEndSeconds_ = NdnCommon.getNowSeconds() + TIMEOUT_SECONDS;
     try {
-      retransmitFace_.sendBuffer(data.wireEncode().buf());
+      outFace_.sendBuffer(data_.wireEncode().buf());
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
       consoleLog("Error in sendBuffer: " + ex);
     }
-
-    // delayedRetransmit() will do nothing if nRetransmitRetries_ is zero.
-    parentForwarder_.delayedRetransmit(this);
   }
 }
 
