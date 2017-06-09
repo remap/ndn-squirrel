@@ -28,7 +28,7 @@ class NdnCommon {
    * applications should use the static API method
    * Face.getMaxNdnPacketSize() which is equivalent.
    */
-  MAX_NDN_PACKET_SIZE = 8800;
+  static MAX_NDN_PACKET_SIZE = 8800;
 
   /**
    * Get the current time in seconds.
