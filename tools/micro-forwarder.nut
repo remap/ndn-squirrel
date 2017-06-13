@@ -26,6 +26,7 @@ class MicroForwarder {
   PIT_ = null;   // array of PitEntry
   FIB_ = null;   // array of FibEntry
   faces_ = null; // array of ForwarderFace
+  dataRetransmitQueue_ = null; // array of DataRetransmitEntry
   delayedCallTable_ = null; // WakeupDelayedCallTable
   canForward_ = null; // function
   logLevel_ = 0; // integer
@@ -49,6 +50,7 @@ class MicroForwarder {
     PIT_ = [];
     FIB_ = [];
     faces_ = [];
+    dataRetransmitQueue_ = [];
     delayedCallTable_ = WakeupDelayedCallTable();
   }
 
@@ -262,6 +264,13 @@ class MicroForwarder {
         removePitEntry_(i);
       }
     }
+    // Remove timed-out Data retransmit queue entries.
+    for (local i = dataRetransmitQueue_.len() - 1; i >= 0; --i) {
+      if (nowSeconds >= dataRetransmitQueue_[i].timeoutEndSeconds_) {
+        dataRetransmitQueue_[i].isRemoved_ = true;
+        dataRetransmitQueue_.remove(i);
+      }
+    }
 
     // Now process as Interest or Data.
     if (interest != null) 
@@ -275,16 +284,10 @@ class MicroForwarder {
           local entry = PIT_[i];
           if (entry.interest.getNonce().equals(interest.getNonce()) &&
               entry.interest.getName().equals(interest.getName())) {
-            if (!entry.isRetransmitScheduled()) 
-            {
-              // Not already scheduled for retransmission, so schedule it.
-              if (debugEnable_) consoleLog("<DBUG> Scheduling Interest retransmission </DBUG>");  // operant
-              entry.scheduleRetransmit(face, maxRetransmitRetries_);
-            }
-            else 
-            {
-              if (debugEnable_) consoleLog("<DBUG> Interest already scheduled for retransmission </DBUG>");  // operant
-            }
+
+            // This will only schedule if there are more retransmit tries.
+            if (debugEnable_) consoleLog("<DBUG> Scheduling Interest retransmission </DBUG>");  // operant
+            entry.scheduleRetransmit(face, this);
             return;
           }
         }
@@ -307,19 +310,19 @@ class MicroForwarder {
         if (debugEnable_) consoleLog("<DBUG> Checking for duplicate nonce </DBUG>");  // operant
         local entry = PIT_[i];
         if (entry.interest.getNonce().equals(interest.getNonce())) {
-          if (entry.isRetransmitScheduled() &&
-              entry.interest.getName().equals(interest.getName())) 
-              {
-              // The Interest had a transmitFailed and was scheduled for
-              // retransmission, but another forwarder has transmitted it, so
-              // remove this PIT entry and drop this Interest.
-              // Note that removePitEntry_ sets entry.isRemoved_ true so that
-              // future retransmissions are also cancelled.
-              // TODO: What if face != entry.retransmitFace_?
-              // TODO: What if retransmission is scheduled on multiple faces?
-              if (debugEnable_) consoleLog("<DBUG> PIT entry for Interest scheduled for retransmission removed </DBUG>");  // operant
-              removePitEntry_(i);
-              return;
+
+          if (entry.retransmitFace_ != null &&
+              entry.interest.getName().equals(interest.getName())) {
+            // The Interest had a transmitFailed and was scheduled for
+            // retransmission, but another forwarder has transmitted it, so
+            // remove this PIT entry and drop this Interest.
+            // Note that removePitEntry_ sets entry.isRemoved_ true so that
+            // future retransmissions are also cancelled.
+            // TODO: What if face != entry.retransmitFace_?
+            // TODO: What if retransmission is scheduled on multiple faces?
+            if (debugEnable_) consoleLog("<DBUG> PIT entry for Interest scheduled for retransmission removed </DBUG>");  // operant
+            removePitEntry_(i);
+            return;
           }
 
           // Drop the duplicate nonce.
@@ -343,11 +346,11 @@ class MicroForwarder {
       for (local i = 0; i < PIT_.len(); ++i) {
         local entry = PIT_[i];
         // TODO: Check interest equality of appropriate selectors.
-        if (entry.face == face &&
-            entry.interest.getName().equals(interest.getName())) 
-            {
-            // Duplicate PIT entry.
+
+        if (entry.inFace_ == face &&
+            entry.interest.getName().equals(interest.getName())) {
             if (debugEnable_) consoleLog("<DBUG> Duplicate Interest in PIT </DBUG>");  // operant
+            // Duplicate PIT entry.
             // Update the interest timeout.
             if (timeoutEndSeconds > entry.timeoutEndSeconds)
             entry.timeoutEndSeconds = timeoutEndSeconds;
@@ -356,7 +359,8 @@ class MicroForwarder {
       }
 
       // Add to the PIT.
-      local pitEntry = PitEntry(interest, face, timeoutEndSeconds, this);
+      local pitEntry = PitEntry
+        (interest, face, timeoutEndSeconds, maxRetransmitRetries_);
       PIT_.append(pitEntry);
 
       if (broadcastNamePrefix.match(interest.getName())) {
@@ -366,6 +370,7 @@ class MicroForwarder {
           // Don't send the interest back to where it came from.
           if (outFace != face) {
             // For now, don't add an extensions header to broadcast Interests.
+            pitEntry.outFace_ = outFace;
             outFace.sendBuffer(element);
           }
         }
@@ -395,6 +400,7 @@ class MicroForwarder {
                     (interest, face.faceId, face.uri, outFace.faceId outFace.uri,
                      fibEntry.name);
 
+                pitEntry.outFace_ = outFace;
                 if (canForwardResult == true ||
                     typeof canForwardResult == "float" && canForwardResult == 0.0) 
                   {
@@ -418,10 +424,22 @@ class MicroForwarder {
       }
     }
     else if (data != null) {
-      if (transmitFailed) 
-      {
-        // TODO: Handle transmitFailed for a Data packet.
-        if (debugEnable_) consoleLog("<DBUG> Data transmission failed --- To Do item </DBUG>");  // operant
+
+      if (transmitFailed) {
+        // Find the queue entry of the failed transmission.
+        for (local i = 0; i < dataRetransmitQueue_.len(); ++i) {
+          local entry = dataRetransmitQueue_[i];
+          if (entry.data_.getName().equals(data.getName())) {
+            // This will only schedule if there are more retransmit tries.
+            entry.scheduleRetransmit(face, this);
+            return;
+          }
+        }
+
+        // This data packet was not scheduled for retransmit, so schedule it.
+        local entry = DataRetransmitEntry(data, maxRetransmitRetries_);
+        dataRetransmitQueue_.append(entry);
+        entry.scheduleRetransmit(face, this);
         return;
       }
 
@@ -432,24 +450,18 @@ class MicroForwarder {
       
       for (local i = PIT_.len() - 1; i >= 0; --i) {
         local entry = PIT_[i];
-        if (entry.face != null && entry.interest.matchesData(data)) {
 
-          foundMatchingPITEntry = true; // operant
-          
+        // Note: entry.outFace_ is null when waiting to retransmit after a
+        // failed transmission, so ignore the PIT entry.
+        if (entry.inFace_ != null && entry.outFace_ != null &&
+            entry.interest.matchesData(data)) {
+          if (debugEnable_) consoleLog("<DBUG> Forwarding Data & removing PIT entry </DBUG>");  // operant
           // Remove the entry before sending.
           removePitEntry_(i);
 
-         if (logEnable_) { // operant
-            consoleLog("<FACE>" +
-              entry.face.uri + "</FACE><INT>" +
-              entry.interest.getName().toUri() + "</INT><NONCE>" +
-              entry.interest.getNonce().toHex() + "</NONCE>");
-         }
+          entry.inFace_.sendBuffer(element);
+          entry.inFace_ = null;
 
-          if (debugEnable_) consoleLog("<DBUG> Forwarding Data & removing PIT entry </DBUG>");  // operant
-
-          entry.face.sendBuffer(element);
-          entry.face = null;
         }
       }
       if (debugEnable_ == true && foundMatchingPITEntry == false) consoleLog("<DBUG> No matching PIT entry; Data dropped </DBUG>");  // operant
@@ -489,6 +501,31 @@ class MicroForwarder {
   }
 
   /**
+   * If entry.nRetransmitRetries_ is still greater than zero, get the random
+   * delay between minRetransmitDelayMilliseconds_ and
+   * maxRetransmitDelayMilliseconds_, and use
+   * delayedCallTable_.callLater to call entry.onRetransmit_() after the delay.
+   * (This is an internal method, for example called by PitEntry.
+   * @param {object} The object with integer nRetransmitRetries_ and the method
+   * of no arguments onRetransmit_().
+   */
+  function delayedRetransmit(entry)
+  {
+    if (entry.nRetransmitRetries_ <= 0)
+      return;
+
+    local delayRangeMilliseconds =
+      maxRetransmitDelayMilliseconds_ - minRetransmitDelayMilliseconds_;
+    local delayMilliseconds =
+      minRetransmitDelayMilliseconds_ +
+      (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
+
+    // Set the delayed call.
+    delayedCallTable_.callLater
+      (delayMilliseconds, function() { entry.onRetransmit_(); });
+  }
+
+  /**
    * A private method to find the face in faces_ with the faceId.
    * @param {integer} The faceId.
    * @return {ForwarderFace} The ForwarderFace, or null if not found.
@@ -525,13 +562,13 @@ MicroForwarder_instance <- null;
  */
 class PitEntry {
   interest = null;
-  face = null;
+  inFace_ = null;
   timeoutEndSeconds = null;
-  parentForwarder_ = null;
   isRemoved_ = false;
   // TODO: This should be a list for retries on multiple faces.
   nRetransmitRetries_ = 0;
   retransmitFace_ = null;
+  outFace_ = null;
 
   debugEnable_ = true; // operant
   logEnable_ = false; // operant
@@ -539,83 +576,57 @@ class PitEntry {
 
   /**
    * Create a PitEntry for the interest and incoming face.
-   * @param {Interest} The pending Interest.
-   * @param {ForwarderFace} The Interest's incoming face (and where the matching
-   * Data packet will be sent).
+   * @param {Interest} interest The pending Interest.
+   * @param {ForwarderFace} inFace The Interest's incoming face (and where the
+   * matching Data packet will be sent).
    * @param {integer} timeoutEndSeconds The time in seconds (based on
    * NdnCommon.getNowSeconds()) when the interest times out.
-   * @param {MicroForwarder} parentForwarder The parent MicroForwarder that
-   * created this entry. (This is used to get forwarder parameters and use its
-   * delayedCallTable_ .)
+   * @param {integer} nRetransmitRetries The initial number of retransmit
+   * retries.
    */
-  constructor(interest, face, timeoutEndSeconds, parentForwarder)
+  constructor(interest, inFace, timeoutEndSeconds, nRetransmitRetries)
   {
     this.interest = interest;
-    this.face = face;
+    this.inFace_ = inFace;
     this.timeoutEndSeconds = timeoutEndSeconds;
-    this.parentForwarder_ = parentForwarder;
-  }
-
-  /**
-   * Check if the interest in this entry is scheduled for retransmission.
-   * @return {boolean} True if scheduled for retransmission.
-   */
-  function isRetransmitScheduled() { return nRetransmitRetries_ > 0; }
-
-  /**
-   * Schedule to retransmit this interest nRetransmitRetries times after a
-   * random delay between minRetransmitDelayMilliseconds_ and
-   * maxRetransmitDelayMilliseconds_. If isRemoved_ becomes true while waiting
-   * to retransmit, don't retransmit.
-   * @param {ForwarderFace} The face on which to retransmit the interest.
-   * @param {integer} The number of retransmission retries.
-   */
-  function scheduleRetransmit(retransmitFace, nRetransmitRetries)
-  {
-    if (nRetransmitRetries_ > 0) {
-      // We don't expect this, but we have already created a delayed call. Only
-      // update the number of retries.
-      nRetransmitRetries_ = nRetransmitRetries;
-      return;
-    }
-
-    retransmitFace_ = retransmitFace;
     nRetransmitRetries_ = nRetransmitRetries;
-    delayedRetransmit_();
   }
 
   /**
-   * If nRetransmitRetries_ is still greater than zero, get the random delay
-   * between minRetransmitDelayMilliseconds_ and
-   * maxRetransmitDelayMilliseconds_, and use 
-   * parentForwarder_.delayedCallTable_.callLater to call onRetransmit_() after
-   * the delay.
+   * Schedule to retransmit this interest after a random delay between
+   * minRetransmitDelayMilliseconds_ and maxRetransmitDelayMilliseconds_. Since
+   * we are scheduling a retransmit, assume the send to outFace_ failed and set
+   * it to null. If already scheduled for retransmit, don't retransmit. If
+   * nRetransmitRetries_ is zero, don't retransmit. If isRemoved_ becomes true
+   * while waiting to retransmit, don't retransmit.
+   * @param {ForwarderFace} The face on which to retransmit the interest.
+   * @param {MicroForwarder} forwarder This calls forwarder.delayedRetransmit().
    */
-  function delayedRetransmit_()
+  function scheduleRetransmit(retransmitFace, forwarder)
   {
+    outFace_ = null;
+
+    if (retransmitFace_ != null)
+      // Already scheduled for retransmit.
+      return;
+
     if (nRetransmitRetries_ <= 0)
       return;
 
-    local delayRangeMilliseconds = 
-      parentForwarder_.maxRetransmitDelayMilliseconds_ -
-      parentForwarder_.minRetransmitDelayMilliseconds_;
-    local delayMilliseconds =
-      parentForwarder_.minRetransmitDelayMilliseconds_ +
-      (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
+    if (debugEnable_) consoleLog("<DBUG> Interest retransmission scheduled </DBUG>");  // operant
 
-    // Set the delayed call.
-    if (debugEnable_) consoleLog("<DBUG> Interest retransmission scheduled in " + delayMilliseconds + " ms </DBUG>");  // operant
-    local thisEntry = this;
-    parentForwarder_.delayedCallTable_.callLater
-      (delayMilliseconds, function() { thisEntry.onRetransmit_(); });
+    retransmitFace_ = retransmitFace;
+    forwarder.delayedRetransmit(this);
   }
 
   /**
    * This is the callback from delayedCallTable_.callLater. Decrement
    * nRetransmitRetries_ and retransmit the Interest on retransmitFace_,
-   * including retransmitFace_.interestExtensionsHeader (if any). Then
-   * call delayedRetransmit_() to do another retransmission (if
-   * nRetransmitRetries_ is still greater than zero). If isRemoved_, do nothing.
+   * including retransmitFace_.interestExtensionsHeader (if any). Set
+   * outFace_ to retransmitFace_ to indicate that the packet is under
+   * transmission, then set retransmitFace_ to null since we are no longer
+   * waiting to transmit. If isRemoved_, do nothing.
+
    */
   function onRetransmit_()
   {
@@ -623,7 +634,7 @@ class PitEntry {
       // This PitEntry was removed while waiting to retransmit.
       return;
   
-    if (nRetransmitRetries_ <= 0)
+    if (nRetransmitRetries_ <= 0 || retransmitFace_ == null)
       // We don't really expect this.
       return;
 
@@ -635,15 +646,14 @@ class PitEntry {
       // Prepend the extensions header.
       outBuffer = Buffer.concat
         ([retransmitFace_.interestExtensionsHeader.buf(), outBuffer]);
+    outFace_ = retransmitFace_;
+    retransmitFace_ = null;
     try {
-      retransmitFace_.sendBuffer(outBuffer);
+      outFace_.sendBuffer(outBuffer);
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
       consoleLog("Error in sendBuffer: " + ex);
     }
-
-    // delayedRetransmit_() will do nothing if nRetransmitRetries_ is zero.
-    delayedRetransmit_();
   }
 }
 
@@ -743,6 +753,93 @@ class ForwarderFace {
       interestExtensionsHeader = Blob
         (Buffer.concat([extension.buf(), interestExtensionsHeader.buf()]),
          false)
+  }
+}
+
+/**
+ * A DataRetransmitEntry is created to track the retransmission of a Data
+ * packet.
+ */
+class DataRetransmitEntry {
+  data_ = null;
+  isRemoved_ = false;
+  // TODO: This should be a list for retries on multiple faces.
+  nRetransmitRetries_ = 0;
+  retransmitFace_ = null;
+  outFace_ = null;
+  timeoutEndSeconds_ = 0;
+  // TIMEOUT_SECONDS is enough time to get a transmit nack.
+  static TIMEOUT_SECONDS = 4;
+
+  /**
+   * Create a DataRetransmitEntry for the Data packet. Then you should call
+   * scheduleRetransmit.
+   * @param {Data} The Data packet to retransmit.
+   * @param {integer} nRetransmitRetries The initial number of retransmit
+   * retries.
+   */
+  constructor(data, nRetransmitRetries)
+  {
+    data_ = data;
+    nRetransmitRetries_ = nRetransmitRetries;
+    timeoutEndSeconds_ = NdnCommon.getNowSeconds() + TIMEOUT_SECONDS;
+  }
+
+  /**
+   * Schedule to retransmit the Data packet after a random delay between
+   * minRetransmitDelayMilliseconds_ and maxRetransmitDelayMilliseconds_. Since
+   * we are scheduling a retransmit, assume the send to outFace_ failed and set
+   * it to null. If already scheduled for retransmit, don't retransmit. If
+   * nRetransmitRetries_ is zero, don't retransmit. If isRemoved_ becomes true
+   * while waiting to retransmit, don't retransmit.
+   * @param {ForwarderFace} retransmitFace The face on which to retransmit the
+   * Data packet.
+   * @param {MicroForwarder} forwarder This calls forwarder.delayedRetransmit().
+   */
+  function scheduleRetransmit(retransmitFace, forwarder)
+  {
+    outFace_ = null;
+  
+    if (retransmitFace_ != null)
+      // Already scheduled for retransmit.
+      return;
+
+    if (nRetransmitRetries_ <= 0)
+      return;
+
+    retransmitFace_ = retransmitFace;
+    forwarder.delayedRetransmit(this);
+  }
+
+  /**
+   * This is the callback from delayedCallTable_.callLater. Decrement
+   * nRetransmitRetries_ and retransmit the Data on retransmitFace_. Set
+   * outFace_ to retransmitFace_ to indicate that the packet is under
+   * transmission, then set retransmitFace_ to null since we are no longer
+   * waiting to transmit. Also reset timeoutEndSeconds_. If isRemoved_, do
+   * nothing.
+   */
+  function onRetransmit_()
+  {
+    if (isRemoved_)
+      // This entry was removed while waiting to retransmit.
+      return;
+
+    if (nRetransmitRetries_ <= 0 || retransmitFace_ == null)
+      // We don't really expect this.
+      return;
+
+    nRetransmitRetries_ -= 1;
+
+    outFace_ = retransmitFace_;
+    retransmitFace_ = null;
+    timeoutEndSeconds_ = NdnCommon.getNowSeconds() + TIMEOUT_SECONDS;
+    try {
+      outFace_.sendBuffer(data_.wireEncode().buf());
+    } catch (ex) {
+      // Log and ignore the exception so that we continue and try again.
+      consoleLog("Error in sendBuffer: " + ex);
+    }
   }
 }
 
