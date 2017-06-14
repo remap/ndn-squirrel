@@ -31,6 +31,7 @@ class MicroForwarder {
   getForwardingDelay_ = null; // function
   logLevel_ = 0; // integer
   maxRetransmitRetries_ = 0;
+
   minRetransmitDelayMilliseconds_ = 6000;
   maxRetransmitDelayMilliseconds_ = 7000;
 
@@ -319,13 +320,15 @@ class MicroForwarder {
               entry.interest.getName().equals(interest.getName())) {
             // The Interest had a transmitFailed and was scheduled for
             // retransmission, but another forwarder has transmitted it, so
-            // remove this PIT entry and drop this Interest.
-            // Note that removePitEntry_ sets entry.isRemoved_ true so that
-            // future retransmissions are also cancelled.
+            // cancel retransmissions and set outFace_ null so that this PIT
+            // entry is not used to forward the Data packet.
             // TODO: What if face != entry.retransmitFace_?
             // TODO: What if retransmission is scheduled on multiple faces?
-            if (debugEnable_) consoleLog("<DBUG> PIT entry for Interest scheduled for retransmission removed; nonce: " + interest.getNonce().toHex() + " </DBUG>");  // operant
-            removePitEntry_(i);
+
+            if (debugEnable_) consoleLog("<DBUG> PIT entry for Interest scheduled for retransmission canceled; nonce: " + interest.getNonce().toHex() + " </DBUG>");  // operant
+            
+            entry.retransmitFace_ == null;
+            entry.outFace_ = null;
             return;
           }
 
