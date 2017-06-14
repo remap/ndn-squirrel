@@ -298,7 +298,7 @@ class MicroForwarder {
             // entry is not used to forward the Data packet.
             // TODO: What if face != entry.retransmitFace_?
             // TODO: What if retransmission is scheduled on multiple faces?
-            entry.retransmitFace_ == null;
+            entry.retransmitFace_ = null;
             entry.outFace_ = null;
             return;
           }
