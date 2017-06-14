@@ -28,7 +28,7 @@ class MicroForwarder {
   faces_ = null; // array of ForwarderFace
   dataRetransmitQueue_ = null; // array of DataRetransmitEntry
   delayedCallTable_ = null; // WakeupDelayedCallTable
-  canForward_ = null; // function
+  getForwardingDelay_ = null; // function
   logLevel_ = 0; // integer
   maxRetransmitRetries_ = 3;
   minRetransmitDelayMilliseconds_ = 1000;
@@ -94,29 +94,33 @@ class MicroForwarder {
   }
 
   /**
-   * Set the canForward callback. When the MicroForwarder receives an interest
-   * which matches the routing prefix on a face, it calls canForward as
-   * described below to check if it is OK to forward to the face. This can be
-   * used to implement a simple forwarding strategy.
-   * @param {function} canForward If not null, and the interest matches the
-   * routePrefix of the outgoing face, then the MicroForwarder calls
-   * canForward(interest, incomingFaceId, incomingFaceUri, outgoingFaceId,
+   * Set the getForwardingDelay callback. When the MicroForwarder receives an
+   * interest which matches the routing prefix on a face, it calls
+   * getForwardingDelay as described below to check if it is OK to forward to
+   * the face. This can be used to implement a simple forwarding strategy.
+   * @param {function} getForwardingDelay If not null, and the interest matches
+   * the routePrefix of the outgoing face, then the MicroForwarder calls
+   * getForwardingDelay(interest, incomingFaceId, incomingFaceUri, outgoingFaceId,
    * outgoingFaceUri, routePrefix) where interest is the incoming Interest
    * object, incomingFaceId is the ID integer of the incoming face,
    * incomingFaceUri is the URI string of the incoming face, outgoingFaceId is
    * the ID integer of the outgoing face, outgoingFaceUri is the URI string of
    * the outgoing face, and routePrefix is the prefix Name of the matching
-   * outgoing route. If the canForward callback returns true (or a float 0.0)
-   * then immediately forward to the outgoing face. If it returns false (or a
-   * negative float), then don't forward. If canForward returns a positive float
-   * x, then forward after a delay of x seconds using imp.wakeup (only supported
-   * on the Imp).
-   * IMPORTANT: The canForward callback is called when the routePrefix matches,
-   * even if the outgoing face is the same as the incoming face. So you must
-   * check if incomingFaceId == outgoingFaceId and return false if you don't
-   * want to forward to the same face.
+   * outgoing route. If the getForwardingDelay callback returns 0 then
+   * immediately forward to the outgoing face. (Often, 0 means "no" but in this
+   * case it means "yes, forward after zero delay".) If it returns a negative
+   * number, then don't forward. If getForwardingDelay returns a positive number
+   * x, then forward after a delay of x milliseconds using imp.wakeup (only
+   * supported on the Imp).
+   * IMPORTANT: The getForwardingDelay callback is called when the routePrefix
+   * matches, even if the outgoing face is the same as the incoming face. So you
+   * must check if incomingFaceId == outgoingFaceId and return false if you
+   * don't want to forward to the same face.
    */
-  function setCanForward(canForward) { canForward_ = canForward; }
+  function setGetForwardingDelay(getForwardingDelay)
+  {
+    getForwardingDelay_ = getForwardingDelay;
+  }
 
   /**
    * Find or create the FIB entry with the given name and add the ForwarderFace
@@ -351,31 +355,30 @@ class MicroForwarder {
           if (fibEntry.name.match(interest.getName())) {
             for (local j = 0; j < fibEntry.faces.len(); ++j) {
               local outFace = fibEntry.faces[j];
-              // If canForward_ is not defined, don't send the interest back to
-              // where it came from.
-              if (!(canForward_ == null && outFace == face)) {
+              // If getForwardingDelay_ is not defined, don't send the interest
+              // back to where it came from.
+              if (!(getForwardingDelay_ == null && outFace == face)) {
                 local outBuffer = element;
                 if (outFace.interestExtensionsHeader != null)
                   // Prepend the extensions header.
                   outBuffer = Buffer.concat
                     ([outFace.interestExtensionsHeader.buf(), outBuffer]);
 
-                local canForwardResult = true;
-                if (canForward_ != null)
-                  // Note that canForward_  is called even if outFace == face.
-                  canForwardResult = canForward_
+                local forwardingDelayMs = true;
+                if (getForwardingDelay_ != null)
+                  // Note that getForwardingDelay_  is called even if outFace == face.
+                  forwardingDelayMs = getForwardingDelay_
                     (interest, face.faceId, face.uri, outFace.faceId outFace.uri,
                      fibEntry.name);
 
                 pitEntry.outFace_ = outFace;
-                if (canForwardResult == true ||
-                    typeof canForwardResult == "float" && canForwardResult == 0.0) {
+                if (forwardingDelayMs == 0) {
                   // Forward now.
                   outFace.sendBuffer(outBuffer);
                 }
-                else if (typeof canForwardResult == "float" && canForwardResult > 0.0) {
-                  // Forward after a delay.
-                  imp.wakeup(canForwardResult, 
+                else if (forwardingDelayMs > 0) {
+                  // Forward after a delay. Specify seconds.
+                  imp.wakeup(forwardingDelayMs / 1000.0,
                              function() { outFace.sendBuffer(outBuffer); });
                 }
               }
