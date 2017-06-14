@@ -161,12 +161,12 @@ function testPublish()
   // Set this to true to use multi-hop forwarding, as opposed to single-hop.
   local useMultiHop = false;
   // Set the min and max values for the random delay.
-  local minDelaySeconds = 1.0;
-  local maxDelaySeconds = 2.0;
+  local minDelayMs = 1000;
+  local maxDelayMs = 2000;
 
   // Set up the forwarding strategy for single-hop or multi-hop broadcast
   // (depending on useMultiHop).
-  function canForward
+  function getForwardingDelay
     (interest, incomingFaceId, incomingFaceUri, outgoingFaceId, outgoingFaceUri,
      routePrefix)
   {
@@ -178,28 +178,28 @@ function testPublish()
         // The Interest is for the application, so let it go to the application
         // but don't forward to other faces.
         if (outgoingFaceUri == "internal://app")
-          return true;
+          return 0;
         else
-          return false;
+          return -1;
       }
       else {
         if (useMultiHop) {
           // For multi-hop, we only forward to the same broadcast serial port
           // (after a delay).
           if (outgoingFaceUri != "uart://serial")
-            return false;
+            return -1;
           else {
             // Forward with a delay.
-            local delayRange = maxDelaySeconds - minDelaySeconds;
-            local delaySeconds = minDelaySeconds + 
+            local delayRange = maxDelayMs - minDelayMs;
+            local delayMs = minDelayMs +
               ((1.0 * math.rand() / RAND_MAX) * delayRange);
             // Return a float value that the MicroForwarder interprets as a delay.
-            return delaySeconds;
+            return delayMs;
           }
         }
         else
           // For single-hop, we don't forward packets coming in the serial port.
-          return false;
+          return -1;
       }
     }
 
@@ -209,20 +209,20 @@ function testPublish()
         // The Interest is for the application, so let it go to the application
         // but don't forward to other faces.
         if (outgoingFaceUri == "internal://app")
-          return true;
+          return 0;
         else
-          return false;
+          return -1;
       }
       else
         // Not for the application, so forward to other faces including serial,
         // except don't forward to the same face.
-        return !isForwardingToSameFace;
+        return isForwardingToSameFace ? -1 : 0;
     }
 
     // Let other packets pass, except to the same face.
-    return !isForwardingToSameFace;
+    return isForwardingToSameFace ? -1 : 0;
   }
-  MicroForwarder.get().setCanForward(canForward);
+  MicroForwarder.get().setGetForwardingDelay(getForwardingDelay);
 }
 
 testPublish();
