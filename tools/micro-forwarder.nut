@@ -311,7 +311,7 @@ class MicroForwarder {
       // First check for a duplicate nonce on any face.
       for (local i = 0; i < PIT_.len(); ++i) 
       {
-        if (debugEnable_) consoleLog("<DBUG> Checking for duplicate nonce </DBUG>");  // operant
+        if (debugEnable_) consoleLog("<DBUG> Checking for duplicate nonce: " + interest.getNonce().toHex() + " </DBUG>");  // operant
         local entry = PIT_[i];
         if (entry.interest.getNonce().equals(interest.getNonce())) {
 
@@ -413,7 +413,7 @@ class MicroForwarder {
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
-                  if (debugEnable_) consoleLog("<DBUG> Forwarding Interest after delay of " + canForwardResult + "seconds </DBUG>");  // operant
+                  if (debugEnable_) consoleLog("<DBUG> Forwarding Interest after delay of " + forwardingDelayMs + "seconds </DBUG>");  // operant
                   imp.wakeup(forwardingDelayMs / 1000.0,
 
                              function() { outFace.sendBuffer(outBuffer); });
