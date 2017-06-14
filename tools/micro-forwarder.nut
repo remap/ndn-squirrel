@@ -30,7 +30,7 @@ class MicroForwarder {
   delayedCallTable_ = null; // WakeupDelayedCallTable
   canForward_ = null; // function
   logLevel_ = 0; // integer
-  maxRetransmitRetries_ = 3;
+  maxRetransmitRetries_ = 0;
   minRetransmitDelayMilliseconds_ = 6000;
   maxRetransmitDelayMilliseconds_ = 7000;
 
@@ -286,7 +286,7 @@ class MicroForwarder {
               entry.interest.getName().equals(interest.getName())) {
 
             // This will only schedule if there are more retransmit tries.
-            if (debugEnable_) consoleLog("<DBUG> Scheduling Interest retransmission </DBUG>");  // operant
+            if (debugEnable_) consoleLog("<DBUG> Scheduling Interest retransmission of nonce: " + interest.getNonce().toHex() + " </DBUG>");  // operant
             entry.scheduleRetransmit(face, this);
             return;
           }
@@ -320,7 +320,7 @@ class MicroForwarder {
             // future retransmissions are also cancelled.
             // TODO: What if face != entry.retransmitFace_?
             // TODO: What if retransmission is scheduled on multiple faces?
-            if (debugEnable_) consoleLog("<DBUG> PIT entry for Interest scheduled for retransmission removed </DBUG>");  // operant
+            if (debugEnable_) consoleLog("<DBUG> PIT entry for Interest scheduled for retransmission removed; nonce: " + interest.getNonce().toHex() + " </DBUG>");  // operant
             removePitEntry_(i);
             return;
           }
@@ -455,7 +455,7 @@ class MicroForwarder {
         // failed transmission, so ignore the PIT entry.
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
-          if (debugEnable_) consoleLog("<DBUG> Forwarding Data & removing PIT entry </DBUG>");  // operant
+          if (debugEnable_) consoleLog("<DBUG> Forwarding Data & removing PIT entry i=: " + i + " </DBUG>");  // operant
           // Remove the entry before sending.
           removePitEntry_(i);
 
@@ -606,6 +606,8 @@ class PitEntry {
   {
     outFace_ = null;
 
+    if (debugEnable_) consoleLog("<DBUG> Interest retransmission being scheduled; # of retries: " + nRetransmitRetries_ + " </DBUG>");  // operant
+
     if (retransmitFace_ != null)
       // Already scheduled for retransmit.
       return;
@@ -613,7 +615,7 @@ class PitEntry {
     if (nRetransmitRetries_ <= 0)
       return;
 
-    if (debugEnable_) consoleLog("<DBUG> Interest retransmission scheduled </DBUG>");  // operant
+
 
     retransmitFace_ = retransmitFace;
     forwarder.delayedRetransmit(this);
