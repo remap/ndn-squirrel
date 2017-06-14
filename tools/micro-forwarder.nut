@@ -326,8 +326,8 @@ class MicroForwarder {
             // TODO: What if retransmission is scheduled on multiple faces?
 
             if (debugEnable_) consoleLog("<DBUG> PIT entry for Interest scheduled for retransmission canceled; nonce: " + interest.getNonce().toHex() + " </DBUG>");  // operant
-            
-            entry.retransmitFace_ == null;
+
+            entry.retransmitFace_ = null;
             entry.outFace_ = null;
             return;
           }
