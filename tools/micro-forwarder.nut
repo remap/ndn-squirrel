@@ -294,12 +294,12 @@ class MicroForwarder {
               entry.interest.getName().equals(interest.getName())) {
             // The Interest had a transmitFailed and was scheduled for
             // retransmission, but another forwarder has transmitted it, so
-            // remove this PIT entry and drop this Interest.
-            // Note that removePitEntry_ sets entry.isRemoved_ true so that
-            // future retransmissions are also cancelled.
+            // cancel retransmissions and set outFace_ null so that this PIT
+            // entry is not used to forward the Data packet.
             // TODO: What if face != entry.retransmitFace_?
             // TODO: What if retransmission is scheduled on multiple faces?
-            removePitEntry_(i);
+            entry.retransmitFace_ == null;
+            entry.outFace_ = null;
             return;
           }
 
