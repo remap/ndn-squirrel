@@ -584,6 +584,10 @@ class PitEntry {
       // We don't really expect this.
       return;
 
+    if (inFace_ == null)
+      // This entry was invalidated (e.g., due to interest timeout).
+      return;
+
     nRetransmitRetries_ -= 1;
 
     // Retransmit.
