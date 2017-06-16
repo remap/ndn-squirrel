@@ -34,10 +34,11 @@ class MicroForwarder {
 
   minRetransmitDelayMilliseconds_ = 6000;
   maxRetransmitDelayMilliseconds_ = 7000;
+  minPitEntryLifetimeMilliseconds_ = 60000;
 
   debugEnable_ = true; // operant
   logEnable_ = false; // operant
-
+ 
   static localhostNamePrefix = Name("/localhost");
   static broadcastNamePrefix = Name("/ndn/broadcast");
 
@@ -265,8 +266,19 @@ class MicroForwarder {
     // Remove timed-out PIT entries
     // Iterate backwards so we can remove the entry and keep iterating.
     for (local i = PIT_.len() - 1; i >= 0; --i) {
-      if (nowSeconds >= PIT_[i].timeoutEndSeconds) {
+      local entry = PIT_[i];
+      // For removal, we also check the timeoutEndSeconds in case it is greater
+      // than entryEndSeconds.
+      if (nowSeconds >= entry.entryEndSeconds &&
+          nowSeconds >= entry.timeoutEndSeconds) {
         removePitEntry_(i);
+      }
+      else if (nowSeconds >= entry.timeoutEndSeconds) {
+        // Timed out, so set inFace_ null which prevents using the PIT entry to
+        // return a Data packet, but we keep the PIT entry to check for a
+        // duplicate nonce. (If a fresh Interest arrives with the same name, a
+        // new PIT entry will be created.)
+        entry.inFace_ = null;
       }
     }
     // Remove timed-out Data retransmit queue entries.
@@ -350,6 +362,8 @@ class MicroForwarder {
       else
         // Use a default timeout.
         timeoutEndSeconds = nowSeconds + 4;
+      local entryEndSeconds =
+        nowSeconds + (minPitEntryLifetimeMilliseconds_ / 1000.0).tointeger();
       for (local i = 0; i < PIT_.len(); ++i) {
         local entry = PIT_[i];
         // TODO: Check interest equality of appropriate selectors.
@@ -361,13 +375,19 @@ class MicroForwarder {
             // Update the interest timeout.
             if (timeoutEndSeconds > entry.timeoutEndSeconds)
             entry.timeoutEndSeconds = timeoutEndSeconds;
+<<<<<<< HEAD
+=======
+          // Also update the PIT entry timeout.
+          entry.entryEndSeconds = entryEndSeconds;
+
+>>>>>>> remap/master
           return;
         }
       }
 
       // Add to the PIT.
       local pitEntry = PitEntry
-        (interest, face, timeoutEndSeconds, maxRetransmitRetries_);
+        (interest, face, timeoutEndSeconds, entryEndSeconds, maxRetransmitRetries_);
       PIT_.append(pitEntry);
 
       if (broadcastNamePrefix.match(interest.getName())) {
@@ -459,13 +479,22 @@ class MicroForwarder {
         // failed transmission, so ignore the PIT entry.
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
+<<<<<<< HEAD
 
           if (debugEnable_) consoleLog("<DBUG> Forwarding Data & removing PIT entry i=: " + i + " </DBUG>");  // operant
           foundMatchingPITEntry = true; // operant
 
           // Remove the entry before sending.
           removePitEntry_(i);
+=======
+>>>>>>> remap/master
           entry.inFace_.sendBuffer(element);
+
+          // The PIT entry is consumed, so set inFace_ null which prevents using
+          // it to return another Data packet, but we keep the PIT entry to
+          // check for a duplicate nonce. It will be deleted after
+          // entryEndSeconds. (If a fresh Interest arrives with the same name, a
+          // new PIT entry will be created.)
           entry.inFace_ = null;
 
         }
@@ -571,7 +600,11 @@ MicroForwarder_instance <- null;
 class PitEntry {
   interest = null;
   inFace_ = null;
+  // timeoutEndSeconds is based on the Interest lifetime.
   timeoutEndSeconds = null;
+  // entryEndSeconds is when this entry should be removed. (The entry is kept
+  // around longer than the Interest lifetime to detect a duplicate nonce.)
+  entryEndSeconds = null;
   isRemoved_ = false;
   // TODO: This should be a list for retries on multiple faces.
   nRetransmitRetries_ = 0;
@@ -589,14 +622,18 @@ class PitEntry {
    * matching Data packet will be sent).
    * @param {integer} timeoutEndSeconds The time in seconds (based on
    * NdnCommon.getNowSeconds()) when the interest times out.
+   * @param {integer} entryEndSeconds The time in seconds (based on
+   * NdnCommon.getNowSeconds()) when this entry should be removed.
    * @param {integer} nRetransmitRetries The initial number of retransmit
    * retries.
    */
-  constructor(interest, inFace, timeoutEndSeconds, nRetransmitRetries)
+  constructor
+    (interest, inFace, timeoutEndSeconds, entryEndSeconds, nRetransmitRetries)
   {
     this.interest = interest;
     this.inFace_ = inFace;
     this.timeoutEndSeconds = timeoutEndSeconds;
+    this.entryEndSeconds = entryEndSeconds;
     nRetransmitRetries_ = nRetransmitRetries;
   }
 
@@ -646,6 +683,10 @@ class PitEntry {
   
     if (nRetransmitRetries_ <= 0 || retransmitFace_ == null)
       // We don't really expect this.
+      return;
+
+    if (inFace_ == null)
+      // This entry was invalidated (e.g., due to interest timeout).
       return;
 
     nRetransmitRetries_ -= 1;

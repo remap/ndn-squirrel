@@ -49,7 +49,6 @@ class GeoTag {
       return math.fabs(dSelfDest / dSourceDest - 1.0);
     else
       // Case B: This forwarder is moving the packet farther, or not moving it.
-      // (In this case, there is no need to compute dSourceSelf.)
       return -1.0;
   }
 
