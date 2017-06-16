@@ -375,12 +375,9 @@ class MicroForwarder {
             // Update the interest timeout.
             if (timeoutEndSeconds > entry.timeoutEndSeconds)
             entry.timeoutEndSeconds = timeoutEndSeconds;
-<<<<<<< HEAD
-=======
           // Also update the PIT entry timeout.
           entry.entryEndSeconds = entryEndSeconds;
 
->>>>>>> remap/master
           return;
         }
       }
@@ -479,15 +476,12 @@ class MicroForwarder {
         // failed transmission, so ignore the PIT entry.
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
-<<<<<<< HEAD
 
           if (debugEnable_) consoleLog("<DBUG> Forwarding Data & removing PIT entry i=: " + i + " </DBUG>");  // operant
           foundMatchingPITEntry = true; // operant
 
           // Remove the entry before sending.
-          removePitEntry_(i);
-=======
->>>>>>> remap/master
+
           entry.inFace_.sendBuffer(element);
 
           // The PIT entry is consumed, so set inFace_ null which prevents using
@@ -607,7 +601,7 @@ class PitEntry {
   entryEndSeconds = null;
   isRemoved_ = false;
   // TODO: This should be a list for retries on multiple faces.
-  nRetransmitRetries_ = 0;
+  nRetransmitRetries_ = 1;
   retransmitFace_ = null;
   outFace_ = null;
 
