@@ -30,10 +30,10 @@ class MicroForwarder {
   delayedCallTable_ = null; // WakeupDelayedCallTable
   getForwardingDelay_ = null; // function
   logLevel_ = 0; // integer
-  maxRetransmitRetries_ = 0;
+  maxRetransmitRetries_ = 1;
 
-  minRetransmitDelayMilliseconds_ = 6000;
-  maxRetransmitDelayMilliseconds_ = 7000;
+  minRetransmitDelayMilliseconds_ = 3000;
+  maxRetransmitDelayMilliseconds_ = 4000;
   minPitEntryLifetimeMilliseconds_ = 60000;
 
   debugEnable_ = true; // operant
@@ -601,7 +601,7 @@ class PitEntry {
   entryEndSeconds = null;
   isRemoved_ = false;
   // TODO: This should be a list for retries on multiple faces.
-  nRetransmitRetries_ = 1;
+  nRetransmitRetries_ = 0;
   retransmitFace_ = null;
   outFace_ = null;
 
@@ -697,7 +697,7 @@ class PitEntry {
       outFace_.sendBuffer(outBuffer);
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
-      consoleLog("Error in sendBuffer: " + ex);
+      if (debugEnable_) consoleLog("Error in sendBuffer: " + ex);
     }
   }
 }
