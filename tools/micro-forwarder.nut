@@ -30,7 +30,7 @@ class MicroForwarder {
   delayedCallTable_ = null; // WakeupDelayedCallTable
   getForwardingDelay_ = null; // function
   logLevel_ = 0; // integer
-  maxRetransmitRetries_ = 1;
+  maxRetransmitRetries_ = 0;
 
   minRetransmitDelayMilliseconds_ = 3000;
   maxRetransmitDelayMilliseconds_ = 4000;
