@@ -36,7 +36,7 @@ class MicroForwarder {
   maxRetransmitDelayMilliseconds_ = 4000;
   minPitEntryLifetimeMilliseconds_ = 60000;
 
-  debugEnable_ = true; // operant
+  debugEnable_ = false; // operant
   logEnable_ = false; // operant
  
   static localhostNamePrefix = Name("/localhost");
@@ -428,12 +428,12 @@ class MicroForwarder {
 
                 if (forwardingDelayMs == 0) {
                   // Forward now.
-                  if (debugEnable_) consoleLog("<DBUG> Forwarding Interest immediately </DBUG>");  // operant
+                  if (true) consoleLog("<DBUG>FWD INT NOW</DBUG>");  // operant
                   outFace.sendBuffer(outBuffer);
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
-                  if (debugEnable_) consoleLog("<DBUG> Forwarding Interest after delay of " + forwardingDelayMs + " ms </DBUG>");  // operant
+                  if (true) consoleLog("<DBUG>FWD INT: " + forwardingDelayMs + " ms</DBUG>");  // operant
                   imp.wakeup(forwardingDelayMs / 1000.0,
 
                              function() { outFace.sendBuffer(outBuffer); });
@@ -477,7 +477,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          if (debugEnable_) consoleLog("<DBUG> Forwarding Data & removing PIT entry i=: " + i + " </DBUG>");  // operant
+          if (true) consoleLog("<DBUG>FWD DATA</DBUG>");  // operant
           foundMatchingPITEntry = true; // operant
 
           // Remove the entry before sending.
@@ -493,7 +493,7 @@ class MicroForwarder {
 
         }
       }
-      if (debugEnable_ == true && foundMatchingPITEntry == false) consoleLog("<DBUG> No matching PIT entry found; Data dropped </DBUG>");  // operant
+      if (true == true && foundMatchingPITEntry == false) consoleLog("<DBUG>DROP DATA</DBUG>");  // operant
       if ( logEnable_) {  // operant
 	        consoleLog("<DROP><DATA> " + data.getName().toUri() + "</DATA><FACE>" + face.uri + "</FACE></DROP>");
 	        consoleLog("</MFWD></LOG>");
@@ -605,7 +605,7 @@ class PitEntry {
   retransmitFace_ = null;
   outFace_ = null;
 
-  debugEnable_ = true; // operant
+  debugEnable_ = false; // operant
   logEnable_ = false; // operant
 
 
