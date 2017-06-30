@@ -433,7 +433,7 @@ class MicroForwarder {
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
-                  if (true) consoleLog("INT FWD DELAY");  // operant
+                  if (true) consoleLog("INT FWD DELAY  " + forwardingDelayMs);  // operant
                   imp.wakeup(forwardingDelayMs / 1000.0,
 
                              function() { outFace.sendBuffer(outBuffer); });
