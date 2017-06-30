@@ -36,7 +36,7 @@ class MicroForwarder {
   maxRetransmitDelayMilliseconds_ = 4000;
   minPitEntryLifetimeMilliseconds_ = 60000;
 
-  debugEnable_ = true; // operant
+  debugEnable_ = false; // operant
   logEnable_ = false; // operant
  
   static localhostNamePrefix = Name("/localhost");
@@ -345,7 +345,7 @@ class MicroForwarder {
           }
 
           // Drop the duplicate nonce.
-          if (debugEnable_) formattedConsoleLog("INTEREST DROPPED");  // operant
+          if (true) formattedConsoleLog("INT DROP");  // operant
           if (logEnable_) {  // operant
       	    consoleLog("<DROP><INT> " +
               interest.getName().toUri() + "</INT><NONC>" + interest.getNonce().toHex() +
@@ -370,7 +370,7 @@ class MicroForwarder {
 
         if (entry.inFace_ == face &&
             entry.interest.getName().equals(interest.getName())) {
-            if (debugEnable_) formattedConsoleLog("INTEREST DUPLICATE");  // operant
+            if (true) formattedConsoleLog("INT DUP");  // operant
             // Duplicate PIT entry.
             // Update the interest timeout.
             if (timeoutEndSeconds > entry.timeoutEndSeconds)
@@ -428,12 +428,12 @@ class MicroForwarder {
 
                 if (forwardingDelayMs == 0) {
                   // Forward now.
-                  if (debugEnable) consoleLog("INTEREST FWD TO " + outFace.uri);  // operant
+                  if (true) consoleLog("INT FWD NOW " + outFace.uri);  // operant
                   outFace.sendBuffer(outBuffer);
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
-                  if (debugEnable) consoleLog("INTEREST FWD TO LORA W DELAY " + forwardingDelayMs);  // operant
+                  if (true) consoleLog("INT FWD DELAY");  // operant
                   imp.wakeup(forwardingDelayMs / 1000.0,
 
                              function() { outFace.sendBuffer(outBuffer); });
@@ -477,7 +477,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          if (debugEnable_) consoleLog("DATA FWD TO " + entry.inFace_.uri);  // operant
+          if (true) consoleLog("DATA FWD " + entry.inFace_.uri);  // operant
           foundMatchingPITEntry = true; // operant
 
           // Remove the entry before sending.
@@ -493,7 +493,7 @@ class MicroForwarder {
 
         }
       }
-      if (true == true && foundMatchingPITEntry == false) consoleLog("DATA DROPPED");  // operant
+      if (true == true && foundMatchingPITEntry == false) consoleLog("DATA DROP");  // operant
       if ( logEnable_) {  // operant
 	        consoleLog("<DROP><DATA> " + data.getName().toUri() + "</DATA><FACE>" + face.uri + "</FACE></DROP>");
 	        consoleLog("</MFWD></LOG>");
@@ -549,7 +549,7 @@ class MicroForwarder {
       minRetransmitDelayMilliseconds_ +
       (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
 
-      if (debugEnable_) formattedConsoleLog("RESCHEDULE TX " + delayMilliseconds + "");  // operant
+      if (true) formattedConsoleLog("RESCHED TX");  // operant
 
     // Set the delayed call.
     delayedCallTable_.callLater
@@ -605,7 +605,7 @@ class PitEntry {
   retransmitFace_ = null;
   outFace_ = null;
 
-  debugEnable_ = true; // operant
+  debugEnable_ = false; // operant
   logEnable_ = false; // operant
 
 
