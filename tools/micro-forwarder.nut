@@ -115,8 +115,8 @@ class MicroForwarder {
    * supported on the Imp).
    * IMPORTANT: The getForwardingDelay callback is called when the routePrefix
    * matches, even if the outgoing face is the same as the incoming face. So you
-   * must check if incomingFaceId == outgoingFaceId and return false if you
-   * don't want to forward to the same face.
+   * must check if incomingFaceId == outgoingFaceId and return -1 if you don't
+   * want to forward to the same face.
    */
   function setGetForwardingDelay(getForwardingDelay)
   {
@@ -380,7 +380,8 @@ class MicroForwarder {
                   outBuffer = Buffer.concat
                     ([outFace.interestExtensionsHeader.buf(), outBuffer]);
 
-                local forwardingDelayMs = true;
+                // Set to 0 to forward unless getForwardingDelay overrides.
+                local forwardingDelayMs = 0;
                 if (getForwardingDelay_ != null)
                   // Note that getForwardingDelay_  is called even if outFace == face.
                   forwardingDelayMs = getForwardingDelay_
