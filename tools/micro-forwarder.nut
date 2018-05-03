@@ -40,7 +40,8 @@ class MicroForwarder {
 
   /**
    * Create a new MicroForwarder. You must call addFace(). If running on the Imp
-   * device, call addFace("internal://agent", agent).
+   * device, call addFace("internal://agent", SquirrelObjectTransport(),
+   * SquirrelObjectTransportConnectionInfo(agent)).
    * Normally you do not create a MicroForwader, but use the static get().
    */
   constructor()
