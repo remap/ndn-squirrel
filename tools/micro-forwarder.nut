@@ -386,7 +386,7 @@ class MicroForwarder {
                 if (getForwardingDelay_ != null)
                   // Note that getForwardingDelay_  is called even if outFace == face.
                   forwardingDelayMs = getForwardingDelay_
-                    (interest, face.faceId, face.uri, outFace.faceId outFace.uri,
+                    (interest, face.faceId, face.uri, outFace.faceId, outFace.uri,
                      fibEntry.name);
 
                 pitEntry.outFace_ = outFace;
