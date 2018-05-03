@@ -22,6 +22,7 @@ cat ndn-squirrel.nut \
 cat ndn-squirrel.nut \
   contrib/kisi-inc/aes-squirrel/aes.class.nut \
   contrib/vukicevic/crunch/crunch.nut \
+  tools/micro-forwarder.nut \
   examples/test-imp-nac-echo-consumer.agent.nut \
   > bin/test-imp-nac-echo-consumer.agent.app.nut
 cat ndn-squirrel.nut \
