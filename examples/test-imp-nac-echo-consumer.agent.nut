@@ -114,8 +114,16 @@ function onContentKeyData(interest, data, contentData, contentKeyName)
  */
 function testConsume()
 {
-  local face = Face
-    (SquirrelObjectTransport(), SquirrelObjectTransportConnectionInfo(device));
+  // Even though we could connect the Face directly to the MicroForwarder on the
+  // device, this shows how to connect to a local MicroForwarder on the agent
+  // which has a route to the MicroForwarder on the device.
+  local deviceFaceId = MicroForwarder.get().addFace
+    ("internal://device", SquirrelObjectTransport(),
+     SquirrelObjectTransportConnectionInfo(device));
+  MicroForwarder.get().registerRoute(Name("/testecho"), deviceFaceId);
+
+  // The application Face connects by default to the local MicroForwarder.
+  local face = Face();
 
   local name = Name("/testecho");
   local word = "hello";
@@ -139,4 +147,4 @@ function testConsume()
 // You should run this on the Agent, and run test-imp-nac-publish-async.device.app.nut
 // on the Imp Device. ("nac" means "name-based access control".)
 // Use a wakeup delay to let the Agent connect to the Device.
-imp.wakeup(1, function() { testConsume(); });
+imp.wakeup(3, function() { testConsume(); });
