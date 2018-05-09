@@ -1786,6 +1786,228 @@ class Name {
   function getChangeCount() { return changeCount_; }
 }
 /**
+ * Copyright (C) 2018 Regents of the University of California.
+ * @author: Jeff Thompson <jefft0@remap.ucla.edu>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * A copy of the GNU Lesser General Public License is in the file COPYING.
+ */
+
+/**
+ * A ControlParameters holds a Name and other fields for a ControlParameters
+ * which is used, for example, in the command interest to register a prefix with
+ * a forwarder. See
+ * http://redmine.named-data.net/projects/nfd/wiki/ControlCommand#ControlParameters
+ */
+class ControlParameters {
+  name_ = null;
+  faceId_ = null;
+  uri_ = null;
+  localControlFeature_ = null;
+  origin_ = null;
+  cost_ = null;
+  // TODO: forwardingFlags_
+  strategy_ = null;
+  expirationPeriod_ = null;
+
+  /**
+   * Create a new ControlParameters.
+   * @param {ControlParameters} controlParameters (optional) If
+   * controlParameters is another ControlParameters object, copy its values.
+   * Otherwise, set all fields to defaut values.
+   */
+  constructor(controlParameters = null)
+  {
+    if (controlParameters instanceof ControlParameters) {
+      // The copy constructor.
+      name_ = ControlParameters.name_ == null ? null : Name(controlParameters.name_);
+      faceId_ = controlParameters.faceId_;
+      uri_ = controlParameters.uri_;
+      localControlFeature_ = controlParameters.localControlFeature_;
+      origin_ = controlParameters.origin_;
+      cost_ = controlParameters.cost_;
+      // TODO: forwardingFlags_
+      strategy_ = Name(controlParameters.strategy_);
+      expirationPeriod_ = controlParameters.expirationPeriod_;
+    }
+    else
+      clear();
+  }
+
+  function clear()
+  {
+    name_ = null;
+    faceId_ = null;
+    uri_ = "";
+    localControlFeature_ = null;
+    origin_ = null;
+    cost_ = null;
+    // TODO: forwardingFlags_
+    strategy_ = Name();
+    expirationPeriod_ = null;
+  }
+
+  /**
+   * Encode this ControlParameters for a particular wire format.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * encode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
+   * @return {Blob} The encoded buffer in a Blob object.
+   */
+  function wireEncode(wireFormat = null)
+  {
+    if (wireFormat == null)
+        // Don't use a default argument since getDefaultWireFormat can change.
+        wireFormat = WireFormat.getDefaultWireFormat();
+
+    return wireFormat.encodeControlParameters(this);
+  }
+
+  /**
+   * Decode the input using a particular wire format and update this
+   * ControlParameters.
+   * @param {Blob|Buffer} input The buffer with the bytes to decode.
+   * @param {WireFormat} wireFormat (optional) A WireFormat object used to
+   * decode this object. If null or omitted, use WireFormat.getDefaultWireFormat().
+   */
+  function wireDecode(input, wireFormat = null)
+  {
+    if (wireFormat == null)
+        // Don't use a default argument since getDefaultWireFormat can change.
+        wireFormat = WireFormat.getDefaultWireFormat();
+
+    if (input instanceof Blob)
+      wireFormat.decodeControlParameters(this, input.buf(), false);
+    else
+      wireFormat.decodeControlParameters(this, input, true);
+  }
+
+  /**
+   * Get the name.
+   * @return {Name} The name. If not specified, return null.
+   */
+  function getName() { return name_; }
+
+  /**
+   * Get the face ID.
+   * @return {integer} The face ID, or null if not specified.
+   */
+  function getFaceId() { return faceId_; }
+
+  /**
+   * Get the URI.
+   * @return {string} The face URI, or an empty string if not specified.
+   */
+  function getUri() { return uri_; }
+
+  /**
+   * Get the local control feature value.
+   * @return {integer} The local control feature value, or null if not specified.
+   */
+  function getLocalControlFeature() { return localControlFeature_; }
+
+  /**
+   * Get the origin value.
+   * @return {integer} The origin value, or null if not specified.
+   */
+  function getOrigin() { return origin_; }
+
+  /**
+   * Get the cost value.
+   * @return {integer} The cost value, or null if not specified.
+   */
+  function getCost() { return cost_; }
+
+  /**
+   * Get the strategy.
+   * @return {Name} The strategy or an empty Name.
+   */
+  function getStrategy() { return strategy_; }
+
+  /**
+   * Get the expiration period.
+   * @return {float} The expiration period in milliseconds, or null if not specified.
+   */
+  function getExpirationPeriod() { return expirationPeriod_; }
+
+  /**
+   * Set the name.
+   * @param {Name} name The name. If not specified, set to null. If specified,
+   * this makes a copy of the name.
+   */
+  function setName(name)
+  {
+    name_ = name instanceof Name ? Name(name) : null;
+  }
+
+  /**
+   * Set the Face ID.
+   * @param {integer} faceId The new face ID, or null for not specified.
+   */
+  function setFaceId(faceId) { faceId_ = faceId; }
+
+  /**
+   * Set the URI.
+   * @param {string} uri The new uri, or an empty string for not specified.
+   */
+  function setUri(uri) { uri_ = uri != null ? uri : ""; }
+
+  /**
+   * Set the local control feature value.
+   * @param {integer} localControlFeature The new local control feature value, or
+   * null for not specified.
+   */
+  function setLocalControlFeature(localControlFeature)
+  {
+    localControlFeature_ = localControlFeature;
+  }
+
+  /**
+   * Set the origin value.
+   * @param {integer} origin The new origin value, or null for not specified.
+   */
+  function setOrigin(origin) { origin_ = origin; }
+
+  /**
+   * Set the cost value.
+   * @param {integer} cost The new cost value, or null for not specified.
+   */
+  function setCost(cost) { cost_ = cost; }
+
+  /**
+   * Set the strategy to a copy of the given Name.
+   * @param {Name} strategy The Name to copy, or an empty Name if not specified.
+   */
+  function setStrategy(strategy)
+  {
+    strategy_ = strategy instanceof Name ? Name(strategy) : Name();
+  }
+
+  /**
+   * Set the expiration period.
+   * @param {float} expirationPeriod The expiration period in milliseconds, or
+   * null for not specified.
+   */
+  function setExpirationPeriod(expirationPeriod)
+  {
+    if (expirationPeriod == null || expirationPeriod < 0)
+      expirationPeriod_ = null;
+    else
+      expirationPeriod_ = (typeof expirationPeriod == "float") ?
+        expirationPeriod : expirationPeriod.tofloat();
+  }
+}
+/**
  * Copyright (C) 2016-2018 Regents of the University of California.
  * @author: Jeff Thompson <jefft0@remap.ucla.edu>
  *
@@ -5192,15 +5414,6 @@ class Tlv0_2WireFormat extends WireFormat {
     local saveLength = encoder.getLength();
 
     // Encode backwards.
-/* TODO: Link.
-    encoder.writeOptionalNonNegativeIntegerTlv
-      (Tlv.SelectedDelegation, interest.getSelectedDelegationIndex());
-    local linkWireEncoding = interest.getLinkWireEncoding(this);
-    if (!linkWireEncoding.isNull())
-      // Encode the entire link as is.
-      encoder.writeBuffer(linkWireEncoding.buf());
-*/
-
     encoder.writeOptionalNonNegativeIntegerTlvFromFloat
       (Tlv.InterestLifetime, interest.getInterestLifetimeMilliseconds());
 
@@ -5273,25 +5486,6 @@ class Tlv0_2WireFormat extends WireFormat {
     local nonce = decoder.readBlobTlv(Tlv.Nonce);
     interest.setInterestLifetimeMilliseconds
       (decoder.readOptionalNonNegativeIntegerTlv(Tlv.InterestLifetime, endOffset));
-
-/* TODO Link.
-    if (decoder.peekType(Tlv.Data, endOffset)) {
-      // Get the bytes of the Link TLV.
-      local linkBeginOffset = decoder.getOffset();
-      local linkEndOffset = decoder.readNestedTlvsStart(Tlv.Data);
-      decoder.seek(linkEndOffset);
-
-      interest.setLinkWireEncoding
-        (Blob(decoder.getSlice(linkBeginOffset, linkEndOffset), copy), this);
-    }
-    else
-      interest.unsetLink();
-    interest.setSelectedDelegationIndex
-      (decoder.readOptionalNonNegativeIntegerTlv(Tlv.SelectedDelegation, endOffset));
-    if (interest.getSelectedDelegationIndex() != null &&
-        interest.getSelectedDelegationIndex() >= 0 && !interest.hasLink())
-      throw "Interest has a selected delegation, but no link object";
-*/
 
     // Set the nonce last because setting other interest fields clears it.
     interest.setNonce(Blob(nonce, copy));
@@ -5368,6 +5562,35 @@ class Tlv0_2WireFormat extends WireFormat {
     decoder.finishNestedTlvs(endOffset);
     return { signedPortionBeginOffset = signedPortionBeginOffset,
              signedPortionEndOffset = signedPortionEndOffset };
+  }
+
+  /**
+   * Encode controlParameters as NDN-TLV and return the encoding.
+   * @param {ControlParameters} controlParameters The ControlParameters object to
+   * encode.
+   * @return {Blob} A Blob containing the encoding.
+   */
+  function encodeControlParameters(controlParameters)
+  {
+    local encoder = TlvEncoder(256);
+    encodeControlParameters_(controlParameters, encoder);
+    return encoder.finish();
+  }
+
+  /**
+   * Decode input as an NDN-TLV ControlParameters and set the fields of the
+   * controlParameters object.
+   * @param {ControlParameters} controlParameters The ControlParameters object
+   * whose fields are updated.
+   * @param {Buffer} input The Buffer with the bytes to decode.
+   * @param {bool} copy (optional) If true, copy from the input when making new
+   * Blob values. If false, then Blob values share memory with the input, which
+   * must remain unchanged while the Blob values are used. If omitted, use true.
+   */
+  function decodeControlParameters(controlParameters, input, copy = true)
+  {
+    local decoder = TlvDecoder(input);
+    decodeControlParameters_(controlParameters, decoder, copy);
   }
 
   /**
@@ -6039,6 +6262,114 @@ class Tlv0_2WireFormat extends WireFormat {
     }
     else
       metaInfo.setFinalBlockId(null);
+
+    decoder.finishNestedTlvs(endOffset);
+  }
+
+  /**
+   * An internal method to encode controlParameters as a ControlParameters in
+   * NDN-TLV.
+   * @param {ControlParameters} controlParameters The ControlParameters object.
+   * @param {TlvEncoder} encoder The encoder to receive the encoding.
+   */
+  static function encodeControlParameters_(controlParameters, encoder)
+  {
+    local saveLength = encoder.getLength();
+
+    // Encode backwards.
+    encoder.writeOptionalNonNegativeIntegerTlvFromFloat
+      (Tlv.ControlParameters_ExpirationPeriod,
+       controlParameters.getExpirationPeriod());
+
+    if (controlParameters.getStrategy().size() > 0) {
+      local strategySaveLength = encoder.getLength();
+      encodeName_(controlParameters.getStrategy(), encoder);
+      encoder.writeTypeAndLength(Tlv.ControlParameters_Strategy,
+        encoder.getLength() - strategySaveLength);
+    }
+
+    // TODO: ControlParameters_Flags from ForwardingFlags.
+
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.ControlParameters_Cost, controlParameters.getCost());
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.ControlParameters_Origin, controlParameters.getOrigin());
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.ControlParameters_LocalControlFeature,
+       controlParameters.getLocalControlFeature());
+
+    if (controlParameters.getUri().len() != 0)
+      encoder.writeBlobTlv
+        (Tlv.ControlParameters_Uri, Blob(controlParameters.getUri()).buf());
+
+    encoder.writeOptionalNonNegativeIntegerTlv
+      (Tlv.ControlParameters_FaceId, controlParameters.getFaceId());
+    if (controlParameters.getName() != null)
+      encodeName_(controlParameters.getName(), encoder);
+
+    encoder.writeTypeAndLength
+      (Tlv.ControlParameters_ControlParameters, encoder.getLength() - saveLength);
+  }
+
+  /**
+   * An internal method to decode input as an NDN-TLV ControlParameters and set
+   * the fields of the controlParameters object.
+   * @param {ControlParameters} controlParameters The ControlParameters object
+   * whose fields are updated.
+   * @param {TlvDecoder} decoder The decoder with the input.
+   * @param {bool} copy If true, copy from the input when making new Blob
+   * values. If false, then Blob values share memory with the input, which must
+   * remain unchanged while the Blob values are used.
+   */
+  static function decodeControlParameters_(controlParameters, decoder, copy)
+  {
+    controlParameters.clear();
+    local endOffset = decoder.readNestedTlvsStart
+      (Tlv.ControlParameters_ControlParameters);
+
+    // Decode name.
+    if (decoder.peekType(Tlv.Name, endOffset)) {
+      local name = Name();
+      decodeName_(name, decoder, copy);
+      controlParameters.setName(name);
+    }
+
+    // Decode face ID.
+    controlParameters.setFaceId(decoder.readOptionalNonNegativeIntegerTlv
+      (Tlv.ControlParameters_FaceId, endOffset));
+
+    // Decode URI.
+    if (decoder.peekType(Tlv.ControlParameters_Uri, endOffset)) {
+      // Set copy false since we just immediately get the string.
+      local uri = Blob
+        (decoder.readOptionalBlobTlv(Tlv.ControlParameters_Uri, endOffset), false);
+      controlParameters.setUri(uri.toRawStr());
+    }
+
+    // Decode integers.
+    controlParameters.setLocalControlFeature(decoder.
+      readOptionalNonNegativeIntegerTlv
+        (Tlv.ControlParameters_LocalControlFeature, endOffset));
+    controlParameters.setOrigin(decoder.
+      readOptionalNonNegativeIntegerTlv
+        (Tlv.ControlParameters_Origin, endOffset));
+    controlParameters.setCost(decoder.readOptionalNonNegativeIntegerTlv
+      (Tlv.ControlParameters_Cost, endOffset));
+
+    // TODO: ForwardingStrategy from ControlParameters_Flags.
+
+    // Decode strategy.
+    if (decoder.peekType(Tlv.ControlParameters_Strategy, endOffset)) {
+      local strategyEndOffset = decoder.readNestedTlvsStart
+        (Tlv.ControlParameters_Strategy);
+      decodeName_(controlParameters.getStrategy(), decoder, copy);
+      decoder.finishNestedTlvs(strategyEndOffset);
+    }
+
+    // Decode expiration period. setExpirationPeriod will convert to float.
+    controlParameters.setExpirationPeriod
+      (decoder.readOptionalNonNegativeIntegerTlv
+        (Tlv.ControlParameters_ExpirationPeriod, endOffset));
 
     decoder.finishNestedTlvs(endOffset);
   }
