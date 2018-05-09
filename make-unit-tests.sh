@@ -8,6 +8,7 @@ cat ndn-squirrel.nut \
   tests/unit-tests/mocha.nut \
   src/packet-extensions/geo-tag.nut \
   tests/unit-tests/test-aes-algorithm.nut \
+  tests/unit-tests/test-control-parameters-encode-decode.nut \
   tests/unit-tests/test-data-methods.nut \
   tests/unit-tests/test-encrypted-content.nut \
   tests/unit-tests/test-encryptor.nut \
