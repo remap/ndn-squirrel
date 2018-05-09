@@ -10,6 +10,7 @@ cat \
   src/util/ndn-common.nut \
   src/util/signed-blob.nut \
   src/name.nut \
+  src/control-parameters.nut \
   src/key-locator.nut \
   src/exclude.nut \
   src/interest.nut \
