@@ -103,12 +103,14 @@ class MicroForwarder {
    * @param {function} getForwardingDelay If not null, and the interest matches
    * the routePrefix of the outgoing face, then the MicroForwarder calls
    * getForwardingDelay(interest, incomingFaceId, incomingFaceUri, outgoingFaceId,
-   * outgoingFaceUri, routePrefix) where interest is the incoming Interest
+   * outgoingFaceUri, routePrefix, cost) where interest is the incoming Interest
    * object, incomingFaceId is the ID integer of the incoming face,
    * incomingFaceUri is the URI string of the incoming face, outgoingFaceId is
    * the ID integer of the outgoing face, outgoingFaceUri is the URI string of
-   * the outgoing face, and routePrefix is the prefix Name of the matching
-   * outgoing route. If the getForwardingDelay callback returns 0 then
+   * the outgoing face, routePrefix is the prefix Name of the matching outgoing
+   * route, and cost is the integer cost for the outgoing face on this
+   * routePrefix (or 0 if it was not specified).
+   * If the getForwardingDelay callback returns 0 then
    * immediately forward to the outgoing face. (Often, 0 means "no" but in this
    * case it means "yes, forward after zero delay".) If it returns a negative
    * number, then don't forward. If getForwardingDelay returns a positive number
@@ -379,6 +381,8 @@ class MicroForwarder {
           if (fibEntry.name.match(interest.getName())) {
             for (local j = 0; j < fibEntry.nextHops.len(); ++j) {
               local outFace = fibEntry.nextHops[j].face;
+              local cost = fibEntry.nextHops[j].cost;
+
               // If getForwardingDelay_ is not defined, don't send the interest
               // back to where it came from.
               if (!(getForwardingDelay_ == null && outFace == face)) {
@@ -394,7 +398,7 @@ class MicroForwarder {
                   // Note that getForwardingDelay_  is called even if outFace == face.
                   forwardingDelayMs = getForwardingDelay_
                     (interest, face.faceId, face.uri, outFace.faceId, outFace.uri,
-                     fibEntry.name);
+                     fibEntry.name, cost);
 
                 pitEntry.outFace_ = outFace;
                 if (forwardingDelayMs == 0) {
