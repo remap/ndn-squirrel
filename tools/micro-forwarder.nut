@@ -129,10 +129,13 @@ class MicroForwarder {
    * with the given faceId.
    * @param {Name} name The name of the FIB entry.
    * @param {integer} faceId The face ID of the face for the route.
+   * @param {integer} cost (optional) The cost of the next hop for the given
+   * face. If a next hop for the given name and face already exists, update its
+   * cost with this value. If omitted, use 0.
    * @return {bool} True for success, or false if can't find the ForwarderFace
    * with faceId.
    */
-  function registerRoute(name, faceId)
+  function registerRoute(name, faceId, cost = 0)
   {
     local nexthopFace = findFace_(faceId);
     if (nexthopFace == null)
@@ -143,10 +146,12 @@ class MicroForwarder {
       local fibEntry = FIB_[i];
       if (fibEntry.name.equals(name)) {
         local nextHopIndex = fibEntry.nextHopIndexOf(nexthopFace);
-        if (nextHopIndex < 0)
+        if (nextHopIndex >= 0)
+          // A next hop with the face is already added, so just update its cost.
+          fibEntry.nextHops[nextHopIndex].cost = cost;
+        else
           // The face is not already added.
-          // TODO: Set the cost.
-          fibEntry.nextHops.push(NextHopRecord(nexthopFace, 0));
+          fibEntry.nextHops.push(NextHopRecord(nexthopFace, cost));
 
         return true;
       }
@@ -154,8 +159,7 @@ class MicroForwarder {
 
     // Make a new FIB entry.
     local fibEntry = FibEntry(name);
-    // TODO: Set the cost.
-    fibEntry.nextHops.push(NextHopRecord(nexthopFace, 0));
+    fibEntry.nextHops.push(NextHopRecord(nexthopFace, cost));
     FIB_.push(fibEntry);
 
     return true;
@@ -467,7 +471,11 @@ class MicroForwarder {
         // Use the requesting face.
         faceId = face.faceId;
 
-      if (!registerRoute(Name(obj.nameUri), faceId))
+      local cost = 0;
+      if ("cost" in obj)
+        cost = obj.cost;
+
+      if (!registerRoute(Name(obj.nameUri), faceId, cost))
         // TODO: Send error reply?
         return;
 
