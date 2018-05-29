@@ -168,7 +168,7 @@ function testPublish()
   // (depending on useMultiHop).
   function getForwardingDelay
     (interest, incomingFaceId, incomingFaceUri, outgoingFaceId, outgoingFaceUri,
-     routePrefix)
+     routePrefix, cost)
   {
     local isForwardingToSameFace = (incomingFaceId == outgoingFaceId);
 
