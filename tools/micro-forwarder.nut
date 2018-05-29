@@ -142,9 +142,11 @@ class MicroForwarder {
     for (local i = 0; i < FIB_.len(); ++i) {
       local fibEntry = FIB_[i];
       if (fibEntry.name.equals(name)) {
-        // Make sure the face is not already added.
-        if (fibEntry.faces.indexOf(nexthopFace) < 0)
-          fibEntry.faces.push(nexthopFace);
+        local nextHopIndex = fibEntry.nextHopIndexOf(nexthopFace);
+        if (nextHopIndex < 0)
+          // The face is not already added.
+          // TODO: Set the cost.
+          fibEntry.nextHops.push(NextHopRecord(nexthopFace, 0));
 
         return true;
       }
@@ -152,7 +154,8 @@ class MicroForwarder {
 
     // Make a new FIB entry.
     local fibEntry = FibEntry(name);
-    fibEntry.faces.push(nexthopFace);
+    // TODO: Set the cost.
+    fibEntry.nextHops.push(NextHopRecord(nexthopFace, 0));
     FIB_.push(fibEntry);
 
     return true;
@@ -370,8 +373,8 @@ class MicroForwarder {
 
           // TODO: Need to check all for longest prefix match?
           if (fibEntry.name.match(interest.getName())) {
-            for (local j = 0; j < fibEntry.faces.len(); ++j) {
-              local outFace = fibEntry.faces[j];
+            for (local j = 0; j < fibEntry.nextHops.len(); ++j) {
+              local outFace = fibEntry.nextHops[j].face;
               // If getForwardingDelay_ is not defined, don't send the interest
               // back to where it came from.
               if (!(getForwardingDelay_ == null && outFace == face)) {
@@ -505,7 +508,6 @@ class MicroForwarder {
    */
   function findFace_(faceId)
   {
-    local nexthopFace = null;
     for (local i = 0; i < faces_.len(); ++i) {
       if (faces_[i].faceId == faceId)
         return faces_[i];
@@ -637,17 +639,55 @@ class PitEntry {
 }
 
 /**
- * A FibEntry is used in the FIB to match a registered name with related faces.
+ * A FibEntry is used in the FIB to match a registered name with related next
+ * hop records.
  * @param {Name} name The registered name for this FIB entry.
  */
 class FibEntry {
   name = null;
-  faces = null; // array of ForwarderFace
+  nextHops = null; // array of NextHopRecord
 
   constructor (name)
   {
     this.name = name;
-    this.faces = [];
+    this.nextHops = [];
+  }
+
+  /**
+   * Get the index in nextHops of the NextHopRecord with the given face.
+   * @param {ForwarderFace} The face to search for.
+   * @return {integer} The index in nextHops of the matching NextHopRecord, or
+   * -1 if not found.
+   */
+  function nextHopIndexOf(face)
+  {
+    for (local i = 0; i < this.nextHops.len(); ++i) {
+      if (this.nextHops[i].face == face)
+        return i;
+    }
+
+    return -1;
+  }
+}
+
+/**
+ * A FibEntry holds a list of NextHopRecord where each record has a
+ * ForwarderFace and its related cost.
+ * @param {Name} name The registered name for this FIB entry.
+ */
+class NextHopRecord {
+  face = null;  // ForwarderFace
+  cost = 0;
+
+  /**
+   * Create a NextHopRecord with the given values.
+   * @param {ForwarderFace} face The ForwarderFace for this next hop.
+   * @param {integer} cost The cost of this next hop on the given face.
+   */
+  constructor (face, cost)
+  {
+    this.face = face;
+    this.cost = cost;
   }
 }
 
