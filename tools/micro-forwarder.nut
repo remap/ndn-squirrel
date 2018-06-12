@@ -36,6 +36,7 @@ class MicroForwarder {
   minPitEntryLifetimeMilliseconds_ = 60000;
 
   static localhostNamePrefix = Name("/localhost");
+  static localhopNamePrefix = Name("/localhop");
   static broadcastNamePrefix = Name("/ndn/broadcast");
 
   /**
@@ -306,6 +307,10 @@ class MicroForwarder {
 
       if (localhostNamePrefix.match(interest.getName()))
         // Ignore localhost.
+        return;
+
+      if (localhopNamePrefix.match(interest.getName()))
+        // Ignore localhop.
         return;
 
       // First check for a duplicate nonce on any face.
