@@ -17,6 +17,9 @@ in a terminal change directory to the NDN-Squirrel root and enter:
 
     ./make-ndn-squirrel.sh
 
+This also makes `ndn-squirrel-extras.nut`, which can be included if needed by
+your application in addition to `ndn-squirrel.nut` .
+
 To make the examples, enter the following (which also runs `make-ndn-squirrel.sh`):
 
     ./make-examples.sh
