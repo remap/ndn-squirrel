@@ -269,6 +269,7 @@ class MicroForwarder {
       // than entryEndSeconds.
       if (nowSeconds >= entry.entryEndSeconds &&
           nowSeconds >= entry.timeoutEndSeconds) {
+        //consoleLog("INT TIMEOUT");  
         removePitEntry_(i);
       }
       else if (nowSeconds >= entry.timeoutEndSeconds) {
@@ -349,7 +350,7 @@ class MicroForwarder {
           }
 
           // Drop the duplicate nonce.
-          consoleLog("Interest dropped");  
+          //consoleLog("INT DROP");  
           return;
         }
       }
@@ -446,7 +447,7 @@ class MicroForwarder {
     }
     else if (data != null) {
 
-      consoleLog("RX Data at " + hardware.millis());
+      //consoleLog("RX");
 
       if (transmitFailed) {
         // Find the queue entry of the failed transmission.
@@ -477,7 +478,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          consoleLog("TX Data " + entry.inFace_.uri + " at " + hardware.millis()); 
+          //consoleLog("TX Data " + entry.inFace_.uri + " at " + hardware.millis()); 
           matchingPitEntry = true;
           // Remove the entry before sending.
 
@@ -493,7 +494,7 @@ class MicroForwarder {
         } 
       }
       if (!matchingPitEntry){
-          consoleLog("Data dropped");  
+          //consoleLog("DATA DROP");  
       }
     }
   }
