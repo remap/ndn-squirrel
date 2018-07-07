@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Regents of the University of California.
+ * Copyright (C) 2016-2018 Regents of the University of California.
  * @author: Jeff Thompson <jefft0@remap.ucla.edu>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -40,14 +40,16 @@ class MicroForwarder {
   logEnable_ = false; // operant
  
   static localhostNamePrefix = Name("/localhost");
+  static localhopNamePrefix = Name("/localhop");
   static broadcastNamePrefix = Name("/ndn/broadcast");
 
-  /**
+    /**
    * Create a new MicroForwarder. You must call addFace(). If running on the Imp
-   * device, call addFace("internal://agent", agent).
+   * device, call addFace("internal://agent", SquirrelObjectTransport(),
+   * SquirrelObjectTransportConnectionInfo(agent)).
    * Normally you do not create a MicroForwader, but use the static get().
    */
-  constructor()
+   constructor()
   {
     PIT_ = [];
     FIB_ = [];
@@ -98,7 +100,7 @@ class MicroForwarder {
     return face.faceId;
   }
 
-  /**
+/**
    * Set the getForwardingDelay callback. When the MicroForwarder receives an
    * interest which matches the routing prefix on a face, it calls
    * getForwardingDelay as described below to check if it is OK to forward to
@@ -106,12 +108,14 @@ class MicroForwarder {
    * @param {function} getForwardingDelay If not null, and the interest matches
    * the routePrefix of the outgoing face, then the MicroForwarder calls
    * getForwardingDelay(interest, incomingFaceId, incomingFaceUri, outgoingFaceId,
-   * outgoingFaceUri, routePrefix) where interest is the incoming Interest
+   * outgoingFaceUri, routePrefix, cost) where interest is the incoming Interest
    * object, incomingFaceId is the ID integer of the incoming face,
    * incomingFaceUri is the URI string of the incoming face, outgoingFaceId is
    * the ID integer of the outgoing face, outgoingFaceUri is the URI string of
-   * the outgoing face, and routePrefix is the prefix Name of the matching
-   * outgoing route. If the getForwardingDelay callback returns 0 then
+   * the outgoing face, routePrefix is the prefix Name of the matching outgoing
+   * route, and cost is the integer cost for the outgoing face on this
+   * routePrefix (or 0 if it was not specified).
+   * If the getForwardingDelay callback returns 0 then
    * immediately forward to the outgoing face. (Often, 0 means "no" but in this
    * case it means "yes, forward after zero delay".) If it returns a negative
    * number, then don't forward. If getForwardingDelay returns a positive number
@@ -119,8 +123,8 @@ class MicroForwarder {
    * supported on the Imp).
    * IMPORTANT: The getForwardingDelay callback is called when the routePrefix
    * matches, even if the outgoing face is the same as the incoming face. So you
-   * must check if incomingFaceId == outgoingFaceId and return false if you
-   * don't want to forward to the same face.
+   * must check if incomingFaceId == outgoingFaceId and return -1 if you don't
+   * want to forward to the same face.
    */
   function setGetForwardingDelay(getForwardingDelay)
   {
@@ -132,10 +136,13 @@ class MicroForwarder {
    * with the given faceId.
    * @param {Name} name The name of the FIB entry.
    * @param {integer} faceId The face ID of the face for the route.
+   * @param {integer} cost (optional) The cost of the next hop for the given
+   * face. If a next hop for the given name and face already exists, update its
+   * cost with this value. If omitted, use 0.
    * @return {bool} True for success, or false if can't find the ForwarderFace
    * with faceId.
    */
-  function registerRoute(name, faceId)
+  function registerRoute(name, faceId, cost = 0)
   {
     local nexthopFace = findFace_(faceId);
     if (nexthopFace == null)
@@ -145,9 +152,13 @@ class MicroForwarder {
     for (local i = 0; i < FIB_.len(); ++i) {
       local fibEntry = FIB_[i];
       if (fibEntry.name.equals(name)) {
-        // Make sure the face is not already added.
-        if (fibEntry.faces.indexOf(nexthopFace) < 0)
-          fibEntry.faces.push(nexthopFace);
+        local nextHopIndex = fibEntry.nextHopIndexOf(nexthopFace);
+        if (nextHopIndex >= 0)
+          // A next hop with the face is already added, so just update its cost.
+          fibEntry.nextHops[nextHopIndex].cost = cost;
+        else
+          // The face is not already added.
+          fibEntry.nextHops.push(NextHopRecord(nexthopFace, cost));
 
         return true;
       }
@@ -155,11 +166,12 @@ class MicroForwarder {
 
     // Make a new FIB entry.
     local fibEntry = FibEntry(name);
-    fibEntry.faces.push(nexthopFace);
+    fibEntry.nextHops.push(NextHopRecord(nexthopFace, cost));
     FIB_.push(fibEntry);
 
     return true;
   }
+
 
   /**
    * Use PacketExtensions.makeExtension to prepend the extension to the
@@ -309,7 +321,7 @@ class MicroForwarder {
               entry.interest.getName().equals(interest.getName())) {
 
             // This will only schedule if there are more retransmit tries.
-            if (false) consoleLog(" Scheduling Interest retransmission ");  // operant
+            //consoleLog(" Scheduling Interest retransmission ");  // operant
             entry.scheduleRetransmit(face, this);
             return;
           }
@@ -318,17 +330,18 @@ class MicroForwarder {
         return;
       }
 
-      if (localhostNamePrefix.match(interest.getName()))
-      {
+      if (localhostNamePrefix.match(interest.getName())) {
         // Ignore localhost.
         //consoleLog(" Ignoring localhost ");  // operant
         return;
       }
-        
+
+      if (localhopNamePrefix.match(interest.getName()))
+        // Ignore localhop.
+        return;        
 
       // First check for a duplicate nonce on any face.
-      for (local i = 0; i < PIT_.len(); ++i) 
-      {
+      for (local i = 0; i < PIT_.len(); ++i) {
         //consoleLog(" Checking for duplicate nonce: " + interest.getNonce().toHex() + " ");  
         local entry = PIT_[i];
         if (entry.interest.getNonce().equals(interest.getNonce())) {
@@ -407,8 +420,10 @@ class MicroForwarder {
 
           // TODO: Need to check all for longest prefix match?
           if (fibEntry.name.match(interest.getName())) {
-            for (local j = 0; j < fibEntry.faces.len(); ++j) {
-              local outFace = fibEntry.faces[j];
+            for (local j = 0; j < fibEntry.nextHops.len(); ++j) {
+              local outFace = fibEntry.nextHops[j].face;
+              local cost = fibEntry.nextHops[j].cost;
+
               // If getForwardingDelay_ is not defined, don't send the interest
               // back to where it came from.
               if (!(getForwardingDelay_ == null && outFace == face)) {
@@ -424,7 +439,7 @@ class MicroForwarder {
                   //consoleLog("calling getForwardingDelay_ from FIB");
                   forwardingDelayMs = getForwardingDelay_
                     (interest, face.faceId, face.uri, outFace.faceId, outFace.uri,
-                     fibEntry.name, false);
+                     fibEntry.name, cost);
                   //consoleLog(forwardingDelayMs);
 
                 pitEntry.outFace_ = outFace;
@@ -518,7 +533,11 @@ class MicroForwarder {
         // Use the requesting face.
         faceId = face.faceId;
 
-      if (!registerRoute(Name(obj.nameUri), faceId))
+      local cost = 0;
+      if ("cost" in obj)
+        cost = obj.cost;
+
+      if (!registerRoute(Name(obj.nameUri), faceId, cost))
         // TODO: Send error reply?
         return;
 
@@ -701,17 +720,55 @@ class PitEntry {
 }
 
 /**
- * A FibEntry is used in the FIB to match a registered name with related faces.
+ * A FibEntry is used in the FIB to match a registered name with related next
+ * hop records.
  * @param {Name} name The registered name for this FIB entry.
  */
 class FibEntry {
   name = null;
-  faces = null; // array of ForwarderFace
+  nextHops = null; // array of NextHopRecord
 
   constructor (name)
   {
     this.name = name;
-    this.faces = [];
+    this.nextHops = [];
+  }
+
+  /**
+   * Get the index in nextHops of the NextHopRecord with the given face.
+   * @param {ForwarderFace} The face to search for.
+   * @return {integer} The index in nextHops of the matching NextHopRecord, or
+   * -1 if not found.
+   */
+  function nextHopIndexOf(face)
+  {
+    for (local i = 0; i < this.nextHops.len(); ++i) {
+      if (this.nextHops[i].face == face)
+        return i;
+    }
+
+    return -1;
+  }
+}
+
+/**
+ * A FibEntry holds a list of NextHopRecord where each record has a
+ * ForwarderFace and its related cost.
+ * @param {Name} name The registered name for this FIB entry.
+ */
+class NextHopRecord {
+  face = null;  // ForwarderFace
+  cost = 0;
+
+  /**
+   * Create a NextHopRecord with the given values.
+   * @param {ForwarderFace} face The ForwarderFace for this next hop.
+   * @param {integer} cost The cost of this next hop on the given face.
+   */
+  constructor (face, cost)
+  {
+    this.face = face;
+    this.cost = cost;
   }
 }
 
@@ -881,7 +938,7 @@ class DataRetransmitEntry {
       outFace_.sendBuffer(data_.wireEncode().buf());
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
-      Log("Error in sendBuffer: " + ex);
+      consoleLog("Error in sendBuffer: " + ex);
     }
   }
 }
