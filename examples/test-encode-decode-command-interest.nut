@@ -78,9 +78,6 @@ function main()
   consoleLog("Prefix: " + controlParameters.getName().toUri());
   consoleLog("URI: " + controlParameters.getUri());
   consoleLog("Cost: " + controlParameters.getCost());
-  local debug = "entr\u00E9e";
-  consoleLog("Debug size " + debug.len() + " " + debug);
-  consoleLog("Buffer size " + Buffer(debug).len());
 }
 
 main();
