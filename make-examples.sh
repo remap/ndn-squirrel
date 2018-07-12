@@ -5,6 +5,9 @@ mkdir -p bin
 cat ndn-squirrel.nut \
   examples/test-encode-decode-benchmark.nut \
   > bin/test-encode-decode-benchmark.app.nut
+cat ndn-squirrel.nut ndn-squirrel-extras.nut \
+  examples/test-encode-decode-command-interest.nut \
+  > bin/test-encode-decode-command-interest.app.nut
 cat ndn-squirrel.nut \
   examples/test-encode-decode-data.nut \
   > bin/test-encode-decode-data.app.nut
