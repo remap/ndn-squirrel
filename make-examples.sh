@@ -5,6 +5,9 @@ mkdir -p bin
 cat ndn-squirrel.nut \
   examples/test-encode-decode-benchmark.nut \
   > bin/test-encode-decode-benchmark.app.nut
+cat ndn-squirrel.nut ndn-squirrel-extras.nut \
+  examples/test-encode-decode-command-interest.nut \
+  > bin/test-encode-decode-command-interest.app.nut
 cat ndn-squirrel.nut \
   examples/test-encode-decode-data.nut \
   > bin/test-encode-decode-data.app.nut
@@ -22,6 +25,7 @@ cat ndn-squirrel.nut \
 cat ndn-squirrel.nut \
   contrib/kisi-inc/aes-squirrel/aes.class.nut \
   contrib/vukicevic/crunch/crunch.nut \
+  tools/micro-forwarder.nut \
   examples/test-imp-nac-echo-consumer.agent.nut \
   > bin/test-imp-nac-echo-consumer.agent.app.nut
 cat ndn-squirrel.nut \

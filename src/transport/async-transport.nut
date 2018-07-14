@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Regents of the University of California.
+ * Copyright (C) 2016-2018 Regents of the University of California.
  * @author: Jeff Thompson <jefft0@remap.ucla.edu>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -31,7 +31,7 @@ class AsyncTransport extends Transport {
    * Connect to the connection object by calling
    * connectionInfo.getConnectionObject().setAsyncCallbacks(this) so that the
    * connection object asynchronously calls this.onDataReceived(data) on
-   * receiving incoming data. (data is a Squirrel blob.) This Read an entire
+   * receiving incoming data. (data is a Squirrel blob.) This reads an entire
    * packet element and calls elementListener.onReceivedElement(element). To 
    * send data, this calls connectionInfo.getConnectionObject().write(data)
    * where data is a Squirrel blob.

@@ -340,6 +340,10 @@ class MicroForwarder {
         // Ignore localhop.
         return;        
 
+      if (localhopNamePrefix.match(interest.getName()))
+        // Ignore localhop.
+        return;
+
       // First check for a duplicate nonce on any face.
       for (local i = 0; i < PIT_.len(); ++i) {
         //consoleLog(" Checking for duplicate nonce: " + interest.getNonce().toHex() + " ");  
@@ -432,7 +436,6 @@ class MicroForwarder {
                   // Prepend the extensions header.
                   outBuffer = Buffer.concat
                     ([outFace.interestExtensionsHeader.buf(), outBuffer]);
-
 
                 if (getForwardingDelay_ != null)
                   // Note that getForwardingDelay_  is called even if outFace == face.
@@ -580,7 +583,6 @@ class MicroForwarder {
    */
   function findFace_(faceId)
   {
-    local nexthopFace = null;
     for (local i = 0; i < faces_.len(); ++i) {
       if (faces_[i].faceId == faceId)
         return faces_[i];

@@ -1,5 +1,7 @@
 #!/bin/sh
 # Concatenate all NDN-Squirrel library files into ndn-squirrel.nut .
+# Also concatenate the extra NDN-Squirrel library files into ndn-squirrel-extras.nut,
+# which can be included if needed in addition to ndn-squirrel.nut .
 cat \
   src/util/imp-compatibility.nut \
   src/util/buffer.nut \
@@ -10,6 +12,7 @@ cat \
   src/util/ndn-common.nut \
   src/util/signed-blob.nut \
   src/name.nut \
+  src/control-parameters.nut \
   src/key-locator.nut \
   src/exclude.nut \
   src/interest.nut \
@@ -54,3 +57,7 @@ cat \
   src/transport/uart-transport.nut \
   src/face.nut \
   > ndn-squirrel.nut
+
+cat \
+  src/security/command-interest-preparer.nut \
+  > ndn-squirrel-extras.nut
