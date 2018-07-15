@@ -211,7 +211,7 @@ class MicroForwarder {
   {
     local geoTag = null;
     local transmitFailed = false;
-    //consoleLog(" onReceivedElement "); 
+    consoleLog(" onReceivedElement "); 
     if (PacketExtensions.isExtension(element.get(0))) {
       local i = 0;
       for (;
@@ -303,7 +303,7 @@ class MicroForwarder {
     // Now process as Interest or Data.
     if (interest != null) 
     {
-      //consoleLog(" Processing Interest " + interest.getName() + " ");  
+      //consoleLog(" Processing Interest " + interest.getName().toUri() + " ");  
       local forwardingDelayMs = 0;
       if (transmitFailed) 
       {
@@ -339,10 +339,6 @@ class MicroForwarder {
       if (localhopNamePrefix.match(interest.getName()))
         // Ignore localhop.
         return;        
-
-      if (localhopNamePrefix.match(interest.getName()))
-        // Ignore localhop.
-        return;
 
       // First check for a duplicate nonce on any face.
       for (local i = 0; i < PIT_.len(); ++i) {
