@@ -60,7 +60,7 @@ class AsyncTransport extends Transport {
   }
 
   /**
-   * Write the bytes to the UART.
+   * Write the bytes to the connection object.
    * @param {Buffer} buffer The bytes to send.
    */
   function send(buffer)
