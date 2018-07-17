@@ -60,4 +60,5 @@ cat \
 
 cat \
   src/security/command-interest-preparer.nut \
+  src/transport/http-transport.nut \
   > ndn-squirrel-extras.nut
