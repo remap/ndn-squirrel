@@ -14,7 +14,7 @@ cat ndn-squirrel.nut \
 cat ndn-squirrel.nut \
   examples/test-encode-decode-interest.nut \
   > bin/test-encode-decode-interest.app.nut
-cat ndn-squirrel.nut \
+cat ndn-squirrel.nut ndn-squirrel-extras.nut \
   examples/test-imp-echo-consumer.agent.nut \
   > bin/test-imp-echo-consumer.agent.app.nut
 cat ndn-squirrel.nut \
@@ -22,7 +22,7 @@ cat ndn-squirrel.nut \
   src/packet-extensions/geo-tag.nut \
   examples/test-imp-publish-async.device.nut \
   > bin/test-imp-publish-async.device.app.nut
-cat ndn-squirrel.nut \
+cat ndn-squirrel.nut ndn-squirrel-extras.nut \
   contrib/kisi-inc/aes-squirrel/aes.class.nut \
   contrib/vukicevic/crunch/crunch.nut \
   tools/micro-forwarder.nut \
