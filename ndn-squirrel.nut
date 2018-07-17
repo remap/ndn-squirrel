@@ -8324,7 +8324,7 @@ class AsyncTransport extends Transport {
    * Connect to the connection object by calling
    * connectionInfo.getConnectionObject().setAsyncCallbacks(this) so that the
    * connection object asynchronously calls this.onDataReceived(data) on
-   * receiving incoming data. (data is a Squirrel blob.) This Read an entire
+   * receiving incoming data. (data is a Squirrel blob.) This reads an entire
    * packet element and calls elementListener.onReceivedElement(element). To 
    * send data, this calls connectionInfo.getConnectionObject().write(data)
    * where data is a Squirrel blob.
@@ -8353,7 +8353,7 @@ class AsyncTransport extends Transport {
   }
 
   /**
-   * Write the bytes to the UART.
+   * Write the bytes to the connection object.
    * @param {Buffer} buffer The bytes to send.
    */
   function send(buffer)
