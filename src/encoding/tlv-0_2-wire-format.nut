@@ -364,7 +364,7 @@ class Tlv0_2WireFormat extends WireFormat {
         local canIgnore =
           (fieldType >= Tlv.LpPacket_IGNORE_MIN &&
            fieldType <= Tlv.LpPacket_IGNORE_MAX &&
-           (fieldType & 0x01) == 1);
+           (fieldType & 0x03) == 0);
         if (!canIgnore)
           throw "Did not get the expected TLV type";
 
