@@ -29,8 +29,8 @@ class HttpTransport extends Transport {
   /**
    * When the send method is called, it calls
    * connectionInfo.getHttp().post(connectionInfo.getUrl(), connectionInfo.getHeaders(), buffer)
-   * where buffer is the buffer given to the send method, converted to a raw
-   * string for the body of the POST message. The "post" method returns
+   * where buffer is the buffer given to the send method, converted to a Squirrel
+   * blob for the body of the POST message. The "post" method returns
    * an object which has a method sendasync(doneCallback). When the HTTP response
    * is received, the system calls doneCallback(response) where response.body
    * is the raw string of the response. This converts the response to a Buffer
@@ -75,7 +75,7 @@ class HttpTransport extends Transport {
 
     // TODO: Should we specify the timeout for sendasync? (The default is 10 minutes.)
     connectionInfo_.getHttp().post
-      (connectionInfo_.getUrl(), connectionInfo_.getHeaders(), buffer.toString("raw"))
+      (connectionInfo_.getUrl(), connectionInfo_.getHeaders(), buffer.toBlob())
       .sendasync(doneCallback);
   }
 }
