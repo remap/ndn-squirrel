@@ -29,11 +29,11 @@ class HttpTransport extends Transport {
   /**
    * When the send method is called, it calls
    * connectionInfo.getHttp().post(connectionInfo.getUrl(), connectionInfo.getHeaders(), buffer)
-   * where buffer is the buffer given to the send method, encoded in base64 for
-   * the body of the POST message. The "post" method returns
+   * where buffer is the buffer given to the send method, converted to a raw
+   * string for the body of the POST message. The "post" method returns
    * an object which has a method sendasync(doneCallback). When the HTTP response
    * is received, the system calls doneCallback(response) where response.body
-   * is the base64 encoded response. This converts the response to a Buffer
+   * is the raw string of the response. This converts the response to a Buffer
    * and calls elementListener.onReceivedElement(). In this way this Transport
    * can be used to POST a packet to an HTTP server and receive the response,
    * but it does not listen for other nodes to initiate an incoming HTTP
@@ -69,15 +69,13 @@ class HttpTransport extends Transport {
     // Each connection is separate, so use a local callback.
     local thisTransport = this;
     local doneCallback = function(response) {
-      // TODO: Check the headers for "Content-Transfer-Encoding": "base64"?
-      local encoding = Blob(http.base64decode(response.body));
-      thisTransport.elementReader_.onReceivedData(encoding.buf());
+      local encoding = Blob(response.body);
+      thisTransport.elementReader_.onReceivedData(Buffer(response.body));
     }
 
     // TODO: Should we specify the timeout for sendasync? (The default is 10 minutes.)
     connectionInfo_.getHttp().post
-      (connectionInfo_.getUrl(), connectionInfo_.getHeaders(), 
-       http.base64encode(buffer.toString("raw")))
+      (connectionInfo_.getUrl(), connectionInfo_.getHeaders(), buffer.toString("raw"))
       .sendasync(doneCallback);
   }
 }
@@ -99,21 +97,10 @@ class HttpTransportConnectionInfo extends TransportConnectionInfo {
    * "connect" method for details.
    * @param {string} url The URL for calling "post".
    * @param {table} headers (optional) The table of additional HTTP headers for
-   * calling "post". If omitted, use { "Content-Type": "application/binary",
-   * "Content-Transfer-Encoding”: “base64" }.
-   * @throws string if headers already has a Content-Transfer-Encoding and it
-   * is not base64.
+   * calling "post". If omitted, use { "Content-Type" : "application/binary" }.
    */
-  constructor
-    (http, url,
-     headers = { "Content-Type": "application/binary",
-                 "Content-Transfer-Encoding": "base64" })
+  constructor(http, url, headers = { "Content-Type" : "application/binary" })
   {
-    if ("Content-Transfer-Encoding" in headers &&
-         headers["Content-Transfer-Encoding"].tolower() != "base64")
-      throw "Existing header Content-Transfer-Encoding is not base64: " +
-        headers["Content-Transfer-Encoding"];
-
     http_ = http;
     url_ = url;
     headers_ = headers;
