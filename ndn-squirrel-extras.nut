@@ -75,7 +75,7 @@ class CommandInterestPreparer {
   }
 }
 /**
- * Copyright (C) 2016-2018 Regents of the University of California.
+ * Copyright (C) 2018 Regents of the University of California.
  * @author: Jeff Thompson <jefft0@remap.ucla.edu>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -103,17 +103,19 @@ class HttpTransport extends Transport {
   connectionInfo_ = null;
 
   /**
-   * When the send is called, it calls
+   * When the send method is called, it calls
    * connectionInfo.getHttp().post(connectionInfo.getUrl(), connectionInfo.getHeaders(), buffer)
-   * where buffer is the buffer given to the send method. (The buffer is put
-   * in the body of the POST message as a raw string.) The "post" method returns
+   * where buffer is the buffer given to the send method, encoded in base64 for
+   * the body of the POST message. The "post" method returns
    * an object which has a method sendasync(doneCallback). When the HTTP response
    * is received, the system calls doneCallback(response) where response.body
-   * is the raw string of the response. This converts the response to a Buffer
+   * is the base64 encoded response. This converts the response to a Buffer
    * and calls elementListener.onReceivedElement(). In this way this Transport
    * can be used to POST a packet to an HTTP server and receive the response,
    * but it does not listen for other nodes to initiate an incoming HTTP
-   * connection.
+   * connection. This follows the API of the Imp http.post method, but another
+   * object for connectionInfo.getHttp() can be set up to behave the same way.
+   * https://developer.electricimp.com/api/http/post
    * @param {HttpTransportConnectionInfo} connectionInfo The ConnectionInfo with
    * the HTTP object and parameters for calling its "post" method.
    * @param {instance} elementListener The elementListener with function
@@ -143,12 +145,15 @@ class HttpTransport extends Transport {
     // Each connection is separate, so use a local callback.
     local thisTransport = this;
     local doneCallback = function(response) {
-      local encoding = Blob(response.body);
-      thisTransport.elementReader_.onReceivedData(Buffer(response.body));
+      // TODO: Check the headers for "Content-Transfer-Encoding": "base64"?
+      local encoding = Blob(http.base64decode(response.body));
+      thisTransport.elementReader_.onReceivedData(encoding.buf());
     }
 
+    // TODO: Should we specify the timeout for sendasync? (The default is 10 minutes.)
     connectionInfo_.getHttp().post
-      (connectionInfo_.getUrl(), connectionInfo_.getHeaders(), buffer.toString("raw"))
+      (connectionInfo_.getUrl(), connectionInfo_.getHeaders(), 
+       http.base64encode(buffer.toString("raw")))
       .sendasync(doneCallback);
   }
 }
@@ -170,10 +175,21 @@ class HttpTransportConnectionInfo extends TransportConnectionInfo {
    * "connect" method for details.
    * @param {string} url The URL for calling "post".
    * @param {table} headers (optional) The table of additional HTTP headers for
-   * calling "post". If omitted, use { "Content-Type" : "application/binary" }.
+   * calling "post". If omitted, use { "Content-Type": "application/binary",
+   * "Content-Transfer-Encoding”: “base64" }.
+   * @throws string if headers already has a Content-Transfer-Encoding and it
+   * is not base64.
    */
-  constructor(http, url, headers = { "Content-Type" : "application/binary" })
+  constructor
+    (http, url,
+     headers = { "Content-Type": "application/binary",
+                 "Content-Transfer-Encoding": "base64" })
   {
+    if ("Content-Transfer-Encoding" in headers &&
+         headers["Content-Transfer-Encoding"].tolower() != "base64")
+      throw "Existing header Content-Transfer-Encoding is not base64: " +
+        headers["Content-Transfer-Encoding"];
+
     http_ = http;
     url_ = url;
     headers_ = headers;
