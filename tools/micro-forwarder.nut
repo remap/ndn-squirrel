@@ -211,7 +211,6 @@ class MicroForwarder {
   {
     local geoTag = null;
     local transmitFailed = false;
-    consoleLog(" onReceivedElement "); 
     if (PacketExtensions.isExtension(element.get(0))) {
       local i = 0;
       for (;
