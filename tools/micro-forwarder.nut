@@ -302,7 +302,7 @@ class MicroForwarder {
     // Now process as Interest or Data.
     if (interest != null) 
     {
-      //consoleLog(" Processing Interest " + interest.getName().toUri() + " ");  
+      consoleLog("received interest packet");  
       local forwardingDelayMs = 0;
       if (transmitFailed) 
       {
@@ -444,11 +444,12 @@ class MicroForwarder {
 
                 if (forwardingDelayMs == 0) {
                   // Forward now.
-                  //consoleLog("INT FWD NOW " + outFace.uri);  // operant
+                  consoleLog("forwarding interest now to " + outFace.uri);  // operant
                   outFace.sendBuffer(outBuffer);
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
+                  consoleLog("forwarding interest to " + outFace.uri + " after delay of " + forwardingDelayMs + " ms");  // operant
                   imp.wakeup(forwardingDelayMs / 1000.0,
                     function() { outFace.sendBuffer(outBuffer); });
                 }
@@ -460,7 +461,7 @@ class MicroForwarder {
     }
     else if (data != null) {
 
-      //consoleLog("RX");
+      consoleLog("received data packet");
 
       if (transmitFailed) {
         // Find the queue entry of the failed transmission.
@@ -491,7 +492,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          //consoleLog("TX Data " + entry.inFace_.uri + " at " + hardware.millis()); 
+          consoleLog("send data to " + entry.inFace_.uri); 
           matchingPitEntry = true;
           // Remove the entry before sending.
 
