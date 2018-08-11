@@ -492,7 +492,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          consoleLog("send data to " + entry.inFace_.uri); 
+          consoleLog("send data to " + entry.inFace_.uri + " from " + entry.outFace_.uri); 
           matchingPitEntry = true;
           // Remove the entry before sending.
 
