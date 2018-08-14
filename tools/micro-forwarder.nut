@@ -302,7 +302,7 @@ class MicroForwarder {
     // Now process as Interest or Data.
     if (interest != null) 
     {
-      consoleLog("received interest packet");  
+      consoleLog("uFwd: Interest");  
       local forwardingDelayMs = 0;
       if (transmitFailed) 
       {
@@ -382,7 +382,7 @@ class MicroForwarder {
 
         if (entry.inFace_ == face &&
             entry.interest.getName().equals(interest.getName())) {
-            //consoleLog("Duplicate Interest");  // operant
+            consoleLog("uFwd: Duplicate Interest");  // operant
             // Duplicate PIT entry.
             // Update the interest timeout.
             if (timeoutEndSeconds > entry.timeoutEndSeconds)
@@ -444,12 +444,12 @@ class MicroForwarder {
 
                 if (forwardingDelayMs == 0) {
                   // Forward now.
-                  consoleLog("forwarding interest now to " + outFace.uri);  // operant
+                  consoleLog("uFwd: send Interest now to " + outFace.uri); 
                   outFace.sendBuffer(outBuffer);
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
-                  consoleLog("forwarding interest to " + outFace.uri + " after delay of " + forwardingDelayMs + " ms");  // operant
+                  consoleLog("uFwd: send Interest to " + outFace.uri + " delay " + forwardingDelayMs + " ms");  // operant
                   imp.wakeup(forwardingDelayMs / 1000.0,
                     function() { outFace.sendBuffer(outBuffer); });
                 }
@@ -461,7 +461,7 @@ class MicroForwarder {
     }
     else if (data != null) {
 
-      consoleLog("received data packet");
+      consoleLog("uFwd: Data");
 
       if (transmitFailed) {
         // Find the queue entry of the failed transmission.
@@ -492,7 +492,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          consoleLog("send data to " + entry.inFace_.uri + " from " + entry.outFace_.uri); 
+          consoleLog("uFwd: send Data to " + entry.inFace_.uri + " from " + entry.outFace_.uri); 
           matchingPitEntry = true;
           // Remove the entry before sending.
 
@@ -508,7 +508,7 @@ class MicroForwarder {
         } 
       }
       if (!matchingPitEntry){
-          //consoleLog("DATA DROP");  
+          consoleLog("uFwd: drop Data");  
       }
     }
   }
@@ -712,7 +712,7 @@ class PitEntry {
       outFace_.sendBuffer(outBuffer);
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
-      consoleLog("Error in sendBuffer: " + ex);
+      consoleLog("uFwd: Error in sendBuffer: " + ex);
     }
   }
 }
@@ -936,7 +936,7 @@ class DataRetransmitEntry {
       outFace_.sendBuffer(data_.wireEncode().buf());
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
-      consoleLog("Error in sendBuffer: " + ex);
+      consoleLog("uFwd: Error in sendBuffer: " + ex);
     }
   }
 }
