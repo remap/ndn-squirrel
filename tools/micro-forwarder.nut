@@ -302,7 +302,7 @@ class MicroForwarder {
     // Now process as Interest or Data.
     if (interest != null) 
     {
-      consoleLog("uFwd: Interest");  
+      consoleLog("uFwd: Interest " + interest.getName().toUri());  
       local forwardingDelayMs = 0;
       if (transmitFailed) 
       {
@@ -444,12 +444,12 @@ class MicroForwarder {
 
                 if (forwardingDelayMs == 0) {
                   // Forward now.
-                  consoleLog("uFwd: send Interest now to " + outFace.uri); 
+                  consoleLog("uFwd: Interest --> " + outFace.uri); 
                   outFace.sendBuffer(outBuffer);
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
-                  consoleLog("uFwd: send Interest to " + outFace.uri + " delay " + forwardingDelayMs + " ms");  // operant
+                  consoleLog("uFwd: Interest --> " + outFace.uri + " delay " + forwardingDelayMs + " ms");  
                   imp.wakeup(forwardingDelayMs / 1000.0,
                     function() { outFace.sendBuffer(outBuffer); });
                 }
@@ -492,7 +492,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          consoleLog("uFwd: send Data to " + entry.inFace_.uri + " from " + entry.outFace_.uri); 
+          consoleLog("uFwd: " + entry.outFace_.uri + " --> Data --> " + entry.inFace_.uri); 
           matchingPitEntry = true;
           // Remove the entry before sending.
 
