@@ -302,7 +302,7 @@ class MicroForwarder {
     // Now process as Interest or Data.
     if (interest != null) 
     {
-      consoleLog("uFwd: Interest " + interest.getName().toUri());  
+      //consoleLog("uFwd: Interest " + interest.getName().toUri());  
       local forwardingDelayMs = 0;
       if (transmitFailed) 
       {
@@ -382,7 +382,7 @@ class MicroForwarder {
 
         if (entry.inFace_ == face &&
             entry.interest.getName().equals(interest.getName())) {
-            consoleLog("uFwd: Duplicate Interest");  // operant
+            //consoleLog("uFwd: Duplicate Interest");  // operant
             // Duplicate PIT entry.
             // Update the interest timeout.
             if (timeoutEndSeconds > entry.timeoutEndSeconds)
@@ -444,12 +444,12 @@ class MicroForwarder {
 
                 if (forwardingDelayMs == 0) {
                   // Forward now.
-                  consoleLog("uFwd: Interest --> " + outFace.uri); 
+                  //consoleLog("uFwd: Interest --> " + outFace.uri); 
                   outFace.sendBuffer(outBuffer);
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
-                  consoleLog("uFwd: Interest --> " + outFace.uri + " delay " + forwardingDelayMs + " ms");  
+                  //consoleLog("uFwd: Interest --> " + outFace.uri + " delay " + forwardingDelayMs + " ms");  
                   imp.wakeup(forwardingDelayMs / 1000.0,
                     function() { outFace.sendBuffer(outBuffer); });
                 }
@@ -461,7 +461,7 @@ class MicroForwarder {
     }
     else if (data != null) {
 
-      consoleLog("uFwd: Data");
+      //consoleLog("uFwd: Data");
 
       if (transmitFailed) {
         // Find the queue entry of the failed transmission.
@@ -492,7 +492,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          consoleLog("uFwd: " + entry.outFace_.uri + " --> Data --> " + entry.inFace_.uri); 
+          //consoleLog("uFwd: " + entry.outFace_.uri + " --> Data --> " + entry.inFace_.uri); 
           matchingPitEntry = true;
           // Remove the entry before sending.
 
@@ -508,7 +508,7 @@ class MicroForwarder {
         } 
       }
       if (!matchingPitEntry){
-          consoleLog("uFwd: drop Data");  
+          //consoleLog("uFwd: drop Data");  
       }
     }
   }
@@ -565,7 +565,7 @@ class MicroForwarder {
       minRetransmitDelayMilliseconds_ +
       (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
 
-     // consoleLog("RESCHED TX");  // operant
+     //consoleLog("RESCHED TX");  // operant
 
     // Set the delayed call.
     delayedCallTable_.callLater
@@ -712,7 +712,7 @@ class PitEntry {
       outFace_.sendBuffer(outBuffer);
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
-      consoleLog("uFwd: Error in sendBuffer: " + ex);
+      //consoleLog("uFwd: Error in sendBuffer: " + ex);
     }
   }
 }
@@ -936,7 +936,7 @@ class DataRetransmitEntry {
       outFace_.sendBuffer(data_.wireEncode().buf());
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
-      consoleLog("uFwd: Error in sendBuffer: " + ex);
+      //consoleLog("uFwd: Error in sendBuffer: " + ex);
     }
   }
 }
