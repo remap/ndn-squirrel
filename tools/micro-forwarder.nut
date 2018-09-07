@@ -17,6 +17,7 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
+
 /**
  * A MicroForwarder holds a PIT, FIB and faces to function as a simple NDN
  * forwarder. It has a single instance which you can access with
@@ -36,8 +37,7 @@ class MicroForwarder {
   maxRetransmitDelayMilliseconds_ = 3300;
   minPitEntryLifetimeMilliseconds_ = 60000;
 
-  debugEnable_ = false; // operant
-  logEnable_ = false; // operant
+  logEnable_ = false; 
  
   static localhostNamePrefix = Name("/localhost");
   static localhopNamePrefix = Name("/localhop");
@@ -225,18 +225,15 @@ class MicroForwarder {
           if (code == PacketExtensionCode.ErrorReporting) {
             if (payload == ErrorReportingPayload.TransmitFailed)
             {
-              //consoleLog("Transmit failure reported");  
               transmitFailed = true;
             }
             else {
               // Error: Unrecognized error payload. Drop the packet.
-              //consoleLog("Error: Unrecognized error payload. Drop the packet.");  // operant
               return;
             }
           }
           else {
             // Error: Unrecognized required header. Drop the packet.
-            //consoleLog("Error: Unrecognized required header. Drop the packet.");  // operant
             return;
           }
         }
@@ -276,11 +273,12 @@ class MicroForwarder {
     // Iterate backwards so we can remove the entry and keep iterating.
     for (local i = PIT_.len() - 1; i >= 0; --i) {
       local entry = PIT_[i];
+      if(logEnable_) {consoleLog("uFwd: PIT entry from face " + entry.inFace_ + " will timeout at " + entry.timeoutEndSeconds + " time now " + nowSeconds)};
       // For removal, we also check the timeoutEndSeconds in case it is greater
       // than entryEndSeconds.
       if (nowSeconds >= entry.entryEndSeconds &&
           nowSeconds >= entry.timeoutEndSeconds) {
-        //consoleLog("INT TIMEOUT");  
+        if(logEnable_) {consoleLog("uFwd: Interest timeout")};  
         removePitEntry_(i);
       }
       else if (nowSeconds >= entry.timeoutEndSeconds) {
@@ -302,25 +300,21 @@ class MicroForwarder {
     // Now process as Interest or Data.
     if (interest != null) 
     {
-      //consoleLog("uFwd: Interest " + interest.getName().toUri());  
+      if(logEnable_) {consoleLog("uFwd: Interest " + interest.getName().toUri())};  
       local forwardingDelayMs = 0;
       if (transmitFailed) 
       {
           // register a failed transmission in history by calling get forwarding delay
           if (getForwardingDelay_ != null) {
-              //consoleLog("calling getForwardingDelay_ from NACK");
               forwardingDelayMs = getForwardingDelay_(interest, 0, 0, 0, 0, 0, true);
-              //consoleLog(forwardingDelayMs);
           }
         // Find the PIT entry of the failed transmission.
-        //consoleLog(" Interest TX failed ");  
         for (local i = 0; i < PIT_.len(); ++i) {
           local entry = PIT_[i];
           if (entry.interest.getNonce().equals(interest.getNonce()) &&
               entry.interest.getName().equals(interest.getName())) {
 
             // This will only schedule if there are more retransmit tries.
-            //consoleLog(" Scheduling Interest retransmission ");  // operant
             entry.scheduleRetransmit(face, this);
             return;
           }
@@ -331,7 +325,6 @@ class MicroForwarder {
 
       if (localhostNamePrefix.match(interest.getName())) {
         // Ignore localhost.
-        //consoleLog(" Ignoring localhost ");  // operant
         return;
       }
 
@@ -341,7 +334,7 @@ class MicroForwarder {
 
       // First check for a duplicate nonce on any face.
       for (local i = 0; i < PIT_.len(); ++i) {
-        //consoleLog(" Checking for duplicate nonce: " + interest.getNonce().toHex() + " ");  
+        //consoleLog("uFwd: Checking for duplicate nonce: " + interest.getNonce().toHex() + " ")};  
         local entry = PIT_[i];
         if (entry.interest.getNonce().equals(interest.getNonce())) {
 
@@ -353,16 +346,13 @@ class MicroForwarder {
             // entry is not used to forward the Data packet.
             // TODO: What if face != entry.retransmitFace_?
             // TODO: What if retransmission is scheduled on multiple faces?
-
-            //consoleLog(" PIT entry for Interest scheduled for retransmission canceled; nonce: " + interest.getNonce().toHex() + " ");  
-
             entry.retransmitFace_ = null;
             entry.outFace_ = null;
             return;
           }
 
           // Drop the duplicate nonce.
-          //consoleLog("INT DROP");  
+          if(logEnable_) {consoleLog("uFwd:  Interest dropped")};  
           return;
         }
       }
@@ -373,7 +363,7 @@ class MicroForwarder {
         timeoutEndSeconds = nowSeconds + (interest.getInterestLifetimeMilliseconds() / 1000.0).tointeger();
       else
         // Use a default timeout.
-        timeoutEndSeconds = nowSeconds + 4;
+        timeoutEndSeconds = nowSeconds + 30;
       local entryEndSeconds =
         nowSeconds + (minPitEntryLifetimeMilliseconds_ / 1000.0).tointeger();
       for (local i = 0; i < PIT_.len(); ++i) {
@@ -382,7 +372,7 @@ class MicroForwarder {
 
         if (entry.inFace_ == face &&
             entry.interest.getName().equals(interest.getName())) {
-            //consoleLog("uFwd: Duplicate Interest");  // operant
+            if(logEnable_) {consoleLog("uFwd: Duplicate Interest")};  
             // Duplicate PIT entry.
             // Update the interest timeout.
             if (timeoutEndSeconds > entry.timeoutEndSeconds)
@@ -413,7 +403,7 @@ class MicroForwarder {
       }
       else {
         // Send the interest to the faces in matching FIB entries.
-        //consoleLog("Sending Interest to FIB entries");
+        //if(logEnable_) {consoleLog("uFwd: sending Interest to FIB entries")};
         for (local i = 0; i < FIB_.len(); ++i) {
           local fibEntry = FIB_[i];
 
@@ -434,22 +424,20 @@ class MicroForwarder {
 
                 if (getForwardingDelay_ != null)
                   // Note that getForwardingDelay_  is called even if outFace == face.
-                  //consoleLog("calling getForwardingDelay_ from FIB");
                   forwardingDelayMs = getForwardingDelay_
                     (interest, face.faceId, face.uri, outFace.faceId, outFace.uri,
                      fibEntry.name, cost);
-                  //consoleLog(forwardingDelayMs);
 
                 pitEntry.outFace_ = outFace;
 
                 if (forwardingDelayMs == 0) {
                   // Forward now.
-                  //consoleLog("uFwd: Interest --> " + outFace.uri); 
+                  if(logEnable_) {consoleLog("uFwd: Interest --> " + outFace.uri)}; 
                   outFace.sendBuffer(outBuffer);
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
-                  //consoleLog("uFwd: Interest --> " + outFace.uri + " delay " + forwardingDelayMs + " ms");  
+                  if(logEnable_) {consoleLog("uFwd: Interest --> " + outFace.uri + " delay " + forwardingDelayMs + " ms")};  
                   imp.wakeup(forwardingDelayMs / 1000.0,
                     function() { outFace.sendBuffer(outBuffer); });
                 }
@@ -461,7 +449,7 @@ class MicroForwarder {
     }
     else if (data != null) {
 
-      //consoleLog("uFwd: Data");
+      if(logEnable_) {consoleLog("uFwd: Data")};
 
       if (transmitFailed) {
         // Find the queue entry of the failed transmission.
@@ -492,7 +480,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          //consoleLog("uFwd: " + entry.outFace_.uri + " --> Data --> " + entry.inFace_.uri); 
+          if(logEnable_) {consoleLog("uFwd: " + entry.outFace_.uri + " --> Data --> " + entry.inFace_.uri)}; 
           matchingPitEntry = true;
           // Remove the entry before sending.
 
@@ -508,7 +496,7 @@ class MicroForwarder {
         } 
       }
       if (!matchingPitEntry){
-          //consoleLog("uFwd: drop Data");  
+          if(logEnable_) {consoleLog("uFwd: drop Data")};  
       }
     }
   }
@@ -565,7 +553,7 @@ class MicroForwarder {
       minRetransmitDelayMilliseconds_ +
       (1.0 * math.rand() / RAND_MAX) * delayRangeMilliseconds;
 
-     //consoleLog("RESCHED TX");  // operant
+      if(logEnable_) {consoleLog("uFwd:  rescheduling tx")}; 
 
     // Set the delayed call.
     delayedCallTable_.callLater
@@ -660,7 +648,7 @@ class PitEntry {
   {
     outFace_ = null;
 
-    //consoleLog(" Interest retransmission being scheduled; # of retries: " + nRetransmitRetries_ + " ");  // operant
+    if(logEnable_) {consoleLog(" Interest retransmission being scheduled; # of retries: " + nRetransmitRetries_ + " ")};  
 
     if (retransmitFace_ != null)
       // Already scheduled for retransmit.
@@ -712,7 +700,7 @@ class PitEntry {
       outFace_.sendBuffer(outBuffer);
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
-      //consoleLog("uFwd: Error in sendBuffer: " + ex);
+      if(logEnable_) {consoleLog("uFwd: Error in sendBuffer: " + ex)};
     }
   }
 }
@@ -936,7 +924,7 @@ class DataRetransmitEntry {
       outFace_.sendBuffer(data_.wireEncode().buf());
     } catch (ex) {
       // Log and ignore the exception so that we continue and try again.
-      //consoleLog("uFwd: Error in sendBuffer: " + ex);
+      if(logEnable_) {consoleLog("uFwd: Error in sendBuffer: " + ex)};
     }
   }
 }
