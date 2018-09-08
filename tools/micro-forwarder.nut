@@ -37,7 +37,7 @@ class MicroForwarder {
   maxRetransmitDelayMilliseconds_ = 3300;
   minPitEntryLifetimeMilliseconds_ = 60000;
 
-  logEnable_ = false; 
+  logEnable_ = true; // locally enablelogging
  
   static localhostNamePrefix = Name("/localhost");
   static localhopNamePrefix = Name("/localhop");
@@ -607,10 +607,6 @@ class PitEntry {
   nRetransmitRetries_ = 0;
   retransmitFace_ = null;
   outFace_ = null;
-
-  debugEnable_ = false; // operant
-  logEnable_ = false; // operant
-
 
   /**
    * Create a PitEntry for the interest and incoming face.

@@ -145,11 +145,11 @@ class HttpTransport extends Transport {
     // Each connection is separate, so use a local callback.
     local thisTransport = this;
     local doneCallback = function(response) {
-      server.log("    NDN: a2a data received via http");
+      server.log("    NDN: a2a response received via http " + response.statuscode);
       local encoding = Blob(response.body);
       thisTransport.elementReader_.onReceivedData(Buffer(response.body));
     }
-    
+
     server.log("    NDN: a2a interest sent via http");
     // TODO: Should we specify the timeout for sendasync? (The default is 10 minutes.)
     connectionInfo_.getHttp().post
