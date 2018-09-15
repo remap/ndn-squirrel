@@ -49,7 +49,7 @@ class MicroForwarder {
    * SquirrelObjectTransportConnectionInfo(agent)).
    * Normally you do not create a MicroForwader, but use the static get().
    */
-   constructor()
+  constructor()
   {
     PIT_ = [];
     FIB_ = [];
@@ -64,8 +64,9 @@ class MicroForwarder {
    */
   static function get()
   {
-    if (MicroForwarder_instance == null)
+    if (MicroForwarder_instance == null) {
       ::MicroForwarder_instance = MicroForwarder();
+    }
     return MicroForwarder_instance;
   }
 
@@ -209,6 +210,12 @@ class MicroForwarder {
    */
   function onReceivedElement(face, element)
   {
+    // start the tick..
+    local ufwdTimer = 0;
+    try { 
+      ufwdTimer = hardware.millis();
+    } catch (exception) {}
+
     local geoTag = null;
     local transmitFailed = false;
     if (PacketExtensions.isExtension(element.get(0))) {
@@ -273,7 +280,7 @@ class MicroForwarder {
     // Iterate backwards so we can remove the entry and keep iterating.
     for (local i = PIT_.len() - 1; i >= 0; --i) {
       local entry = PIT_[i];
-      //if(logEnable_) {consoleLog("uFwd: PIT entry from face " + entry.inFace_ + " will timeout at " + entry.timeoutEndSeconds + " time now " + nowSeconds)};
+      if(logEnable_) {consoleLog("uFwd: PIT entry from face " + entry.inFace_ + " will timeout at " + entry.timeoutEndSeconds + " time now " + nowSeconds)};
       // For removal, we also check the timeoutEndSeconds in case it is greater
       // than entryEndSeconds.
       if (nowSeconds >= entry.entryEndSeconds &&
@@ -300,7 +307,7 @@ class MicroForwarder {
     // Now process as Interest or Data.
     if (interest != null) 
     {
-      if(logEnable_) {consoleLog("uFwd: Interest " + interest.getName().toUri())};  
+      if(logEnable_) {consoleLog("uFwd: Interest w/ lifetime" + interest.getName().toUri() + "," + interest.getInterestLifetimeMilliseconds())};  
       local forwardingDelayMs = 0;
       if (transmitFailed) 
       {
@@ -430,16 +437,25 @@ class MicroForwarder {
 
                 pitEntry.outFace_ = outFace;
 
+                local zeroDelay = 0;
+                try {
+                  zeroDelay = (100 - (hardware.millis() - ufwdTimer));
+                } catch (exception) {}
+                
+                if(logEnable_) {consoleLog("uFwd: zeroDelay --> " + zeroDelay + " ms")};
                 if (forwardingDelayMs == 0) {
                   // Forward now.
                   if(logEnable_) {consoleLog("uFwd: Interest --> " + outFace.uri)}; 
-                  outFace.sendBuffer(outBuffer);
+                  // total duration of 100ms
+                  if (zeroDelay > 0) {
+                    imp.wakeup ((zeroDelay / 1000.0), function() { outFace.sendBuffer(outBuffer);});
+                  }
+                  else { outFace.sendBuffer(outBuffer);}
                 }
                 else if (forwardingDelayMs > 0) {
                   // Forward after a delay. Specify seconds.
                   if(logEnable_) {consoleLog("uFwd: Interest --> " + outFace.uri + " delay " + forwardingDelayMs + " ms")};  
-                  imp.wakeup(forwardingDelayMs / 1000.0,
-                    function() { outFace.sendBuffer(outBuffer); });
+                  imp.wakeup( (zeroDelay + forwardingDelayMs) / 1000.0, function() { outFace.sendBuffer(outBuffer); });
                 }
               }
             }
