@@ -35,7 +35,7 @@ class MicroForwarder {
 
   minRetransmitDelayMilliseconds_ = 3000;
   maxRetransmitDelayMilliseconds_ = 3300;
-  minPitEntryLifetimeMilliseconds_ = 60000;
+  minPitEntryLifetimeMilliseconds_ = 45000;
 
   logEnable_ = true; // locally enablelogging
  
