@@ -370,7 +370,7 @@ class MicroForwarder {
         timeoutEndSeconds = nowSeconds + (interest.getInterestLifetimeMilliseconds() / 1000.0).tointeger();
       else
         // Use a default timeout.
-        timeoutEndSeconds = nowSeconds + 30;
+        timeoutEndSeconds = nowSeconds + 40;
       local entryEndSeconds =
         nowSeconds + (minPitEntryLifetimeMilliseconds_ / 1000.0).tointeger();
       for (local i = 0; i < PIT_.len(); ++i) {
