@@ -37,7 +37,7 @@ class MicroForwarder {
   maxRetransmitDelayMilliseconds_ = 3300;
   minPitEntryLifetimeMilliseconds_ = 45000;
 
-  logEnable_ = true; // locally enablelogging
+  logEnable_ = false; // locally enablelogging
  
   static localhostNamePrefix = Name("/localhost");
   static localhopNamePrefix = Name("/localhop");
@@ -280,7 +280,7 @@ class MicroForwarder {
     // Iterate backwards so we can remove the entry and keep iterating.
     for (local i = PIT_.len() - 1; i >= 0; --i) {
       local entry = PIT_[i];
-      if(logEnable_) {consoleLog("uFwd: PIT entry from face " + entry.inFace_ + " will timeout at " + entry.timeoutEndSeconds + " time now " + nowSeconds)};
+      //if(logEnable_) {consoleLog("uFwd: PIT entry from face " + entry.inFace_ + " will timeout at " + entry.timeoutEndSeconds + " time now " + nowSeconds)};
       // For removal, we also check the timeoutEndSeconds in case it is greater
       // than entryEndSeconds.
       if (nowSeconds >= entry.entryEndSeconds &&
@@ -442,7 +442,7 @@ class MicroForwarder {
                   zeroDelay = (100 - (hardware.millis() - ufwdTimer));
                 } catch (exception) {}
                 
-                if(logEnable_) {consoleLog("uFwd: zeroDelay --> " + zeroDelay + " ms")};
+                //if(logEnable_) {consoleLog("uFwd: zeroDelay --> " + zeroDelay + " ms")};
                 if (forwardingDelayMs == 0) {
                   // Forward now.
                   if(logEnable_) {consoleLog("uFwd: Interest --> " + outFace.uri)}; 

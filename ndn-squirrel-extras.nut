@@ -152,9 +152,10 @@ class HttpTransport extends Transport {
 
     server.log("    NDN: a2a interest sent via http");
     // TODO: Should we specify the timeout for sendasync? (The default is 10 minutes.)
+    local timeoutSeconds = 40;
     connectionInfo_.getHttp().post
       (connectionInfo_.getUrl(), connectionInfo_.getHeaders(), buffer.toBlob())
-      .sendasync(doneCallback);
+      .sendasync(doneCallback, null, timeoutSeconds);
   }
 }
 
