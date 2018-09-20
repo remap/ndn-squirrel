@@ -35,7 +35,7 @@ class MicroForwarder {
 
   minRetransmitDelayMilliseconds_ = 3000;
   maxRetransmitDelayMilliseconds_ = 3300;
-  minPitEntryLifetimeMilliseconds_ = 45000;
+  minPitEntryLifetimeMilliseconds_ = 35000;
 
   logEnable_ = false; // locally enablelogging
  
@@ -208,13 +208,23 @@ class MicroForwarder {
    * received the element.
    * @param {Buffer} element The received element.
    */
-  function onReceivedElement(face, element)
-  {
+  function onReceivedElement(face, element)  {
+    if(logEnable_) {consoleLog("uFwd: onReceivedElement entry")};  
+
     // start the tick..
     local ufwdTimer = 0;
+
+    /*
     try { 
       ufwdTimer = hardware.millis();
-    } catch (exception) {}
+    } catch (exception) {
+      if(logEnable_) {consoleLog("uFwd: hardware.millis() exception")};  
+    }
+    */
+
+    if (imp.environment() != ENVIRONMENT_AGENT ){
+            ufwdTimer = hardware.millis();
+    }
 
     local geoTag = null;
     local transmitFailed = false;
@@ -283,19 +293,19 @@ class MicroForwarder {
       //if(logEnable_) {consoleLog("uFwd: PIT entry from face " + entry.inFace_ + " will timeout at " + entry.timeoutEndSeconds + " time now " + nowSeconds)};
       // For removal, we also check the timeoutEndSeconds in case it is greater
       // than entryEndSeconds.
-      if (nowSeconds >= entry.entryEndSeconds &&
-          nowSeconds >= entry.timeoutEndSeconds) {
-        if(logEnable_) {consoleLog("uFwd: Interest timeout")};  
-        removePitEntry_(i);
-      }
-      else if (nowSeconds >= entry.timeoutEndSeconds) {
+      if (nowSeconds >= entry.entryEndSeconds && nowSeconds >= entry.timeoutEndSeconds) {
+        if(logEnable_) {consoleLog("uFwd: PIT entry " + j + " from face " + faceIdentifier + " was removed by entry end")};  
+        removePitEntry_(j);
+      } else if (nowSeconds >= entry.timeoutEndSeconds && entry.inFace_ != null) {
         // Timed out, so set inFace_ null which prevents using the PIT entry to
         // return a Data packet, but we keep the PIT entry to check for a
         // duplicate nonce. (If a fresh Interest arrives with the same name, a
-        // new PIT entry will be created.)
+        // new PIT entry will be created.)-
+        if(logEnable_) {consoleLog("uFwd: PIT entry " + j + " from face " + faceIdentifier + " was set to null by timeout")};  
         entry.inFace_ = null;
       }
     }
+
     // Remove timed-out Data retransmit queue entries.
     for (local i = dataRetransmitQueue_.len() - 1; i >= 0; --i) {
       if (nowSeconds >= dataRetransmitQueue_[i].timeoutEndSeconds_) {
@@ -307,7 +317,7 @@ class MicroForwarder {
     // Now process as Interest or Data.
     if (interest != null) 
     {
-      if(logEnable_) {consoleLog("uFwd: Interest w/ lifetime" + interest.getName().toUri() + "," + interest.getInterestLifetimeMilliseconds())};  
+      if(logEnable_) {consoleLog("uFwd: Interest " + interest.getName().toUri() + ", w/ lifetime  " + interest.getInterestLifetimeMilliseconds())};  
       local forwardingDelayMs = 0;
       if (transmitFailed) 
       {
@@ -395,6 +405,8 @@ class MicroForwarder {
       local pitEntry = PitEntry
         (interest, face, timeoutEndSeconds, entryEndSeconds, maxRetransmitRetries_);
       PIT_.append(pitEntry);
+      if(logEnable_) {consoleLog("uFwd:  Interest added to PIT w/ faceId " + pitEntry.inFace_.faceId)};  
+
 
       if (broadcastNamePrefix.match(interest.getName())) {
         // Special case: broadcast to all faces.
@@ -438,10 +450,19 @@ class MicroForwarder {
                 pitEntry.outFace_ = outFace;
 
                 local zeroDelay = 0;
+                /*
                 try {
                   zeroDelay = (100 - (hardware.millis() - ufwdTimer));
                 } catch (exception) {}
+<<<<<<< HEAD
                 
+=======
+                */
+                if (imp.environment() != ENVIRONMENT_AGENT ){
+                  zeroDelay = (100 - (hardware.millis() - ufwdTimer));
+                }
+
+>>>>>>> ee44d081755f19f7ad5fd6e53476c706d1edf280
                 //if(logEnable_) {consoleLog("uFwd: zeroDelay --> " + zeroDelay + " ms")};
                 if (forwardingDelayMs == 0) {
                   // Forward now.
@@ -496,7 +517,7 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          if(logEnable_) {consoleLog("uFwd: " + entry.outFace_.uri + " --> Data --> " + entry.inFace_.uri)}; 
+          if(logEnable_) {consoleLog("uFwd: " + entry.inFace_.uri + " --> Data --> " + entry.outFace_.uri)};  
           matchingPitEntry = true;
           // Remove the entry before sending.
 
@@ -507,6 +528,7 @@ class MicroForwarder {
           // check for a duplicate nonce. It will be deleted after
           // entryEndSeconds. (If a fresh Interest arrives with the same name, a
           // new PIT entry will be created.)
+          if(logEnable_) {consoleLog("uFwd: PIT entry from face " + entry.inFace_.faceId + " was set to null by Data return")};  
           entry.inFace_ = null;
 
         } 
