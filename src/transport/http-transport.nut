@@ -31,8 +31,10 @@ class HttpTransport extends Transport {
    * connectionInfo.getHttp().post(connectionInfo.getUrl(), connectionInfo.getHeaders(), buffer)
    * where buffer is the buffer given to the send method, converted to a Squirrel
    * blob for the body of the POST message. The "post" method returns
-   * an object which has a method sendasync(doneCallback). When the HTTP response
-   * is received, the system calls doneCallback(response) where response.body
+   * an object which has a method sendasync where this calls
+   * sendasync(doneCallback, null, connectionInfo.getTimeoutSeconds()).
+   * When the HTTP response is received, the system calls
+   * doneCallback(response) where response.body
    * is the raw string of the response. This converts the response to a Buffer
    * and calls elementListener.onReceivedElement(). In this way this Transport
    * can be used to POST a packet to an HTTP server and receive the response,
@@ -73,10 +75,9 @@ class HttpTransport extends Transport {
       thisTransport.elementReader_.onReceivedData(Buffer(response.body));
     }
 
-    // TODO: Should we specify the timeout for sendasync? (The default is 10 minutes.)
     connectionInfo_.getHttp().post
       (connectionInfo_.getUrl(), connectionInfo_.getHeaders(), buffer.toBlob())
-      .sendasync(doneCallback);
+      .sendasync(doneCallback, null, connectionInfo_.getTimeoutSeconds());
   }
 }
 
@@ -89,6 +90,7 @@ class HttpTransportConnectionInfo extends TransportConnectionInfo {
   http_ = null;
   url_ = null;
   headers_ = null;
+  timeoutSeconds_ = 0;
 
   /**
    * Create a new HttpTransportConnectionInfo with the given connection object.
@@ -98,12 +100,34 @@ class HttpTransportConnectionInfo extends TransportConnectionInfo {
    * @param {string} url The URL for calling "post".
    * @param {table} headers (optional) The table of additional HTTP headers for
    * calling "post". If omitted, use { "Content-Type" : "application/binary" }.
+   * @param {integer|float} timeoutSeconds (optional) The timeout in seconds for
+   * calling sendasync. If omitted, use 600 seconds (10 minutes).
    */
-  constructor(http, url, headers = { "Content-Type" : "application/binary" })
+  constructor(http, url, headers = null, timeoutSeconds = null)
   {
+    local arg3 = headers;
+    local arg4 = timeoutSeconds;
+    // arg3,           arg4 may be:
+    // headers,        timeoutSeconds
+    // headers,        null
+    // timeoutSeconds, null
+    // null,           null
+    if (typeof arg3 == "table")
+      headers = arg3;
+    else
+      headers = { "Content-Type" : "application/binary" };
+
+    if (typeof arg3 == "integer" || typeof arg3 == "float")
+      timeoutSeconds = arg3;
+    else if (typeof arg4 == "integer" || typeof arg4 == "float")
+      timeoutSeconds = arg4;
+    else
+      timeoutSeconds = 600;
+
     http_ = http;
     url_ = url;
     headers_ = headers;
+    timeoutSeconds_ = timeoutSeconds;
   }
 
   /**
@@ -123,4 +147,10 @@ class HttpTransportConnectionInfo extends TransportConnectionInfo {
    * @return {table} The headers.
    */
   function getHeaders() { return headers_; }
+
+  /**
+   * Get the timeout given to the constructor.
+   * @return {integer|float} The timeout in seconds.
+   */
+  function getTimeoutSeconds() { return timeoutSeconds_; }
 }
