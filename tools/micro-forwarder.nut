@@ -214,14 +214,6 @@ class MicroForwarder {
     // start the tick..
     local ufwdTimer = 0;
 
-    /*
-    try { 
-      ufwdTimer = hardware.millis();
-    } catch (exception) {
-      if(logEnable_) {consoleLog("uFwd: hardware.millis() exception")};  
-    }
-    */
-
     if (imp.environment() != ENVIRONMENT_AGENT ){
             ufwdTimer = hardware.millis();
     }
