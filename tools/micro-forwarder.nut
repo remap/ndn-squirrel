@@ -17,7 +17,8 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-uFwdLogEnable_ <- true; // locally enable logging
+uFwdLogEnable_ <- false; // locally enable logging
+uFwdLogTimeEnable_ <- true; // locally enable logging
 
 /**
  * A MicroForwarder holds a PIT, FIB and faces to function as a simple NDN
@@ -210,13 +211,13 @@ class MicroForwarder {
    * @param {Buffer} element The received element.
    */
   function onReceivedElement(face, element)  {
-    if(uFwdLogEnable_) {consoleLog("uFwd: onReceivedElement entry")};  
 
     // start the tick..
     local ufwdTimer = 0;
 
     if (imp.environment() != ENVIRONMENT_AGENT ){
-            ufwdTimer = hardware.millis();
+      if(uFwdLogTimeEnable_) {consoleLog("tufwd0 onReceivedElement entrance " + hardware.millis())};  
+        ufwdTimer = hardware.millis();
     }
 
     local geoTag = null;
@@ -446,9 +447,9 @@ class MicroForwarder {
  
                 if (imp.environment() != ENVIRONMENT_AGENT ){
                   zeroDelay = (100 - (hardware.millis() - ufwdTimer));
+                  if(uFwdLogTimeEnable_) {consoleLog("tufwd1 interest forward " + (hardware.millis() + zeroDelay + forwardingDelayMs))};  
                 }
 
-                //if(uFwdLogEnable_) {consoleLog("uFwd: zeroDelay --> " + zeroDelay + " ms")};
                 if (forwardingDelayMs == 0) {
                   // Forward now.
                   if(uFwdLogEnable_) {consoleLog("uFwd: Interest --> " + outFace.uri)}; 
@@ -502,10 +503,12 @@ class MicroForwarder {
         if (entry.inFace_ != null && entry.outFace_ != null &&
             entry.interest.matchesData(data)) {
 
-          if(uFwdLogEnable_) {consoleLog("uFwd: " + entry.inFace_.uri + " --> Data --> " + entry.outFace_.uri)};  
+          if(uFwdLogEnable_ && ufwdTimer != 0) {consoleLog("uFwd: " + entry.inFace_.uri + " --> Data --> " + entry.outFace_.uri)};  
           matchingPitEntry = true;
           // Remove the entry before sending.
-
+          if (imp.environment() != ENVIRONMENT_AGENT ){
+            if(uFwdLogTimeEnable_) {consoleLog("tufwd1 data forward " + hardware.millis())};  
+          }
           entry.inFace_.sendBuffer(element);
 
           // The PIT entry is consumed, so set inFace_ null which prevents using
