@@ -17,7 +17,7 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-uFwdLogEnable_ <- false; // locally enable logging
+uFwdLogEnable_ <-  true; // locally enable logging
 uFwdLogTimeEnable_ <- true; // locally enable logging
 
 /**
@@ -446,7 +446,8 @@ class MicroForwarder {
                 local zeroDelay = 0;
  
                 if (imp.environment() != ENVIRONMENT_AGENT ){
-                  zeroDelay = (100 - (hardware.millis() - ufwdTimer));
+                  local microForwarderDwellTime = 50; //time to spend in microforwarder in ms
+                  zeroDelay = (microForwarderDwellTime - (hardware.millis() - ufwdTimer));
                   if(uFwdLogTimeEnable_) {consoleLog("tufwd1 interest forward " + (hardware.millis() + zeroDelay + forwardingDelayMs))};  
                 }
 
