@@ -18,7 +18,7 @@
  */
 
 uFwdLogEnable_ <-  false; // locally enable logging
-uFwdLogTimeEnable_ <- true; // locally enable logging
+uFwdLogTimeEnable_ <- false; // locally enable logging
 
 /**
  * A MicroForwarder holds a PIT, FIB and faces to function as a simple NDN
