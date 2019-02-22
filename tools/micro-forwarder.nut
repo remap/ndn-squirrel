@@ -17,7 +17,7 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-uFwdLogEnable_ <-  false; // locally enable logging
+uFwdLogEnable_ <-  true; // locally enable logging
 uFwdLogTimeEnable_ <- false; // locally enable logging
 
 /**
@@ -439,7 +439,7 @@ class MicroForwarder {
                   // Note that getForwardingDelay_  is called even if outFace == face.
                   forwardingDelayMs = getForwardingDelay_
                     (interest, face.faceId, face.uri, outFace.faceId, outFace.uri,
-                     fibEntry.name, cost);
+                     fibEntry.name, false); // changed 'cost' to 'false'
 
                 pitEntry.outFace_ = outFace;
 
