@@ -17,7 +17,7 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-uFwdLogEnable_ <-  true; // locally enable logging
+uFwdLogEnable_ <-  false; // locally enable logging
 uFwdLogTimeEnable_ <- false; // locally enable logging
 
 /**
@@ -295,7 +295,6 @@ class MicroForwarder {
         // return a Data packet, but we keep the PIT entry to check for a
         // duplicate nonce. (If a fresh Interest arrives with the same name, a
         // new PIT entry will be created.)-
-        if(uFwdLogEnable_) {consoleLog("uFwd: PIT entry " + j + " from face was set to null by timeout")};  
         entry.inFace_ = null;
       }
     }
