@@ -17,7 +17,7 @@
  * A copy of the GNU Lesser General Public License is in the file COPYING.
  */
 
-uFwdLogEnable_ <-  false; // locally enable logging
+uFwdLogEnable_ <-  true; // locally enable logging
 uFwdLogTimeEnable_ <- false; // locally enable logging
 
 /**
